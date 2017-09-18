@@ -21,6 +21,8 @@ func Main() int {
 		return cmd.Get(os.Args[2:])
 	case "rm":
 		return cmd.Rm(os.Args[2:])
+	case "query":
+		return cmd.Query(os.Args[2:])
 	default:
 		fmt.Fprintln(os.Stderr, "[ERROR] Unknown command '"+os.Args[1]+"'")
 		return 2
@@ -42,7 +44,7 @@ Command
   rm [-p] {repository}
     Uninstall vim plugin
 
-  query [-json] [-installed] {repository}
+  query [-j] [-i] [{repository}]
     Output queried vim plugin info
 
   plugconf ping {repository}
