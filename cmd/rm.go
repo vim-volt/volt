@@ -91,21 +91,21 @@ func (rmCmd) removeRepos(reposPath string, flags *rmFlags) error {
 	}
 
 	// Read lock.json
-	json, err := lockjson.Read()
+	lockJSON, err := lockjson.Read()
 	if err != nil {
 		return err
 	}
 
 	// Rewrite lock.json
-	newRepos := make([]lockjson.Repos, 0, len(json.Repos))
-	for _, repos := range json.Repos {
+	newRepos := make([]lockjson.Repos, 0, len(lockJSON.Repos))
+	for _, repos := range lockJSON.Repos {
 		if repos.Path != reposPath {
 			newRepos = append(newRepos, repos)
 		}
 	}
-	json.Repos = newRepos
+	lockJSON.Repos = newRepos
 
-	err = lockjson.Write(json)
+	err = lockjson.Write(lockJSON)
 	if err != nil {
 		return err
 	}

@@ -72,13 +72,13 @@ Options`)
 
 func (getCmd) cloneRepos(reposPath string, flags *getFlags) error {
 	// Read lock.json
-	json, err := lockjson.Read()
+	lockJSON, err := lockjson.Read()
 	if err != nil {
 		return err
 	}
 
 	// Return if the same repos path exists
-	for _, repos := range json.Repos {
+	for _, repos := range lockJSON.Repos {
 		if repos.Path == reposPath {
 			return errors.New("same repos path exists in lock.json: " + reposPath)
 		}
@@ -128,12 +128,12 @@ func (getCmd) cloneRepos(reposPath string, flags *getFlags) error {
 	}
 
 	// Rewrite lock.json
-	json.Repos = append(json.Repos, lockjson.Repos{
+	lockJSON.Repos = append(lockJSON.Repos, lockjson.Repos{
 		Path:    reposPath,
 		Version: head.Hash().String(),
 		Active:  true,
 	})
-	err = lockjson.Write(json)
+	err = lockjson.Write(lockJSON)
 	if err != nil {
 		return err
 	}
