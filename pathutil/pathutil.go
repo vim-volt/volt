@@ -51,6 +51,14 @@ func PlugConfOf(repos string) string {
 	return filepath.Join(VoltPath(), "plugconf", repos)
 }
 
-func LockJson() string {
+func LockJSON() string {
 	return filepath.Join(VoltPath(), "lock.json")
+}
+
+func TrxLock() string {
+	return filepath.Join(VoltPath(), "trx.lock")
+}
+
+func TempPath() string {
+	return filepath.Join(VoltPath(), "tmp")
 }

@@ -9,7 +9,8 @@ import (
 	"github.com/vim-volt/go-volt/pathutil"
 )
 
-type LockJson struct {
+type LockJSON struct {
+	TrxID         int64     `json:"trx_id"`
 	ActiveProfile string    `json:"active_profile"`
 	LoadInit      bool      `json:"load_init"`
 	Repos         []Repos   `json:"repos"`
@@ -17,6 +18,7 @@ type LockJson struct {
 }
 
 type Repos struct {
+	TrxID   int64  `json:"trx_id"`
 	Path    string `json:"path"`
 	Version string `json:"version"`
 	Active  bool   `json:"active"`
@@ -28,8 +30,9 @@ type Profile struct {
 	LoadInit bool   `json:"load_init"`
 }
 
-func InitialLockJson() *LockJson {
-	return &LockJson{
+func InitialLockJSON() *LockJSON {
+	return &LockJSON{
+		TrxID:         1,
 		ActiveProfile: "default",
 		LoadInit:      true,
 		Repos:         make([]Repos, 0),
@@ -37,29 +40,33 @@ func InitialLockJson() *LockJson {
 	}
 }
 
-func Read() (*LockJson, error) {
+func Read() (*LockJSON, error) {
 	// Return initial lock.json struct if lockfile does not exist
-	lockfile := pathutil.LockJson()
+	lockfile := pathutil.LockJSON()
 	if _, err := os.Stat(lockfile); os.IsNotExist(err) {
-		return InitialLockJson(), nil
+		return InitialLockJSON(), nil
 	}
 
-	// Read lock.json and return it
+	// Read lock.json
 	bytes, err := ioutil.ReadFile(lockfile)
 	if err != nil {
 		return nil, err
 	}
-	var lockJSON LockJson
+	var lockJSON LockJSON
 	err = json.Unmarshal(bytes, &lockJSON)
 	if err != nil {
 		return nil, err
 	}
+
+	// Begin new transaction
+	lockJSON.TrxID++
+
 	return &lockJSON, nil
 }
 
-func Write(lockJSON *LockJson) error {
+func Write(lockJSON *LockJSON) error {
 	// Mkdir all if lock.json's directory does not exist
-	lockfile := pathutil.LockJson()
+	lockfile := pathutil.LockJSON()
 	if _, err := os.Stat(filepath.Dir(lockfile)); os.IsNotExist(err) {
 		err = os.MkdirAll(filepath.Dir(lockfile), 0755)
 		if err != nil {
@@ -72,5 +79,5 @@ func Write(lockJSON *LockJson) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(pathutil.LockJson(), bytes, 0644)
+	return ioutil.WriteFile(pathutil.LockJSON(), bytes, 0644)
 }

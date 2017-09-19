@@ -38,7 +38,7 @@ Command
   config [-global] {key} [{value}]
     Set / Get config value
 
-  get [-u] [-v] {repository}
+  get [-l] [-u] [-v] {repository}
     Install / Upgrade vim plugin
 
   rm [-p] {repository}
