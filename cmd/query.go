@@ -21,22 +21,41 @@ type queryFlags struct {
 func Query(args []string) int {
 	cmd := queryCmd{}
 
-	reposPath, flags, err := cmd.parseArgs(args)
+	args, flags, err := cmd.parseArgs(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 10
 	}
 
-	err = cmd.queryRepos(reposPath, flags)
+	// Read lock.json
+	lockJSON, err := lockjson.Read()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to clone repository: "+err.Error())
+		fmt.Fprintln(os.Stderr, "[ERROR] Failed to read lock.json: "+err.Error())
 		return 11
 	}
+
+	reposPathList, err := cmd.getReposPathList(flags, args, lockJSON)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 12
+	}
+
+	reposList := make([]lockjson.Repos, 0, len(reposPathList))
+	for _, reposPath := range reposPathList {
+		repos, err := cmd.lookUpRepos(reposPath, lockJSON)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Failed to look up '"+reposPath+"': "+err.Error())
+			return 13
+		}
+		reposList = append(reposList, *repos)
+	}
+
+	cmd.printReposList(reposList, flags)
 
 	return 0
 }
 
-func (queryCmd) parseArgs(args []string) (string, *queryFlags, error) {
+func (queryCmd) parseArgs(args []string) ([]string, *queryFlags, error) {
 	var flags queryFlags
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.Usage = func() {
@@ -57,40 +76,53 @@ Options`)
 
 	if !flags.installed && len(fs.Args()) == 0 {
 		fs.Usage()
-		return "", nil, errors.New("repository was not given")
+		return nil, nil, errors.New("repository was not given")
 	}
 
-	var reposPath string
-	if len(fs.Args()) > 0 {
-		var err error
-		reposPath, err = pathutil.NormalizeRepository(fs.Args()[0])
-		if err != nil {
-			return "", nil, err
-		}
-	}
-	return reposPath, &flags, nil
+	return fs.Args(), &flags, nil
 }
 
-func (queryCmd) queryRepos(reposPath string, flags *queryFlags) error {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return err
+func (queryCmd) getReposPathList(flags *queryFlags, args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
+	reposPathList := make([]string, 0, 32)
+	if flags.installed {
+		for _, repos := range lockJSON.Repos {
+			reposPathList = append(reposPathList, repos.Path)
+		}
 	}
+	for _, arg := range args {
+		reposPath, err := pathutil.NormalizeRepository(arg)
+		if err != nil {
+			return nil, err
+		}
+		reposPathList = append(reposPathList, reposPath)
+	}
+	return reposPathList, nil
+}
 
-	if !flags.json { // TODO
-		return errors.New("specify -j option (showing non-JSON output is not supported)")
+func (queryCmd) lookUpRepos(reposPath string, lockJSON *lockjson.LockJSON) (*lockjson.Repos, error) {
+	for i := range lockJSON.Repos {
+		if lockJSON.Repos[i].Path == reposPath {
+			return &lockJSON.Repos[i], nil
+		}
 	}
-	if !flags.installed { // TODO
-		return errors.New("specify -i option (showing non-installed plugin info is not supported)")
-	}
+	// TODO: show plugin info on remote
+	return nil, errors.New("not implemented yet: remote query")
+}
 
-	if flags.json && flags.installed {
-		bytes, err := json.Marshal(lockJSON.Repos)
+func (queryCmd) printReposList(reposList []lockjson.Repos, flags *queryFlags) error {
+	if flags.json {
+		bytes, err := json.Marshal(reposList)
 		if err != nil {
 			return err
 		}
 		fmt.Print(string(bytes))
+	} else {
+		for _, repos := range reposList {
+			fmt.Println(repos.Path + ":")
+			fmt.Println("  active:", repos.Active)
+			fmt.Println("  version:", repos.Version)
+			fmt.Println("  trx_id:", repos.TrxID)
+		}
 	}
 
 	return nil
