@@ -23,20 +23,20 @@ func Query(args []string) int {
 
 	args, flags, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Println(err.Error())
 		return 10
 	}
 
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "[ERROR] Failed to read lock.json: "+err.Error())
+		fmt.Println("[ERROR] Failed to read lock.json: " + err.Error())
 		return 11
 	}
 
 	reposPathList, err := cmd.getReposPathList(flags, args, lockJSON)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Println(err.Error())
 		return 12
 	}
 
@@ -44,7 +44,7 @@ func Query(args []string) int {
 	for _, reposPath := range reposPathList {
 		repos, err := cmd.lookUpRepos(reposPath, lockJSON)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Failed to look up '"+reposPath+"': "+err.Error())
+			fmt.Println("Failed to look up '" + reposPath + "': " + err.Error())
 			return 13
 		}
 		reposList = append(reposList, *repos)
@@ -58,8 +58,9 @@ func Query(args []string) int {
 func (queryCmd) parseArgs(args []string) ([]string, *queryFlags, error) {
 	var flags queryFlags
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `
+		fmt.Println(`
 Usage
   volt query [-help] [-j] [-i] [{repository}]
 
@@ -68,7 +69,7 @@ Description
 
 Options`)
 		fs.PrintDefaults()
-		fmt.Fprintln(os.Stderr)
+		fmt.Println()
 	}
 	fs.BoolVar(&flags.json, "j", false, "output as JSON")
 	fs.BoolVar(&flags.installed, "i", false, "show installed info")

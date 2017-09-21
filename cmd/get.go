@@ -32,20 +32,20 @@ func Get(args []string) int {
 	// Parse args
 	args, flags, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Println(err.Error())
 		return 10
 	}
 
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "[ERROR] Could not read lock.json: "+err.Error())
+		fmt.Println("[ERROR] Could not read lock.json: " + err.Error())
 		return 11
 	}
 
 	reposPathList, err := cmd.getReposPathList(flags, args, lockJSON)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "[ERROR] Could not get repos list: "+err.Error())
+		fmt.Println("[ERROR] Could not get repos list: " + err.Error())
 		return 12
 	}
 
@@ -53,7 +53,7 @@ func Get(args []string) int {
 	for _, reposPath := range reposPathList {
 		fullpath := pathutil.FullReposPathOf(reposPath)
 		if cmd.pathExists(fullpath) && cmd.isDirtyWorktree(fullpath) {
-			fmt.Fprintln(os.Stderr, "[ERROR] Repository has dirty worktree: "+fullpath)
+			fmt.Println("[ERROR] Repository has dirty worktree: " + fullpath)
 			return 13
 		}
 	}
@@ -61,7 +61,7 @@ func Get(args []string) int {
 	// Begin transaction
 	err = transaction.Create()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "[ERROR] Failed to begin transaction: "+err.Error())
+		fmt.Println("[ERROR] Failed to begin transaction: " + err.Error())
 		return 14
 	}
 	defer transaction.Remove()
@@ -77,7 +77,7 @@ func Get(args []string) int {
 			// Get HEAD hash string
 			hash, err := cmd.getHEADHashString(reposPath)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "[ERROR] Failed to get HEAD commit hash: "+err.Error())
+				fmt.Println("[ERROR] Failed to get HEAD commit hash: " + err.Error())
 				continue
 			}
 			// Update repos[]/trx_id, repos[]/version
@@ -88,24 +88,24 @@ func Get(args []string) int {
 				upgradedList = append(upgradedList, reposPath)
 			}
 		} else {
-			fmt.Fprintln(os.Stderr, "[ERROR] Failed to install / upgrade plugins: "+err.Error())
+			fmt.Println("[ERROR] Failed to install / upgrade plugins: " + err.Error())
 		}
 	}
 
 	if updatedLockJSON {
 		err = lockjson.Write(lockJSON)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "[ERROR] Could not write to lock.json: "+err.Error())
+			fmt.Println("[ERROR] Could not write to lock.json: " + err.Error())
 			return 15
 		}
 	}
 
 	// Show upgraded plugins
 	if len(upgradedList) > 0 {
-		fmt.Fprintln(os.Stderr, "[WARN] Reloading upgraded plugin is not supported.")
-		fmt.Fprintln(os.Stderr, "[WARN] Please restart your Vim to reload the following plugins:")
+		fmt.Println("[WARN] Reloading upgraded plugin is not supported.")
+		fmt.Println("[WARN] Please restart your Vim to reload the following plugins:")
 		for _, reposPath := range upgradedList {
-			fmt.Fprintln(os.Stderr, "[WARN]   "+reposPath)
+			fmt.Println("[WARN]   " + reposPath)
 		}
 	}
 
@@ -115,8 +115,9 @@ func Get(args []string) int {
 func (getCmd) parseArgs(args []string) ([]string, *getFlags, error) {
 	var flags getFlags
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `
+		fmt.Println(`
 Usage
   volt get [-help] [-l] [-u] [-v] [{repository} ...]
 
@@ -125,7 +126,7 @@ Description
 
 Options`)
 		fs.PrintDefaults()
-		fmt.Fprintln(os.Stderr)
+		fmt.Println()
 	}
 	fs.BoolVar(&flags.lockJSON, "l", false, "from lock.json")
 	fs.BoolVar(&flags.upgrade, "u", false, "upgrade installed vim plugin")

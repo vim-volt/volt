@@ -21,13 +21,13 @@ func Rm(args []string) int {
 
 	reposPath, flags, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Println(err.Error())
 		return 10
 	}
 
 	err = cmd.removeRepos(reposPath, flags)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to clone repository: "+err.Error())
+		fmt.Println("Failed to clone repository: " + err.Error())
 		return 11
 	}
 
@@ -37,8 +37,9 @@ func Rm(args []string) int {
 func (rmCmd) parseArgs(args []string) (string, *rmFlags, error) {
 	var flags rmFlags
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `
+		fmt.Println(`
 Usage
   volt rm [-help] [-p] {repository}
 
@@ -47,7 +48,7 @@ Description
 
 Options`)
 		fs.PrintDefaults()
-		fmt.Fprintln(os.Stderr)
+		fmt.Println()
 	}
 	fs.BoolVar(&flags.removePlugConf, "p", false, "Remove plugconf")
 	fs.Parse(args)
