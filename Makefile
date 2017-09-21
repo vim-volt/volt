@@ -28,6 +28,7 @@ precompile:
 
 # Make static-linked binaries and tarballs
 release: $(SRC)
+	rm -r $(DIST_DIR)
 	@for os in $(RELEASE_OS); do \
 		for arch in $(RELEASE_ARCH); do \
 			echo "Making binary for ... os=$$os, arch=$$arch"; \
