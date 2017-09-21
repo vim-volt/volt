@@ -28,20 +28,16 @@ precompile:
 
 # Make static-linked binaries and tarballs
 release: $(SRC)
-	make npm_build_prod
 	@for os in $(RELEASE_OS); do \
 		for arch in $(RELEASE_ARCH); do \
+			echo "Making binary for ... os=$$os, arch=$$arch"; \
 			if [ $$os = windows ]; then \
-				echo "Making zip for ... os=$$os, arch=$$arch"; \
-				GOOS=$$os GOARCH=$$arch go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch/$(NAME).exe; \
-				(cd $(DIST_DIR) && zip -qr $(NAME)-$(VERSION)-$$os-$$arch.zip $(NAME)-$(VERSION)-$$os-$$arch); \
+				GOOS=$$os GOARCH=$$arch go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch.exe; \
 			else \
-				echo "Making tarball for ... os=$$os, arch=$$arch"; \
-				GOOS=$$os GOARCH=$$arch go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch/$(NAME); \
-				strip $(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch/$(NAME) 2>/dev/null; \
-				(cd $(DIST_DIR) && tar czf $(NAME)-$(VERSION)-$$os-$$arch.tar.gz $(NAME)-$(VERSION)-$$os-$$arch); \
+				GOOS=$$os GOARCH=$$arch go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch; \
+				strip $(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch 2>/dev/null; \
+				true; \
 			fi; \
-			rm -r $(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch; \
 		done; \
 	done
 
