@@ -2,7 +2,7 @@
 NAME := volt
 SRC := $(wildcard *.go */*.go)
 VERSION := $(shell git describe --tags)
-DEVEL_LDFLAGS := -X main.version=$(VERSION)
+DEVEL_LDFLAGS := -X github.com/vim-volt/go-volt/cmd.version=$(VERSION)
 RELEASE_LDFLAGS := $(DEVEL_LDFLAGS) -extldflags '-static'
 RELEASE_OS := linux windows darwin
 RELEASE_ARCH := amd64 386
