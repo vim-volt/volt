@@ -10,6 +10,7 @@ import (
 )
 
 type LockJSON struct {
+	Version       int64     `json:"version"`
 	TrxID         int64     `json:"trx_id"`
 	ActiveProfile string    `json:"active_profile"`
 	LoadInit      bool      `json:"load_init"`
@@ -32,6 +33,7 @@ type Profile struct {
 
 func InitialLockJSON() *LockJSON {
 	return &LockJSON{
+		Version:       1,
 		TrxID:         1,
 		ActiveProfile: "default",
 		LoadInit:      true,
