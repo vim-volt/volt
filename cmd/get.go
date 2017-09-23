@@ -56,8 +56,8 @@ func Get(args []string) int {
 	// Parse global gitignore file
 	ps, err := cmd.getGlobalGitignore()
 	if err != nil {
-		fmt.Println("[ERROR] Could not get global gitignore config: " + err.Error())
-		return 13
+		fmt.Println("[WARN] Could not get global gitignore config: " + err.Error())
+		ps = nil
 	}
 
 	// Check if any repositories are dirty
