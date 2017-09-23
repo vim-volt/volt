@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/vim-volt/go-volt/lockjson"
 	"github.com/vim-volt/go-volt/pathutil"
@@ -66,7 +67,7 @@ Options`)
 	return reposPath, &flags, nil
 }
 
-func (rmCmd) removeRepos(reposPath string, flags *rmFlags) error {
+func (cmd rmCmd) removeRepos(reposPath string, flags *rmFlags) error {
 	path := pathutil.FullReposPathOf(reposPath)
 
 	// Remove plugconf file
@@ -79,6 +80,8 @@ func (rmCmd) removeRepos(reposPath string, flags *rmFlags) error {
 				return err
 			}
 		}
+		dir, _ := filepath.Split(plugConf)
+		cmd.removeDirs(dir)
 	}
 
 	// Remove existing repository
@@ -88,6 +91,8 @@ func (rmCmd) removeRepos(reposPath string, flags *rmFlags) error {
 		if err != nil {
 			return err
 		}
+		dir, _ := filepath.Split(path)
+		cmd.removeDirs(dir)
 	} else {
 		return errors.New("no repository was installed: " + path)
 	}
@@ -121,4 +126,13 @@ func (rmCmd) removeRepos(reposPath string, flags *rmFlags) error {
 	}
 
 	return nil
+}
+
+func (cmd rmCmd) removeDirs(dir string) error {
+	if err := os.Remove(dir); err != nil {
+		return err
+	} else {
+		parent, _ := filepath.Split(dir)
+		return cmd.removeDirs(parent)
+	}
 }
