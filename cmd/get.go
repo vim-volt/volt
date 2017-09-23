@@ -188,7 +188,7 @@ func (getCmd) getReposPathList(flags *getFlags, args []string, lockJSON *lockjso
 }
 
 func (cmd getCmd) getGlobalGitignore() ([]gitignore.Pattern, error) {
-	cfg, err := cmd.parseGitIgnore()
+	cfg, err := cmd.parseGitConfig()
 	if err != nil {
 		return nil, errors.New("could not read ~/.gitconfig: " + err.Error())
 	}
@@ -205,7 +205,7 @@ func (cmd getCmd) getGlobalGitignore() ([]gitignore.Pattern, error) {
 	return ps, nil
 }
 
-func (getCmd) parseGitIgnore() (*config.Config, error) {
+func (getCmd) parseGitConfig() (*config.Config, error) {
 	cfg := config.NewConfig()
 
 	u, err := user.Current()
@@ -213,7 +213,7 @@ func (getCmd) parseGitIgnore() (*config.Config, error) {
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(u.HomeDir, ".gitignore"))
+	b, err := ioutil.ReadFile(filepath.Join(u.HomeDir, ".gitconfig"))
 	if err != nil {
 		return nil, err
 	}
