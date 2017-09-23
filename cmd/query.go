@@ -14,8 +14,8 @@ import (
 type queryCmd struct{}
 
 type queryFlags struct {
-	json      bool
-	installed bool
+	json     bool
+	lockJSON bool
 }
 
 func Query(args []string) int {
@@ -62,7 +62,7 @@ func (queryCmd) parseArgs(args []string) ([]string, *queryFlags, error) {
 	fs.Usage = func() {
 		fmt.Println(`
 Usage
-  volt query [-help] [-j] [-i] [{repository}]
+  volt query [-help] [-j] [-l] [{repository}]
 
 Description
   Output queried vim plugin info
@@ -72,10 +72,10 @@ Options`)
 		fmt.Println()
 	}
 	fs.BoolVar(&flags.json, "j", false, "output as JSON")
-	fs.BoolVar(&flags.installed, "i", false, "show installed info")
+	fs.BoolVar(&flags.lockJSON, "l", false, "show installed plugins")
 	fs.Parse(args)
 
-	if !flags.installed && len(fs.Args()) == 0 {
+	if !flags.lockJSON && len(fs.Args()) == 0 {
 		fs.Usage()
 		return nil, nil, errors.New("repository was not given")
 	}
@@ -85,7 +85,7 @@ Options`)
 
 func (queryCmd) getReposPathList(flags *queryFlags, args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
 	reposPathList := make([]string, 0, 32)
-	if flags.installed {
+	if flags.lockJSON {
 		for _, repos := range lockJSON.Repos {
 			reposPathList = append(reposPathList, repos.Path)
 		}

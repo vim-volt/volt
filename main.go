@@ -12,7 +12,7 @@ func main() {
 }
 
 func Main() int {
-	if len(os.Args) <= 1 {
+	if len(os.Args) <= 1 || os.Args[1] == "help" {
 		showUsage()
 		return 1
 	}
@@ -23,6 +23,8 @@ func Main() int {
 		return cmd.Rm(os.Args[2:])
 	case "query":
 		return cmd.Query(os.Args[2:])
+	case "profile":
+		return cmd.Profile(os.Args[2:])
 	case "version":
 		return cmd.Version(os.Args[2:])
 	default:
@@ -37,24 +39,19 @@ Usage
   volt COMMAND ARGS
 
 Command
-  config [-global] {key} [{value}]
-    Set / Get config value
-
   get [-l] [-u] [-v] {repository}
     Install / Upgrade vim plugin
 
   rm [-p] {repository}
     Uninstall vim plugin
 
-  query [-j] [-i] [{repository}]
+  query [-j] [-l] [{repository}]
     Output queried vim plugin info
 
-  plugconf ping {repository}
-    Check if plugconf file of {repository} exists on
-    https://github.com/vim-volt/plugconf-templates
+  profile [{name}]
+    Get / Set profile name
 
-  plugconf get {repository}
-    Install recommended plugconf file of {repository} from
-    https://github.com/vim-volt/plugconf-templates
+  version
+    Show volt command version
 `)
 }

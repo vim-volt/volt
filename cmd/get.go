@@ -5,26 +5,30 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strings"
 
 	"github.com/vim-volt/go-volt/lockjson"
 	"github.com/vim-volt/go-volt/pathutil"
 	"github.com/vim-volt/go-volt/transaction"
 
-	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/config"
+	"gopkg.in/src-d/go-git.v4/plumbing/format/gitignore"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"
 )
 
 type getCmd struct{}
 
 type getFlags struct {
-	lockJSON bool
-	upgrade  bool
-	verbose  bool
+	lockJSON   bool
+	upgrade    bool
+	verbose    bool
+	noPlugConf bool
 }
-
-var ErrRepoExists = errors.New("repository exists")
 
 func Get(args []string) int {
 	cmd := getCmd{}
@@ -49,12 +53,19 @@ func Get(args []string) int {
 		return 12
 	}
 
+	// Parse global gitignore file
+	ps, err := cmd.getGlobalGitignore()
+	if err != nil {
+		fmt.Println("[ERROR] Could not get global gitignore config: " + err.Error())
+		return 13
+	}
+
 	// Check if any repositories are dirty
 	for _, reposPath := range reposPathList {
 		fullpath := pathutil.FullReposPathOf(reposPath)
-		if cmd.pathExists(fullpath) && cmd.isDirtyWorktree(fullpath) {
+		if cmd.pathExists(fullpath) && cmd.isDirtyWorktree(fullpath, ps) {
 			fmt.Println("[ERROR] Repository has dirty worktree: " + fullpath)
-			return 13
+			return 14
 		}
 	}
 
@@ -62,9 +73,10 @@ func Get(args []string) int {
 	err = transaction.Create()
 	if err != nil {
 		fmt.Println("[ERROR] Failed to begin transaction: " + err.Error())
-		return 14
+		return 15
 	}
 	defer transaction.Remove()
+	lockJSON.TrxID++
 
 	var updatedLockJSON bool
 	var upgradedList []string
@@ -96,7 +108,7 @@ func Get(args []string) int {
 		err = lockjson.Write(lockJSON)
 		if err != nil {
 			fmt.Println("[ERROR] Could not write to lock.json: " + err.Error())
-			return 15
+			return 16
 		}
 	}
 
@@ -119,10 +131,13 @@ func (getCmd) parseArgs(args []string) ([]string, *getFlags, error) {
 	fs.Usage = func() {
 		fmt.Println(`
 Usage
-  volt get [-help] [-l] [-u] [-v] [{repository} ...]
+  volt get [-help] [-l] [-u] [-v] [-no-plugconf] [{repository} ...]
 
 Description
   Install / Upgrade vim plugin.
+  Unless -no-plugconf is specified,
+  install recommended plugconf file from
+  https://github.com/vim-volt/plugconf-templates
 
 Options`)
 		fs.PrintDefaults()
@@ -131,6 +146,7 @@ Options`)
 	fs.BoolVar(&flags.lockJSON, "l", false, "from lock.json")
 	fs.BoolVar(&flags.upgrade, "u", false, "upgrade installed vim plugin")
 	fs.BoolVar(&flags.verbose, "v", false, "show git-clone output")
+	fs.BoolVar(&flags.noPlugConf, "no-plugconf", false, "do not install plugconf file")
 	fs.Parse(args)
 
 	if !flags.lockJSON && len(fs.Args()) == 0 {
@@ -158,12 +174,101 @@ func (getCmd) getReposPathList(flags *getFlags, args []string, lockJSON *lockjso
 	return reposPathList, nil
 }
 
+func (cmd getCmd) getGlobalGitignore() ([]gitignore.Pattern, error) {
+	cfg, err := cmd.parseGitIgnore()
+	if err != nil {
+		return nil, errors.New("could not read ~/.gitconfig: " + err.Error())
+	}
+
+	excludesfile := cmd.getExcludesFile(cfg)
+	if excludesfile == "" {
+		return nil, errors.New("could not get core.excludesfile from ~/.gitconfig")
+	}
+
+	ps, err := cmd.parseExcludesFile(excludesfile)
+	if err != nil {
+		return nil, errors.New("could not parse core.excludesfile: " + excludesfile + ": " + err.Error())
+	}
+	return ps, nil
+}
+
+func (getCmd) parseGitIgnore() (*config.Config, error) {
+	cfg := config.NewConfig()
+
+	u, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := ioutil.ReadFile(filepath.Join(u.HomeDir, ".gitignore"))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cfg.Unmarshal(b); err != nil {
+		return nil, err
+	}
+
+	return cfg, err
+}
+
+func (getCmd) getExcludesFile(cfg *config.Config) string {
+	for _, sec := range cfg.Raw.Sections {
+		if sec.Name == "core" {
+			for _, opt := range sec.Options {
+				if opt.Key == "excludesfile" {
+					return opt.Value
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func (cmd getCmd) parseExcludesFile(excludesfile string) ([]gitignore.Pattern, error) {
+	excludesfile, err := cmd.expandTilde(excludesfile)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ioutil.ReadFile(excludesfile)
+	if err != nil {
+		return nil, err
+	}
+
+	var ps []gitignore.Pattern
+	for _, s := range strings.Split(string(data), "\n") {
+		if !strings.HasPrefix(s, "#") && len(strings.TrimSpace(s)) > 0 {
+			ps = append(ps, gitignore.ParsePattern(s, nil))
+		}
+	}
+
+	return ps, nil
+}
+
+// "~/.gitignore" -> "/home/tyru/.gitignore"
+func (getCmd) expandTilde(path string) (string, error) {
+	var paths []string
+	u, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	for _, p := range strings.Split(path, string(filepath.Separator)) {
+		if p == "~" {
+			paths = append(paths, u.HomeDir)
+		} else {
+			paths = append(paths, p)
+		}
+	}
+	return filepath.Join(paths...), nil
+}
+
 func (getCmd) pathExists(fullpath string) bool {
 	_, err := os.Stat(fullpath)
 	return !os.IsNotExist(err)
 }
 
-func (getCmd) isDirtyWorktree(fullpath string) bool {
+func (getCmd) isDirtyWorktree(fullpath string, ps []gitignore.Pattern) bool {
 	repos, err := git.PlainOpen(fullpath)
 	if err != nil {
 		return true
@@ -176,13 +281,24 @@ func (getCmd) isDirtyWorktree(fullpath string) bool {
 	if err != nil {
 		return true
 	}
+
 	return !st.IsClean()
+
+	// TODO: Instead of using IsClean(), check each file with ignored patterns
+	//
+	// paths := make([]string, 0, len(st))
+	// for path := range st {
+	// 	paths = append(paths, path)
+	// }
+	//
+	// m := gitignore.NewMatcher(ps)
+	// return !m.Match(paths, false)
 }
 
 func (cmd getCmd) doGet(reposPath string, flags *getFlags) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 	if !flags.upgrade && cmd.pathExists(fullpath) {
-		return ErrRepoExists
+		return errors.New("repository exists")
 	}
 
 	if flags.upgrade {
@@ -192,15 +308,7 @@ func (cmd getCmd) doGet(reposPath string, flags *getFlags) error {
 	}
 
 	// Get existing temporary directory path
-	err := os.MkdirAll(pathutil.TempPath(), 0755)
-	if err != nil {
-		return err
-	}
-	tempPath, err := ioutil.TempDir(pathutil.TempPath(), "volt-")
-	if err != nil {
-		return err
-	}
-	err = os.MkdirAll(tempPath, 0755)
+	tempPath, err := cmd.getTempPath()
 	if err != nil {
 		return err
 	}
@@ -239,11 +347,36 @@ func (cmd getCmd) doGet(reposPath string, flags *getFlags) error {
 			return err
 		}
 
-		// TODO: Fetch plugconf
-		fmt.Println("[INFO] Installing plugconf " + reposPath + " ...")
+		if !flags.noPlugConf {
+			// Fetch plugconf
+			fmt.Println("[INFO] Installing plugconf " + reposPath + " ...")
+
+			err = cmd.installPlugConf(reposPath)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
+}
+
+func (getCmd) getTempPath() (string, error) {
+	err := os.MkdirAll(pathutil.TempPath(), 0755)
+	if err != nil {
+		return "", err
+	}
+
+	tempPath, err := ioutil.TempDir(pathutil.TempPath(), "volt-")
+	if err != nil {
+		return "", err
+	}
+
+	err = os.MkdirAll(tempPath, 0755)
+	if err != nil {
+		return "", err
+	}
+	return tempPath, nil
 }
 
 func (cmd getCmd) headWasChanged(reposPath string, tempGitRepos *git.Repository) bool {
@@ -294,4 +427,26 @@ func (getCmd) getHEADHashString(reposPath string) (string, error) {
 		return "", err
 	}
 	return head.Hash().String(), nil
+}
+
+func (getCmd) installPlugConf(reposPath string) error {
+	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + reposPath + ".vim"
+
+	res, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	bytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	fn := pathutil.PlugConfOf(reposPath)
+	err = ioutil.WriteFile(fn, bytes, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }

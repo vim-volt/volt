@@ -8,6 +8,7 @@ import (
 
 	"github.com/vim-volt/go-volt/lockjson"
 	"github.com/vim-volt/go-volt/pathutil"
+	"github.com/vim-volt/go-volt/transaction"
 )
 
 type rmCmd struct{}
@@ -27,7 +28,7 @@ func Rm(args []string) int {
 
 	err = cmd.removeRepos(reposPath, flags)
 	if err != nil {
-		fmt.Println("Failed to clone repository: " + err.Error())
+		fmt.Println("Failed to remove repository: " + err.Error())
 		return 11
 	}
 
@@ -96,6 +97,14 @@ func (rmCmd) removeRepos(reposPath string, flags *rmFlags) error {
 	if err != nil {
 		return err
 	}
+
+	// Begin transaction
+	err = transaction.Create()
+	if err != nil {
+		return err
+	}
+	defer transaction.Remove()
+	lockJSON.TrxID++
 
 	// Rewrite lock.json
 	newRepos := make([]lockjson.Repos, 0, len(lockJSON.Repos))

@@ -25,9 +25,9 @@ type Repos struct {
 }
 
 type Profile struct {
-	Name     string `json:"name"`
-	Path     string `json:"path"`
-	LoadInit bool   `json:"load_init"`
+	Name      string   `json:"name"`
+	ReposPath []string `json:"repos_path"`
+	LoadInit  bool     `json:"load_init"`
 }
 
 func InitialLockJSON() *LockJSON {
@@ -57,9 +57,6 @@ func Read() (*LockJSON, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// Begin new transaction
-	lockJSON.TrxID++
 
 	return &lockJSON, nil
 }
