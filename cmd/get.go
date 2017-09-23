@@ -84,23 +84,36 @@ func Get(args []string) int {
 		upgrade := flags.upgrade && cmd.pathExists(pathutil.FullReposPathOf(reposPath))
 
 		// Install / Upgrade plugin
-		err = cmd.doGet(reposPath, flags)
-		if err == nil {
-			// Get HEAD hash string
-			hash, err := cmd.getHEADHashString(reposPath)
-			if err != nil {
-				fmt.Println("[ERROR] Failed to get HEAD commit hash: " + err.Error())
-				continue
-			}
-			// Update repos[]/trx_id, repos[]/version
-			cmd.updateReposVersion(lockJSON, reposPath, hash)
-			updatedLockJSON = true
-			// Collect upgraded repos path
-			if upgrade {
-				upgradedList = append(upgradedList, reposPath)
-			}
-		} else {
+		err = cmd.installPlugin(reposPath, flags)
+		if err != nil {
 			fmt.Println("[ERROR] Failed to install / upgrade plugins: " + err.Error())
+			return 16
+		}
+
+		if !flags.noPlugConf {
+			// Fetch plugconf
+			fmt.Println("[INFO] Installing plugconf " + reposPath + " ...")
+
+			err = cmd.installPlugConf(reposPath)
+			if err != nil {
+				fmt.Println("[INFO] Not found plugconf")
+			} else {
+				fmt.Println("[INFO] Found plugconf")
+			}
+		}
+
+		// Get HEAD hash string
+		hash, err := cmd.getHEADHashString(reposPath)
+		if err != nil {
+			fmt.Println("[ERROR] Failed to get HEAD commit hash: " + err.Error())
+			continue
+		}
+		// Update repos[]/trx_id, repos[]/version
+		cmd.updateReposVersion(lockJSON, reposPath, hash)
+		updatedLockJSON = true
+		// Collect upgraded repos path
+		if upgrade {
+			upgradedList = append(upgradedList, reposPath)
 		}
 	}
 
@@ -295,7 +308,7 @@ func (getCmd) isDirtyWorktree(fullpath string, ps []gitignore.Pattern) bool {
 	// return !m.Match(paths, false)
 }
 
-func (cmd getCmd) doGet(reposPath string, flags *getFlags) error {
+func (cmd getCmd) installPlugin(reposPath string, flags *getFlags) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 	if !flags.upgrade && cmd.pathExists(fullpath) {
 		return errors.New("repository exists")
@@ -345,16 +358,6 @@ func (cmd getCmd) doGet(reposPath string, flags *getFlags) error {
 		err = os.Rename(tempPath, fullpath)
 		if err != nil {
 			return err
-		}
-
-		if !flags.noPlugConf {
-			// Fetch plugconf
-			fmt.Println("[INFO] Installing plugconf " + reposPath + " ...")
-
-			err = cmd.installPlugConf(reposPath)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
