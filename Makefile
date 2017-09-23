@@ -28,14 +28,17 @@ precompile:
 
 # Make static-linked binaries and tarballs
 release: $(SRC)
-	rm -r $(DIST_DIR)
+	rm -fr $(DIST_DIR)
 	@for os in $(RELEASE_OS); do \
 		for arch in $(RELEASE_ARCH); do \
-			echo "Making binary for ... os=$$os, arch=$$arch"; \
 			if [ $$os = windows ]; then \
-				GOOS=$$os GOARCH=$$arch go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch.exe; \
+				exe=$(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch.exe; \
+				echo "Creating $$exe ... (os=$$os, arch=$$arch)"; \
+				GOOS=$$os GOARCH=$$arch go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $$exe; \
 			else \
-				GOOS=$$os GOARCH=$$arch go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch; \
+				exe=$(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch; \
+				echo "Creating $$exe ... (os=$$os, arch=$$arch)"; \
+				GOOS=$$os GOARCH=$$arch go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $$exe; \
 				strip $(DIST_DIR)/$(NAME)-$(VERSION)-$$os-$$arch 2>/dev/null; \
 				true; \
 			fi; \
