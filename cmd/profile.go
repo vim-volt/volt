@@ -41,7 +41,6 @@ func (profileCmd) setProfile(lockJSON *lockjson.LockJSON, name string) error {
 		return err
 	}
 	defer transaction.Remove()
-	lockJSON.TrxID++
 	lockJSON.ActiveProfile = name
 
 	// Write to lock.json

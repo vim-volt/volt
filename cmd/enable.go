@@ -91,7 +91,6 @@ func (enableCmd) setActive(reposPath string, active bool) error {
 		return err
 	}
 	defer transaction.Remove()
-	lockJSON.TrxID++
 
 	// Write to lock.json
 	err = lockjson.Write(lockJSON)
