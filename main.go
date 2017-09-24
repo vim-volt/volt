@@ -25,6 +25,10 @@ func Main() int {
 		return cmd.Query(os.Args[2:])
 	case "profile":
 		return cmd.Profile(os.Args[2:])
+	case "enable":
+		return cmd.Enable(os.Args[2:])
+	case "disable":
+		return cmd.Disable(os.Args[2:])
 	case "version":
 		return cmd.Version(os.Args[2:])
 	default:
