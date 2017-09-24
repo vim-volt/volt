@@ -10,18 +10,18 @@ import (
 // user/name -> github.com/user/name
 // github.com/user/name -> github.com/user/name
 // https://github.com/user/name -> github.com/user/name
-func NormalizeRepository(repos string) (string, error) {
-	paths := strings.Split(repos, "/")
+func NormalizeRepository(rawReposPath string) (string, error) {
+	paths := strings.Split(rawReposPath, "/")
 	if paths[0] == "github.com" && len(paths) == 3 {
-		return repos, nil
+		return rawReposPath, nil
 	}
 	if len(paths) == 2 {
-		return "github.com/" + repos, nil
+		return "github.com/" + rawReposPath, nil
 	}
 	if paths[0] == "https:" || paths[0] == "http:" {
 		return strings.Join(paths[len(paths)-3:], "/"), nil
 	}
-	return "", errors.New("invalid format of repository")
+	return "", errors.New("invalid format of repository: " + rawReposPath)
 }
 
 func VoltPath() string {
