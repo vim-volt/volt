@@ -68,11 +68,26 @@ func Get(args []string) int {
 		}
 	}
 
+	// Find matching profile
+	var profile *lockjson.Profile
+	for i, p := range lockJSON.Profiles {
+		if p.Name == lockJSON.ActiveProfile {
+			profile = &lockJSON.Profiles[i]
+			break
+		}
+	}
+	if profile == nil {
+		// this must not be occurred because lockjson.Read()
+		// validates if the matching profile exists
+		fmt.Println("[ERROR] Profile '" + lockJSON.ActiveProfile + "' does not exist")
+		return 15
+	}
+
 	// Begin transaction
 	err = transaction.Create()
 	if err != nil {
 		fmt.Println("[ERROR] Failed to begin transaction: " + err.Error())
-		return 15
+		return 16
 	}
 	defer transaction.Remove()
 	lockJSON.TrxID++
@@ -86,7 +101,7 @@ func Get(args []string) int {
 		err = cmd.installPlugin(reposPath, flags)
 		if err != nil {
 			fmt.Println("[ERROR] Failed to install / upgrade plugins: " + err.Error())
-			return 16
+			return 17
 		}
 
 		// Fetch plugconf
@@ -118,7 +133,7 @@ func Get(args []string) int {
 			continue
 		}
 		// Update repos[]/trx_id, repos[]/version
-		cmd.updateReposVersion(lockJSON, reposPath, hash)
+		cmd.updateReposVersion(lockJSON, reposPath, hash, profile)
 		updatedLockJSON = true
 		// Collect upgraded repos path
 		if upgrade {
@@ -130,7 +145,7 @@ func Get(args []string) int {
 		err = lockjson.Write(lockJSON)
 		if err != nil {
 			fmt.Println("[ERROR] Could not write to lock.json: " + err.Error())
-			return 16
+			return 17
 		}
 	}
 
@@ -400,7 +415,7 @@ func (cmd getCmd) headWasChanged(reposPath string, tempGitRepos *git.Repository)
 	return tempHead.Hash().String() != hash
 }
 
-func (getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string) {
+func (getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) {
 	var r *lockjson.Repos
 	for i := range lockJSON.Repos {
 		if lockJSON.Repos[i].Path == reposPath {
@@ -412,12 +427,15 @@ func (getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, 
 	if r == nil {
 		// vim plugin is not found in lock.json
 		// -> previous operation is install
+
+		// Add repos to 'repos_path'
 		lockJSON.Repos = append(lockJSON.Repos, lockjson.Repos{
 			TrxID:   lockJSON.TrxID,
 			Path:    reposPath,
 			Version: version,
-			Active:  true,
 		})
+		// Add repos to 'profiles[]/repos_path'
+		profile.ReposPath = append(profile.ReposPath, reposPath)
 	} else {
 		// vim plugin is found in lock.json
 		// -> previous operation is upgrade

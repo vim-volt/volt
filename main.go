@@ -24,12 +24,12 @@ func Main() int {
 		return cmd.Rm(os.Args[2:])
 	case "query":
 		return cmd.Query(os.Args[2:])
-	case "profile":
-		return cmd.Profile(os.Args[2:])
 	case "enable":
 		return cmd.Enable(os.Args[2:])
 	case "disable":
 		return cmd.Disable(os.Args[2:])
+	case "profile":
+		return cmd.Profile(os.Args[2:])
 	case "version":
 		return cmd.Version(os.Args[2:])
 	case "help":
@@ -56,6 +56,14 @@ Command
 
   query [-j] [-l] [{repository}]
     Output queried vim plugin info
+
+  enable {repository} [{repository2} ...]
+    This is shortcut of:
+    volt profile add {current profile} {repository} [{repository2} ...]
+
+  disable {repository} [{repository2} ...]
+    This is shortcut of:
+    volt profile rm {current profile} {repository} [{repository2} ...]
 
   profile [get]
     Get current profile name

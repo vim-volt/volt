@@ -24,7 +24,6 @@ type Repos struct {
 	TrxID   int64  `json:"trx_id"`
 	Path    string `json:"path"`
 	Version string `json:"version"`
-	Active  bool   `json:"active"`
 }
 
 type Profile struct {
@@ -40,7 +39,13 @@ func InitialLockJSON() *LockJSON {
 		ActiveProfile: "default",
 		LoadInit:      true,
 		Repos:         make([]Repos, 0),
-		Profiles:      make([]Profile, 0),
+		Profiles: []Profile{
+			Profile{
+				Name:      "default",
+				ReposPath: make([]string, 0),
+				LoadInit:  true,
+			},
+		},
 	}
 }
 
@@ -108,17 +113,15 @@ func validate(lockJSON *LockJSON) error {
 	}
 
 	// Validate if active_profile exists in profiles[]/name
-	if lockJSON.ActiveProfile != "default" {
-		found := false
-		for _, profile := range lockJSON.Profiles {
-			if profile.Name == lockJSON.ActiveProfile {
-				found = true
-				break
-			}
+	found := false
+	for _, profile := range lockJSON.Profiles {
+		if profile.Name == lockJSON.ActiveProfile {
+			found = true
+			break
 		}
-		if !found {
-			return errors.New("'active_profile' (" + lockJSON.ActiveProfile + ") doesn't exist in profiles")
-		}
+	}
+	if !found {
+		return errors.New("'active_profile' (" + lockJSON.ActiveProfile + ") doesn't exist in profiles")
 	}
 
 	// Validate if profiles[]/repos_path[] exists in repos[]/path

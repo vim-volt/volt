@@ -100,17 +100,21 @@ func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
 	return fs.Args(), nil
 }
 
-func (*profileCmd) doGet(_ []string) error {
-	// Read lock.json
+func (cmd *profileCmd) doGet(_ []string) error {
+	currentProfile, err := cmd.getCurrentProfile()
+	if err != nil {
+		return err
+	}
+	fmt.Println(currentProfile)
+	return nil
+}
+
+func (*profileCmd) getCurrentProfile() (string, error) {
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
+		return "", errors.New("failed to read lock.json: " + err.Error())
 	}
-
-	// Show profile name
-	fmt.Println(lockJSON.ActiveProfile)
-
-	return nil
+	return lockJSON.ActiveProfile, nil
 }
 
 func (cmd *profileCmd) doSet(args []string) error {

@@ -120,7 +120,6 @@ func (queryCmd) printReposList(reposList []lockjson.Repos, flags *queryFlags) er
 	} else {
 		for _, repos := range reposList {
 			fmt.Println(repos.Path)
-			fmt.Println("  active:", repos.Active)
 			fmt.Println("  version:", repos.Version)
 			fmt.Println("  trx_id:", repos.TrxID)
 		}

@@ -14,32 +14,41 @@ type disableCmd struct{}
 func Disable(args []string) int {
 	cmd := disableCmd{}
 
-	reposPath, err := cmd.parseArgs(args)
+	reposPathList, err := cmd.parseArgs(args)
 	if err != nil {
 		fmt.Println("[ERROR] Failed to parse args: " + err.Error())
 		return 10
 	}
 
-	err = enableCmd{}.setActive(reposPath, false)
+	profCmd := profileCmd{}
+	currentProfile, err := profCmd.getCurrentProfile()
 	if err != nil {
-		fmt.Println("[ERROR] Could not deactivate " + reposPath + ": " + err.Error())
+		fmt.Println("[ERROR]", err.Error())
 		return 11
+	}
+
+	err = profCmd.doRm(append(
+		[]string{currentProfile},
+		reposPathList...,
+	))
+	if err != nil {
+		return 12
 	}
 
 	return 0
 }
 
-func (disableCmd) parseArgs(args []string) (string, error) {
+func (disableCmd) parseArgs(args []string) ([]string, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
 		fmt.Println(`
 Usage
-  volt disable {repository}
+  volt disable {repository} [{repository2} ...]
 
 Description
-  Set active flag of {repository} to false
-  to be determined if vim-volt loads it or not.
+  This is shortcut of:
+  volt profile rm {current profile} {repository} [{repository2} ...]
 
 Options`)
 		fs.PrintDefaults()
@@ -49,16 +58,18 @@ Options`)
 
 	if len(fs.Args()) == 0 {
 		fs.Usage()
-		return "", errors.New("repository was not given")
+		return nil, errors.New("repository was not given")
 	}
 
 	// Normalize repos path
-	reposPath, err := pathutil.NormalizeRepository(fs.Args()[0])
-	if err != nil {
-		return "", err
+	var reposPathList []string
+	for _, arg := range fs.Args() {
+		reposPath, err := pathutil.NormalizeRepository(arg)
+		if err != nil {
+			return nil, err
+		}
+		reposPathList = append(reposPathList, reposPath)
 	}
 
-	fmt.Println("[INFO] Deactivated " + reposPath)
-
-	return reposPath, nil
+	return reposPathList, nil
 }
