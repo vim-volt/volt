@@ -74,7 +74,7 @@ func Write(lockJSON *LockJSON) error {
 	}
 
 	// Write to lock.json
-	bytes, err := json.Marshal(lockJSON)
+	bytes, err := json.MarshalIndent(lockJSON, "", "  ")
 	if err != nil {
 		return err
 	}
