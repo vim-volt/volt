@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/vim-volt/go-volt/lockjson"
 	"github.com/vim-volt/go-volt/pathutil"
@@ -146,11 +147,7 @@ func (cmd rmCmd) removeSystemPlugConf(reposPath string) error {
 
 func (cmd rmCmd) removeDirs(dir string) error {
 	// Remove trailing slashes
-	i := len(dir) - 1
-	for i >= 0 && dir[i] == '/' {
-		i--
-	}
-	dir = dir[:i+1]
+	dir = strings.TrimRight(dir, "/")
 
 	if err := os.Remove(dir); err != nil {
 		return err
