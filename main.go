@@ -30,6 +30,8 @@ func Main() int {
 		return cmd.Disable(os.Args[2:])
 	case "profile":
 		return cmd.Profile(os.Args[2:])
+	case "rebuild":
+		return cmd.Rebuild(os.Args[2:])
 	case "version":
 		return cmd.Version(os.Args[2:])
 	case "help":

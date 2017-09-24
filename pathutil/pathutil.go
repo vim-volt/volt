@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -24,19 +25,26 @@ func NormalizeRepository(rawReposPath string) (string, error) {
 	return "", errors.New("invalid format of repository: " + rawReposPath)
 }
 
+func HomeDir() string {
+	home := os.Getenv("HOME")
+	if home != "" {
+		return home
+	}
+
+	home = os.Getenv("APPDATA") // windows
+	if home != "" {
+		return home
+	}
+
+	panic("Couldn't look up HOME")
+}
+
 func VoltPath() string {
 	path := os.Getenv("VOLTPATH")
 	if path != "" {
 		return path
 	}
-	home := os.Getenv("HOME")
-	if home == "" {
-		home = os.Getenv("APPDATA") // windows
-		if home == "" {
-			panic("Couldn't look up VOLTPATH")
-		}
-	}
-	return filepath.Join(home, "volt")
+	return filepath.Join(HomeDir(), "volt")
 }
 
 func FullReposPathOf(repos string) string {
@@ -61,4 +69,12 @@ func TrxLock() string {
 
 func TempPath() string {
 	return filepath.Join(VoltPath(), "tmp")
+}
+
+func VimDir() string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(HomeDir(), "vimfiles")
+	} else {
+		return filepath.Join(HomeDir(), ".vim")
+	}
 }
