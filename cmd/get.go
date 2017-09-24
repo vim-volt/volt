@@ -36,7 +36,7 @@ func Get(args []string) int {
 	// Parse args
 	args, flags, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("[ERROR] Failed to parse args: " + err.Error())
 		return 10
 	}
 
