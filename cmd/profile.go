@@ -265,6 +265,11 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 		return errors.New("failed to read lock.json: " + err.Error())
 	}
 
+	// Return error if active_profile matches profileName
+	if lockJSON.ActiveProfile == profileName {
+		return errors.New("cannot destroy active profile: " + profileName)
+	}
+
 	// Return error if profiles[]/name does not match profileName
 	found := -1
 	for i, profile := range lockJSON.Profiles {
