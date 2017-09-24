@@ -76,17 +76,16 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 	defer transaction.Remove()
 	lockJSON.TrxID++
 
-	// Remove system plugconf files
-	fmt.Println("[INFO] Removing plugconf " + reposPath + ".vim ...")
-	err = cmd.removeSystemPlugConf(reposPath + ".vim")
+	// Remove system plugconf (vim, json)
+	fmt.Println("[INFO] Removing plugconf files ...")
+	err = cmd.removeSystemPlugConf(reposPath)
 	if err != nil {
 		return err
 	}
-	fmt.Println("[INFO] Removing plugconf " + reposPath + ".json ...")
-	err = cmd.removeSystemPlugConf(reposPath + ".json")
-	if err != nil {
-		return err
-	}
+
+	// Remove parent directories of system plugconf
+	dir, _ := filepath.Split(pathutil.SystemPlugConfOf(reposPath))
+	err = cmd.removeDirs(dir)
 
 	// Remove existing repository
 	fullpath := pathutil.FullReposPathOf(reposPath)
@@ -132,20 +131,27 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 	return nil
 }
 
-func (cmd rmCmd) removeSystemPlugConf(fn string) error {
-	plugConf := pathutil.SystemPlugConfOf(fn)
-	if _, err := os.Stat(plugConf); !os.IsNotExist(err) {
-		err = os.Remove(plugConf)
-		if err != nil {
-			return err
+func (cmd rmCmd) removeSystemPlugConf(reposPath string) error {
+	for _, ext := range []string{".vim", ".json"} {
+		plugConf := pathutil.SystemPlugConfOf(reposPath + ext)
+		if _, err := os.Stat(plugConf); !os.IsNotExist(err) {
+			err = os.Remove(plugConf)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	dir, _ := filepath.Split(plugConf)
-	cmd.removeDirs(dir)
 	return nil
 }
 
 func (cmd rmCmd) removeDirs(dir string) error {
+	// Remove trailing slashes
+	i := len(dir) - 1
+	for i >= 0 && dir[i] == '/' {
+		i--
+	}
+	dir = dir[:i+1]
+
 	if err := os.Remove(dir); err != nil {
 		return err
 	} else {
