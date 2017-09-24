@@ -17,11 +17,19 @@ import (
 type rebuildCmd struct{}
 
 func Rebuild(args []string) int {
+	// Begin transaction
+	err := transaction.Create()
+	if err != nil {
+		fmt.Println("[ERROR] Failed to begin transaction:", err.Error())
+		return 10
+	}
+	defer transaction.Remove()
+
 	cmd := rebuildCmd{}
-	err := cmd.doRebuild()
+	err = cmd.doRebuild()
 	if err != nil {
 		fmt.Println("[ERROR] Failed to rebuild:", err.Error())
-		return 10
+		return 11
 	}
 
 	return 0
@@ -32,10 +40,10 @@ func (cmd *rebuildCmd) doRebuild() error {
 		pathutil.VimDir(), "pack", "volt", "start",
 	)
 
-	fmt.Println("[INFO] Removing " + startDir + " ...")
+	var removeDone <-chan error
 	if _, err := os.Stat(startDir); !os.IsNotExist(err) {
-		// Remove existing files
-		err = os.RemoveAll(startDir)
+		var err error
+		removeDone, err = cmd.removeStartDir(startDir)
 		if err != nil {
 			return err
 		}
@@ -52,13 +60,6 @@ func (cmd *rebuildCmd) doRebuild() error {
 		return errors.New("could not read lock.json: " + err.Error())
 	}
 
-	// Begin transaction
-	err = transaction.Create()
-	if err != nil {
-		return errors.New("failed to begin transaction: " + err.Error())
-	}
-	defer transaction.Remove()
-
 	reposList, err := cmd.getActiveProfileRepos(lockJSON)
 	if err != nil {
 		return err
@@ -67,17 +68,44 @@ func (cmd *rebuildCmd) doRebuild() error {
 	fmt.Println("[INFO] Copying all repositories files to " + startDir + " ...")
 
 	// Copy all repositories files to startDir
-	done := make(chan copyReposResult, len(reposList))
+	copyDone := make(chan copyReposResult, len(reposList))
 	for i := range reposList {
-		go cmd.copyRepos(&reposList[i], startDir, done)
+		go cmd.copyRepos(&reposList[i], startDir, copyDone)
 	}
+
+	// Wait remove
+	err = <-removeDone
+	if err != nil {
+		return errors.New("failed to remove '" + startDir + "': " + err.Error())
+	}
+
+	// Wait copy
 	for i := 0; i < len(reposList); i++ {
-		result := <-done
+		result := <-copyDone
 		if result.err != nil {
 			return errors.New("failed to copy repository '" + result.repos.Path + "': " + result.err.Error())
 		}
 	}
+
 	return nil
+}
+
+func (*rebuildCmd) removeStartDir(startDir string) (<-chan error, error) {
+	// Rename startDir to {startDir}.bak
+	err := os.Rename(startDir, startDir+".old")
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("[INFO] Removing " + startDir + " ...")
+
+	// Remove files in parallel
+	done := make(chan error, 1)
+	go func() {
+		err = os.RemoveAll(startDir + ".old")
+		done <- err
+	}()
+	return done, nil
 }
 
 type copyReposResult struct {
