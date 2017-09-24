@@ -74,6 +74,9 @@ Command
   profile show {name}
     Show profile info
 
+  profile list
+    List all profiles
+
   profile new {name}
     Create new profile
 

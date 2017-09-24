@@ -22,6 +22,7 @@ func init() {
 	profileSubCmd["get"] = cmd.doGet
 	profileSubCmd["set"] = cmd.doSet
 	profileSubCmd["show"] = cmd.doShow
+	profileSubCmd["list"] = cmd.doList
 	profileSubCmd["new"] = cmd.doNew
 	profileSubCmd["destroy"] = cmd.doDestroy
 	profileSubCmd["add"] = cmd.doAdd
@@ -65,6 +66,9 @@ Usage
 
   profile show {name}
     Show profile info
+
+  profile list
+    List all profiles
 
   profile new {name}
     Create new profile
@@ -200,6 +204,25 @@ func (cmd *profileCmd) doShow(args []string) error {
 	fmt.Println("repos_path:")
 	for _, reposPath := range profile.ReposPath {
 		fmt.Println("  " + reposPath)
+	}
+
+	return nil
+}
+
+func (cmd *profileCmd) doList(args []string) error {
+	// Read lock.json
+	lockJSON, err := lockjson.Read()
+	if err != nil {
+		return errors.New("failed to read lock.json: " + err.Error())
+	}
+
+	// List profile names
+	for _, profile := range lockJSON.Profiles {
+		if profile.Name == lockJSON.ActiveProfile {
+			fmt.Println("* " + profile.Name)
+		} else {
+			fmt.Println("  " + profile.Name)
+		}
 	}
 
 	return nil
