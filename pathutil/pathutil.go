@@ -48,7 +48,7 @@ func CloneURLOf(repos string) string {
 }
 
 func SystemPlugConfOf(filename string) string {
-	return filepath.Join(VoltPath(), "plugconf", filename)
+	return filepath.Join(VoltPath(), "plugconf", "system", filename)
 }
 
 func LockJSON() string {
