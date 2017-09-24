@@ -92,8 +92,12 @@ func Get(args []string) int {
 		// Fetch plugconf
 		fmt.Println("[INFO] Installing plugconf " + reposPath + " ...")
 
-		err = cmd.installPlugConf(reposPath + ".vim")
-		err2 := cmd.installPlugConf(reposPath + ".json")
+		vim_ch := make(chan error)
+		json_ch := make(chan error)
+		go cmd.installPlugConf(reposPath+".vim", vim_ch)
+		go cmd.installPlugConf(reposPath+".json", json_ch)
+		err = <-vim_ch
+		err2 := <-json_ch
 		if err != nil && err2 != nil {
 			fmt.Println("[INFO] Not found plugconf")
 		} else {
@@ -101,7 +105,7 @@ func Get(args []string) int {
 			if err == nil {
 				list = append(list, "vim")
 			}
-			if err == nil {
+			if err2 == nil {
 				list = append(list, "json")
 			}
 			fmt.Println("[INFO] Found plugconf (" + strings.Join(list, ",") + ")")
@@ -434,18 +438,24 @@ func (getCmd) getHEADHashString(reposPath string) (string, error) {
 	return head.Hash().String(), nil
 }
 
-func (getCmd) installPlugConf(filename string) error {
+func (getCmd) installPlugConf(filename string, done chan error) {
 	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + filename
 
 	res, err := http.Get(url)
 	if err != nil {
-		return err
+		done <- err
+		return
+	}
+	if res.StatusCode%100 != 2 { // Not 2xx status code
+		done <- errors.New("Returned non-successful status: " + res.Status)
+		return
 	}
 	defer res.Body.Close()
 
 	bytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return err
+		done <- err
+		return
 	}
 
 	fn := pathutil.SystemPlugConfOf(filename)
@@ -454,7 +464,8 @@ func (getCmd) installPlugConf(filename string) error {
 
 	err = ioutil.WriteFile(fn, bytes, 0644)
 	if err != nil {
-		return err
+		done <- err
+		return
 	}
-	return nil
+	done <- nil
 }
