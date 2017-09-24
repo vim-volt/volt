@@ -62,36 +62,6 @@ Options`)
 }
 
 func (cmd rmCmd) removeRepos(reposPath string) error {
-	path := pathutil.FullReposPathOf(reposPath)
-
-	// Remove system plugconf files
-	for _, ext := range []string{".vim", ".json"} {
-		fn := reposPath + ext
-		plugConf := pathutil.SystemPlugConfOf(fn)
-		fmt.Println("[INFO] Removing plugconf " + fn + " ...")
-		if _, err := os.Stat(plugConf); !os.IsNotExist(err) {
-			err = os.Remove(plugConf)
-			if err != nil {
-				return err
-			}
-		}
-		dir, _ := filepath.Split(plugConf)
-		cmd.removeDirs(dir)
-	}
-
-	// Remove existing repository
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		fmt.Println("[INFO] Removing " + path + " ...")
-		err = os.RemoveAll(path)
-		if err != nil {
-			return err
-		}
-		dir, _ := filepath.Split(path)
-		cmd.removeDirs(dir)
-	} else {
-		return errors.New("no repository was installed: " + path)
-	}
-
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -106,20 +76,72 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 	defer transaction.Remove()
 	lockJSON.TrxID++
 
-	// Rewrite lock.json
-	newRepos := make([]lockjson.Repos, 0, len(lockJSON.Repos))
-	for _, repos := range lockJSON.Repos {
-		if repos.Path != reposPath {
-			newRepos = append(newRepos, repos)
+	// Remove system plugconf files
+	fmt.Println("[INFO] Removing plugconf " + reposPath + ".vim ...")
+	err = cmd.removeSystemPlugConf(reposPath + ".vim")
+	if err != nil {
+		return err
+	}
+	fmt.Println("[INFO] Removing plugconf " + reposPath + ".json ...")
+	err = cmd.removeSystemPlugConf(reposPath + ".json")
+	if err != nil {
+		return err
+	}
+
+	// Remove existing repository
+	fullpath := pathutil.FullReposPathOf(reposPath)
+	if _, err = os.Stat(fullpath); !os.IsNotExist(err) {
+		fmt.Println("[INFO] Removing " + fullpath + " ...")
+		err = os.RemoveAll(fullpath)
+		if err != nil {
+			return err
+		}
+		dir, _ := filepath.Split(fullpath)
+		cmd.removeDirs(dir)
+	} else {
+		return errors.New("no repository was installed: " + fullpath)
+	}
+
+	// Delete repos path from lockJSON.Repos[i]
+	for i := range lockJSON.Repos {
+		if lockJSON.Repos[i].Path == reposPath {
+			lockJSON.Repos = append(lockJSON.Repos[:i], lockJSON.Repos[i+1:]...)
+			break
 		}
 	}
-	lockJSON.Repos = newRepos
 
+	// Delete repos path from profiles[i]/repos_path[j]
+	for i, profile := range lockJSON.Profiles {
+		for j, profReposPath := range profile.ReposPath {
+			if profReposPath == reposPath {
+				lockJSON.Profiles[i].ReposPath = append(
+					lockJSON.Profiles[i].ReposPath[:j],
+					lockJSON.Profiles[i].ReposPath[j+1:]...,
+				)
+				break
+			}
+		}
+	}
+
+	// Write to lock.json
 	err = lockjson.Write(lockJSON)
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (cmd rmCmd) removeSystemPlugConf(fn string) error {
+	plugConf := pathutil.SystemPlugConfOf(fn)
+	if _, err := os.Stat(plugConf); !os.IsNotExist(err) {
+		err = os.Remove(plugConf)
+		if err != nil {
+			return err
+		}
+	}
+	dir, _ := filepath.Split(plugConf)
+	cmd.removeDirs(dir)
 	return nil
 }
 
