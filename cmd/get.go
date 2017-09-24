@@ -24,10 +24,9 @@ import (
 type getCmd struct{}
 
 type getFlags struct {
-	lockJSON   bool
-	upgrade    bool
-	verbose    bool
-	noPlugConf bool
+	lockJSON bool
+	upgrade  bool
+	verbose  bool
 }
 
 func Get(args []string) int {
@@ -90,16 +89,22 @@ func Get(args []string) int {
 			return 16
 		}
 
-		if !flags.noPlugConf {
-			// Fetch plugconf
-			fmt.Println("[INFO] Installing plugconf " + reposPath + " ...")
+		// Fetch plugconf
+		fmt.Println("[INFO] Installing plugconf " + reposPath + " ...")
 
-			err = cmd.installPlugConf(reposPath)
-			if err != nil {
-				fmt.Println("[INFO] Not found plugconf")
-			} else {
-				fmt.Println("[INFO] Found plugconf")
+		err = cmd.installPlugConf(reposPath + ".vim")
+		err2 := cmd.installPlugConf(reposPath + ".json")
+		if err != nil && err2 != nil {
+			fmt.Println("[INFO] Not found plugconf")
+		} else {
+			list := make([]string, 0, 2)
+			if err == nil {
+				list = append(list, "vim")
 			}
+			if err == nil {
+				list = append(list, "json")
+			}
+			fmt.Println("[INFO] Found plugconf (" + strings.Join(list, ",") + ")")
 		}
 
 		// Get HEAD hash string
@@ -144,12 +149,10 @@ func (getCmd) parseArgs(args []string) ([]string, *getFlags, error) {
 	fs.Usage = func() {
 		fmt.Println(`
 Usage
-  volt get [-help] [-l] [-u] [-v] [-no-plugconf] [{repository} ...]
+  volt get [-help] [-l] [-u] [-v] [{repository} ...]
 
 Description
-  Install / Upgrade vim plugin.
-  Unless -no-plugconf is specified,
-  install recommended plugconf file from
+  Install / Upgrade vim plugin, and system plugconf files from
   https://github.com/vim-volt/plugconf-templates
 
 Options`)
@@ -159,7 +162,6 @@ Options`)
 	fs.BoolVar(&flags.lockJSON, "l", false, "from lock.json")
 	fs.BoolVar(&flags.upgrade, "u", false, "upgrade installed vim plugin")
 	fs.BoolVar(&flags.verbose, "v", false, "show git-clone output")
-	fs.BoolVar(&flags.noPlugConf, "no-plugconf", false, "do not install plugconf file")
 	fs.Parse(args)
 
 	if !flags.lockJSON && len(fs.Args()) == 0 {
@@ -432,8 +434,8 @@ func (getCmd) getHEADHashString(reposPath string) (string, error) {
 	return head.Hash().String(), nil
 }
 
-func (getCmd) installPlugConf(reposPath string) error {
-	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + reposPath + ".vim"
+func (getCmd) installPlugConf(filename string) error {
+	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + filename
 
 	res, err := http.Get(url)
 	if err != nil {
@@ -446,7 +448,10 @@ func (getCmd) installPlugConf(reposPath string) error {
 		return err
 	}
 
-	fn := pathutil.PlugConfOf(reposPath)
+	fn := pathutil.SystemPlugConfOf(filename)
+	dir, _ := filepath.Split(fn)
+	os.MkdirAll(dir, 0755)
+
 	err = ioutil.WriteFile(fn, bytes, 0644)
 	if err != nil {
 		return err

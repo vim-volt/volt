@@ -14,20 +14,16 @@ import (
 
 type rmCmd struct{}
 
-type rmFlags struct {
-	removePlugConf bool
-}
-
 func Rm(args []string) int {
 	cmd := rmCmd{}
 
-	reposPath, flags, err := cmd.parseArgs(args)
+	reposPath, err := cmd.parseArgs(args)
 	if err != nil {
 		fmt.Println(err.Error())
 		return 10
 	}
 
-	err = cmd.removeRepos(reposPath, flags)
+	err = cmd.removeRepos(reposPath)
 	if err != nil {
 		fmt.Println("Failed to remove repository: " + err.Error())
 		return 11
@@ -36,44 +32,43 @@ func Rm(args []string) int {
 	return 0
 }
 
-func (rmCmd) parseArgs(args []string) (string, *rmFlags, error) {
-	var flags rmFlags
+func (rmCmd) parseArgs(args []string) (string, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
 		fmt.Println(`
 Usage
-  volt rm [-help] [-p] {repository}
+  volt rm [-help] {repository}
 
 Description
-  Uninstall vim plugin (and plugconf file also if -p was given
+  Uninstall vim plugin and system plugconf files
 
 Options`)
 		fs.PrintDefaults()
 		fmt.Println()
 	}
-	fs.BoolVar(&flags.removePlugConf, "p", false, "Remove plugconf")
 	fs.Parse(args)
 
 	if len(fs.Args()) == 0 {
 		fs.Usage()
-		return "", nil, errors.New("repository was not given")
+		return "", errors.New("repository was not given")
 	}
 
 	reposPath, err := pathutil.NormalizeRepository(fs.Args()[0])
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
-	return reposPath, &flags, nil
+	return reposPath, nil
 }
 
-func (cmd rmCmd) removeRepos(reposPath string, flags *rmFlags) error {
+func (cmd rmCmd) removeRepos(reposPath string) error {
 	path := pathutil.FullReposPathOf(reposPath)
 
-	// Remove plugconf file
-	if flags.removePlugConf {
-		plugConf := pathutil.PlugConfOf(reposPath)
-		fmt.Println("[INFO] Removing plugconf " + plugConf + " ...")
+	// Remove system plugconf files
+	for _, ext := range []string{".vim", ".json"} {
+		fn := reposPath + ext
+		plugConf := pathutil.SystemPlugConfOf(fn)
+		fmt.Println("[INFO] Removing plugconf " + fn + " ...")
 		if _, err := os.Stat(plugConf); !os.IsNotExist(err) {
 			err = os.Remove(plugConf)
 			if err != nil {

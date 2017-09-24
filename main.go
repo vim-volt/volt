@@ -44,10 +44,11 @@ Usage
 
 Command
   get [-l] [-u] [-v] {repository}
-    Install / Upgrade vim plugin
+    Install / Upgrade vim plugin, and system plugconf files from
+    https://github.com/vim-volt/plugconf-templates
 
-  rm [-p] {repository}
-    Uninstall vim plugin
+  rm {repository}
+    Uninstall vim plugin and system plugconf files
 
   query [-j] [-l] [{repository}]
     Output queried vim plugin info
