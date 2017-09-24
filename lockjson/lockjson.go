@@ -102,8 +102,8 @@ func validate(lockJSON *LockJSON) error {
 	}
 
 	// Validate if duplicate profiles[]/repos_path[] exist
-	dup = make(map[string]bool, len(lockJSON.Profiles)*10)
 	for _, profile := range lockJSON.Profiles {
+		dup = make(map[string]bool, len(lockJSON.Profiles)*10)
 		for _, reposPath := range profile.ReposPath {
 			if _, exists := dup[reposPath]; exists {
 				return errors.New("duplicate 'repos_path' (" + reposPath + ") in profile '" + profile.Name + "'")
