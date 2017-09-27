@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/vim-volt/go-volt/lockjson"
 	"github.com/vim-volt/go-volt/pathutil"
@@ -189,7 +188,8 @@ func (cmd *profileCmd) doShow(args []string) error {
 	}
 
 	fmt.Println("name:", profile.Name)
-	fmt.Println("rc:", strings.Join(profile.RC, ", "))
+	fmt.Println("load_vimrc:", profile.LoadVimrc)
+	fmt.Println("load_gvimrc:", profile.LoadGvimrc)
 	fmt.Println("repos_path:")
 	for _, reposPath := range profile.ReposPath {
 		fmt.Println("  " + reposPath)
@@ -246,9 +246,10 @@ func (cmd *profileCmd) doNew(args []string) error {
 
 	// Add profile
 	lockJSON.Profiles = append(lockJSON.Profiles, lockjson.Profile{
-		Name:      profileName,
-		ReposPath: make([]string, 0),
-		RC:        []string{"init.vim"},
+		Name:       profileName,
+		ReposPath:  make([]string, 0),
+		LoadVimrc:  true,
+		LoadGvimrc: true,
 	})
 
 	// Write to lock.json

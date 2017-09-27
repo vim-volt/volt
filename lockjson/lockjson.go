@@ -18,7 +18,8 @@ type LockJSON struct {
 	Version       int64    `json:"version"`
 	TrxID         int64    `json:"trx_id"`
 	ActiveProfile string   `json:"active_profile"`
-	RC            []string `json:"rc"`
+	LoadVimrc     bool     `json:"load_vimrc"`
+	LoadGvimrc    bool     `json:"load_gvimrc"`
 	Repos         repos    `json:"repos"`
 	Profiles      profiles `json:"profiles"`
 }
@@ -32,9 +33,10 @@ type Repos struct {
 type profReposPath []string
 
 type Profile struct {
-	Name      string        `json:"name"`
-	ReposPath profReposPath `json:"repos_path"`
-	RC        []string      `json:"rc"`
+	Name       string        `json:"name"`
+	ReposPath  profReposPath `json:"repos_path"`
+	LoadVimrc  bool          `json:"load_vimrc"`
+	LoadGvimrc bool          `json:"load_gvimrc"`
 }
 
 func InitialLockJSON() *LockJSON {
@@ -42,13 +44,15 @@ func InitialLockJSON() *LockJSON {
 		Version:       1,
 		TrxID:         1,
 		ActiveProfile: "default",
-		RC:            []string{"init.vim"},
+		LoadVimrc:     true,
+		LoadGvimrc:    true,
 		Repos:         make([]Repos, 0),
 		Profiles: []Profile{
 			Profile{
-				Name:      "default",
-				ReposPath: make([]string, 0),
-				RC:        []string{"init.vim"},
+				Name:       "default",
+				ReposPath:  make([]string, 0),
+				LoadVimrc:  true,
+				LoadGvimrc: true,
 			},
 		},
 	}

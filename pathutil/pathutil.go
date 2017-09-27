@@ -59,6 +59,10 @@ func SystemPlugConfOf(filename string) string {
 	return filepath.Join(VoltPath(), "plugconf", "system", filename)
 }
 
+func RCFileOf(filename string) string {
+	return filepath.Join(VoltPath(), "rc", filename)
+}
+
 func LockJSON() string {
 	return filepath.Join(VoltPath(), "lock.json")
 }
