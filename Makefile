@@ -23,7 +23,7 @@ setup:
 	make precompile
 
 precompile:
-	go build -i -o $(BIN_DIR)/$(NAME)
+	go build -a -i -o $(BIN_DIR)/$(NAME)
 	rm $(BIN_DIR)/$(NAME)
 
 # Make static-linked binaries and tarballs
