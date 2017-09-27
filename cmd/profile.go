@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/vim-volt/go-volt/lockjson"
 	"github.com/vim-volt/go-volt/pathutil"
@@ -149,22 +150,16 @@ func (cmd *profileCmd) doSet(args []string) error {
 	defer transaction.Remove()
 
 	// Return error if profiles[]/name does not match profileName
-	found := false
-	for _, profile := range lockJSON.Profiles {
-		if profile.Name == profileName {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return errors.New("profile '" + profileName + "' does not exist")
+	_, err = lockJSON.Profiles.FindByName(profileName)
+	if err != nil {
+		return err
 	}
 
 	// Set profile name
 	lockJSON.ActiveProfile = profileName
 
 	// Write to lock.json
-	err = lockjson.Write(lockJSON)
+	err = lockJSON.Write()
 	if err != nil {
 		return err
 	}
@@ -188,19 +183,13 @@ func (cmd *profileCmd) doShow(args []string) error {
 	}
 
 	// Return error if profiles[]/name does not match profileName
-	var profile *lockjson.Profile
-	for i := range lockJSON.Profiles {
-		if lockJSON.Profiles[i].Name == profileName {
-			profile = &lockJSON.Profiles[i]
-			break
-		}
-	}
-	if profile == nil {
-		return errors.New("profile '" + profileName + "' does not exist")
+	profile, err := lockJSON.Profiles.FindByName(profileName)
+	if err != nil {
+		return err
 	}
 
 	fmt.Println("name:", profile.Name)
-	fmt.Println("load_init:", profile.LoadInit)
+	fmt.Println("rc:", strings.Join(profile.RC, ", "))
 	fmt.Println("repos_path:")
 	for _, reposPath := range profile.ReposPath {
 		fmt.Println("  " + reposPath)
@@ -243,10 +232,9 @@ func (cmd *profileCmd) doNew(args []string) error {
 	}
 
 	// Return error if profiles[]/name matches profileName
-	for _, profile := range lockJSON.Profiles {
-		if profile.Name == profileName {
-			return errors.New("profile '" + profileName + "' already exists")
-		}
+	_, err = lockJSON.Profiles.FindByName(profileName)
+	if err == nil {
+		return errors.New("profile '" + profileName + "' already exists")
 	}
 
 	// Begin transaction
@@ -260,11 +248,11 @@ func (cmd *profileCmd) doNew(args []string) error {
 	lockJSON.Profiles = append(lockJSON.Profiles, lockjson.Profile{
 		Name:      profileName,
 		ReposPath: make([]string, 0),
-		LoadInit:  true,
+		RC:        []string{"init.vim"},
 	})
 
 	// Write to lock.json
-	err = lockjson.Write(lockJSON)
+	err = lockJSON.Write()
 	if err != nil {
 		return err
 	}
@@ -294,14 +282,8 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 	}
 
 	// Return error if profiles[]/name does not match profileName
-	found := -1
-	for i, profile := range lockJSON.Profiles {
-		if profile.Name == profileName {
-			found = i
-			break
-		}
-	}
-	if found < 0 {
+	index := lockJSON.Profiles.FindIndexByName(profileName)
+	if index < 0 {
 		return errors.New("profile '" + profileName + "' does not exist")
 	}
 
@@ -313,10 +295,10 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 	defer transaction.Remove()
 
 	// Delete the specified profile
-	lockJSON.Profiles = append(lockJSON.Profiles[:found], lockJSON.Profiles[found+1:]...)
+	lockJSON.Profiles = append(lockJSON.Profiles[:index], lockJSON.Profiles[index+1:]...)
 
 	// Write to lock.json
-	err = lockjson.Write(lockJSON)
+	err = lockJSON.Write()
 	if err != nil {
 		return err
 	}
@@ -336,14 +318,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	err = cmd.transactProfile(profileName, func(profile *lockjson.Profile) {
 		// Add repositories to profile if the repository does not exist
 		for _, reposPath := range reposPathList {
-			found := false
-			for i := range profile.ReposPath {
-				if profile.ReposPath[i] == reposPath {
-					found = true
-					break
-				}
-			}
-			if found {
+			if profile.ReposPath.Contains(reposPath) {
 				fmt.Println("[WARN] repository '" + reposPath + "' already exists")
 			} else {
 				profile.ReposPath = append(profile.ReposPath, reposPath)
@@ -372,16 +347,10 @@ func (cmd *profileCmd) doRm(args []string) error {
 	err = cmd.transactProfile(profileName, func(profile *lockjson.Profile) {
 		// Remove repositories from profile if the repository does not exist
 		for _, reposPath := range reposPathList {
-			found := -1
-			for i := range profile.ReposPath {
-				if profile.ReposPath[i] == reposPath {
-					found = i
-					break
-				}
-			}
-			if found >= 0 {
-				// Remove profile.ReposPath[found]
-				profile.ReposPath = append(profile.ReposPath[:found], profile.ReposPath[found+1:]...)
+			index := profile.ReposPath.IndexOf(reposPath)
+			if index >= 0 {
+				// Remove profile.ReposPath[index]
+				profile.ReposPath = append(profile.ReposPath[:index], profile.ReposPath[index+1:]...)
 				removed = append(removed, reposPath)
 			} else {
 				fmt.Println("[WARN] repository '" + reposPath + "' does not exist")
@@ -426,15 +395,9 @@ func (*profileCmd) transactProfile(profileName string, modifyProfile func(*lockj
 	}
 
 	// Return error if profiles[]/name does not match profileName
-	var profile *lockjson.Profile
-	for i := range lockJSON.Profiles {
-		if lockJSON.Profiles[i].Name == profileName {
-			profile = &lockJSON.Profiles[i]
-			break
-		}
-	}
-	if profile == nil {
-		return errors.New("profile '" + profileName + "' does not exist")
+	profile, err := lockJSON.Profiles.FindByName(profileName)
+	if err != nil {
+		return err
 	}
 
 	// Begin transaction
@@ -447,5 +410,5 @@ func (*profileCmd) transactProfile(profileName string, modifyProfile func(*lockj
 	modifyProfile(profile)
 
 	// Write to lock.json
-	return lockjson.Write(lockJSON)
+	return lockJSON.Write()
 }

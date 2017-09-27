@@ -7,17 +7,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/user"
 	"path/filepath"
-	"strings"
 
 	"github.com/vim-volt/go-volt/lockjson"
 	"github.com/vim-volt/go-volt/pathutil"
 	"github.com/vim-volt/go-volt/transaction"
 
 	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/config"
-	"gopkg.in/src-d/go-git.v4/plumbing/format/gitignore"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"
 )
 
@@ -52,34 +48,12 @@ func Get(args []string) int {
 		return 12
 	}
 
-	// Parse global gitignore file
-	ps, err := cmd.getGlobalGitignore()
-	if err != nil {
-		fmt.Println("[WARN] Could not get global gitignore config: " + err.Error())
-		ps = nil
-	}
-
-	// Check if any repositories are dirty
-	for _, reposPath := range reposPathList {
-		fullpath := pathutil.FullReposPathOf(reposPath)
-		if cmd.pathExists(fullpath) && cmd.isDirtyWorktree(fullpath, ps) {
-			fmt.Println("[ERROR] Repository has dirty worktree: " + fullpath)
-			return 14
-		}
-	}
-
 	// Find matching profile
-	var profile *lockjson.Profile
-	for i, p := range lockJSON.Profiles {
-		if p.Name == lockJSON.ActiveProfile {
-			profile = &lockJSON.Profiles[i]
-			break
-		}
-	}
-	if profile == nil {
+	profile, err := lockJSON.Profiles.FindByName(lockJSON.ActiveProfile)
+	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates if the matching profile exists
-		fmt.Println("[ERROR] Profile '" + lockJSON.ActiveProfile + "' does not exist")
+		fmt.Println("[ERROR]", err.Error())
 		return 15
 	}
 
@@ -93,37 +67,39 @@ func Get(args []string) int {
 	lockJSON.TrxID++
 
 	var updatedLockJSON bool
-	var upgradedList []string
+	var results []string
 	for _, reposPath := range reposPathList {
-		upgrade := flags.upgrade && cmd.pathExists(pathutil.FullReposPathOf(reposPath))
-
-		// Install / Upgrade plugin
-		err = cmd.installPlugin(reposPath, flags)
-		if err != nil {
-			fmt.Println("[ERROR] Failed to install / upgrade plugins: " + err.Error())
-			return 17
-		}
-
-		// Fetch plugconf
-		fmt.Println("[INFO] Installing plugconf " + reposPath + " ...")
-
-		vim_ch := make(chan error)
-		json_ch := make(chan error)
-		go cmd.installPlugConf(reposPath+".vim", vim_ch)
-		go cmd.installPlugConf(reposPath+".json", json_ch)
-		err = <-vim_ch
-		err2 := <-json_ch
-		if err != nil && err2 != nil {
-			fmt.Println("[INFO] Not found plugconf")
+		if flags.upgrade && cmd.pathExists(pathutil.FullReposPathOf(reposPath)) {
+			// Upgrade plugin
+			err = cmd.upgradePlugin(reposPath, flags)
+			if err != git.NoErrAlreadyUpToDate && err != nil {
+				fmt.Println("[WARN] Failed to upgrade plugin: " + err.Error())
+				results = append(results, "! "+reposPath+" : upgrade failed")
+				continue
+			}
+			if err == git.NoErrAlreadyUpToDate {
+				results = append(results, "# "+reposPath+" : no change")
+			} else {
+				results = append(results, "* "+reposPath+" : upgraded")
+			}
 		} else {
-			list := make([]string, 0, 2)
-			if err == nil {
-				list = append(list, "vim")
+			// Install plugin
+			err = cmd.installPlugin(reposPath, flags)
+			if err != nil {
+				fmt.Println("[WARN] Failed to install plugin: " + err.Error())
+				results = append(results, "! "+reposPath+" : install failed")
+				continue
 			}
-			if err2 == nil {
-				list = append(list, "json")
+			results = append(results, "+ "+reposPath+" : installed")
+
+			// Install plugconf
+			fmt.Println("[INFO] Installing plugconf " + reposPath + " ...")
+			err = cmd.installPlugConf(reposPath + ".vim")
+			if err != nil {
+				fmt.Println("[INFO] Not found plugconf")
+			} else {
+				fmt.Println("[INFO] Found plugconf")
 			}
-			fmt.Println("[INFO] Found plugconf (" + strings.Join(list, ",") + ")")
 		}
 
 		// Get HEAD hash string
@@ -132,29 +108,26 @@ func Get(args []string) int {
 			fmt.Println("[ERROR] Failed to get HEAD commit hash: " + err.Error())
 			continue
 		}
+
 		// Update repos[]/trx_id, repos[]/version
 		cmd.updateReposVersion(lockJSON, reposPath, hash, profile)
 		updatedLockJSON = true
-		// Collect upgraded repos path
-		if upgrade {
-			upgradedList = append(upgradedList, reposPath)
-		}
 	}
 
+	// Write to lock.json
 	if updatedLockJSON {
-		err = lockjson.Write(lockJSON)
+		err = lockJSON.Write()
 		if err != nil {
 			fmt.Println("[ERROR] Could not write to lock.json: " + err.Error())
-			return 17
+			return 19
 		}
 	}
 
-	// Show upgraded plugins
-	if len(upgradedList) > 0 {
-		fmt.Println("[WARN] Reloading upgraded plugin is not supported.")
-		fmt.Println("[WARN] Please restart your Vim to reload the following plugins:")
-		for _, reposPath := range upgradedList {
-			fmt.Println("[WARN]   " + reposPath)
+	// Show results
+	if len(results) > 0 {
+		fmt.Print("\nDone!\n\n")
+		for i := range results {
+			fmt.Println(results[i])
 		}
 	}
 
@@ -187,6 +160,12 @@ Options`)
 		fs.Usage()
 		return nil, nil, errors.New("repository was not given")
 	}
+
+	if flags.lockJSON && !flags.upgrade {
+		fs.Usage()
+		return nil, nil, errors.New("-l must be used with -u")
+	}
+
 	return fs.Args(), &flags, nil
 }
 
@@ -208,240 +187,86 @@ func (getCmd) getReposPathList(flags *getFlags, args []string, lockJSON *lockjso
 	return reposPathList, nil
 }
 
-func (cmd getCmd) getGlobalGitignore() ([]gitignore.Pattern, error) {
-	cfg, err := cmd.parseGitConfig()
-	if err != nil {
-		return nil, errors.New("could not read ~/.gitconfig: " + err.Error())
-	}
-
-	excludesfile := cmd.getExcludesFile(cfg)
-	if excludesfile == "" {
-		return nil, errors.New("could not get core.excludesfile from ~/.gitconfig")
-	}
-
-	ps, err := cmd.parseExcludesFile(excludesfile)
-	if err != nil {
-		return nil, errors.New("could not parse core.excludesfile: " + excludesfile + ": " + err.Error())
-	}
-	return ps, nil
-}
-
-func (getCmd) parseGitConfig() (*config.Config, error) {
-	cfg := config.NewConfig()
-
-	u, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(filepath.Join(u.HomeDir, ".gitconfig"))
-	if err != nil {
-		return nil, err
-	}
-
-	if err := cfg.Unmarshal(b); err != nil {
-		return nil, err
-	}
-
-	return cfg, err
-}
-
-func (getCmd) getExcludesFile(cfg *config.Config) string {
-	for _, sec := range cfg.Raw.Sections {
-		if sec.Name == "core" {
-			for _, opt := range sec.Options {
-				if opt.Key == "excludesfile" {
-					return opt.Value
-				}
-			}
-		}
-	}
-	return ""
-}
-
-func (cmd getCmd) parseExcludesFile(excludesfile string) ([]gitignore.Pattern, error) {
-	excludesfile, err := cmd.expandTilde(excludesfile)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := ioutil.ReadFile(excludesfile)
-	if err != nil {
-		return nil, err
-	}
-
-	var ps []gitignore.Pattern
-	for _, s := range strings.Split(string(data), "\n") {
-		if !strings.HasPrefix(s, "#") && len(strings.TrimSpace(s)) > 0 {
-			ps = append(ps, gitignore.ParsePattern(s, nil))
-		}
-	}
-
-	return ps, nil
-}
-
-// "~/.gitignore" -> "/home/tyru/.gitignore"
-func (getCmd) expandTilde(path string) (string, error) {
-	var paths []string
-	u, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	for _, p := range strings.Split(path, string(filepath.Separator)) {
-		if p == "~" {
-			paths = append(paths, u.HomeDir)
-		} else {
-			paths = append(paths, p)
-		}
-	}
-	return filepath.Join(paths...), nil
-}
-
 func (getCmd) pathExists(fullpath string) bool {
 	_, err := os.Stat(fullpath)
 	return !os.IsNotExist(err)
 }
 
-func (getCmd) isDirtyWorktree(fullpath string, ps []gitignore.Pattern) bool {
-	repos, err := git.PlainOpen(fullpath)
-	if err != nil {
-		return true
-	}
-	wt, err := repos.Worktree()
-	if err != nil {
-		return true
-	}
-	st, err := wt.Status()
-	if err != nil {
-		return true
-	}
-
-	return !st.IsClean()
-
-	// TODO: Instead of using IsClean(), check each file with ignored patterns
-	//
-	// paths := make([]string, 0, len(st))
-	// for path := range st {
-	// 	paths = append(paths, path)
-	// }
-	//
-	// m := gitignore.NewMatcher(ps)
-	// return !m.Match(paths, false)
-}
-
-func (cmd getCmd) installPlugin(reposPath string, flags *getFlags) error {
+func (cmd getCmd) upgradePlugin(reposPath string, flags *getFlags) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
-	if !flags.upgrade && cmd.pathExists(fullpath) {
-		return errors.New("repository exists")
-	}
 
-	if flags.upgrade {
-		fmt.Println("[INFO] Upgrading " + reposPath + " ...")
-	} else {
-		fmt.Println("[INFO] Installing " + reposPath + " ...")
-	}
-
-	// Get existing temporary directory path
-	tempPath, err := cmd.getTempPath()
-	if err != nil {
-		return err
-	}
+	fmt.Println("[INFO] Upgrading " + reposPath + " ...")
 
 	var progress sideband.Progress = nil
 	if flags.verbose {
 		progress = os.Stdout
 	}
 
-	// git clone to temporary directory
-	tempGitRepos, err := git.PlainClone(tempPath, false, &git.CloneOptions{
-		URL:      pathutil.CloneURLOf(reposPath),
-		Progress: progress,
-	})
+	repos, err := git.PlainOpen(fullpath)
 	if err != nil {
 		return err
 	}
 
-	// If !flags.upgrade or HEAD was changed (= the plugin is outdated) ...
-	if !flags.upgrade || cmd.headWasChanged(reposPath, tempGitRepos) {
-		// Remove existing repository
-		if cmd.pathExists(fullpath) {
-			err = os.RemoveAll(fullpath)
-			if err != nil {
-				return err
-			}
-		}
+	return repos.Fetch(&git.FetchOptions{
+		RemoteName: "origin",
+		Progress:   progress,
+	})
+}
 
-		// Move repository to $VOLTPATH/repos/{site}/{user}/{name}
-		err = os.MkdirAll(filepath.Dir(fullpath), 0755)
-		if err != nil {
-			return err
-		}
-		err = os.Rename(tempPath, fullpath)
-		if err != nil {
-			return err
-		}
+func (cmd getCmd) installPlugin(reposPath string, flags *getFlags) error {
+	fullpath := pathutil.FullReposPathOf(reposPath)
+	if cmd.pathExists(fullpath) {
+		return errors.New("repository exists")
 	}
 
+	fmt.Println("[INFO] Installing " + reposPath + " ...")
+
+	var progress sideband.Progress = nil
+	if flags.verbose {
+		progress = os.Stdout
+	}
+
+	// Create parent directories
+	err := os.MkdirAll(filepath.Dir(fullpath), 0755)
+	if err != nil {
+		return err
+	}
+
+	// Clone repository to $VOLTPATH/repos/{site}/{user}/{name}
+	isBare := true
+	_, err = git.PlainClone(fullpath, isBare, &git.CloneOptions{
+		URL:      pathutil.CloneURLOf(reposPath),
+		Progress: progress,
+	})
+	return err
+}
+
+func (getCmd) installPlugConf(filename string) error {
+	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + filename
+
+	res, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	if res.StatusCode%100 != 2 { // Not 2xx status code
+		return errors.New("Returned non-successful status: " + res.Status)
+	}
+	defer res.Body.Close()
+
+	bytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	fn := pathutil.SystemPlugConfOf(filename)
+	dir, _ := filepath.Split(fn)
+	os.MkdirAll(dir, 0755)
+
+	err = ioutil.WriteFile(fn, bytes, 0644)
+	if err != nil {
+		return err
+	}
 	return nil
-}
-
-func (getCmd) getTempPath() (string, error) {
-	err := os.MkdirAll(pathutil.TempPath(), 0755)
-	if err != nil {
-		return "", err
-	}
-
-	tempPath, err := ioutil.TempDir(pathutil.TempPath(), "volt-")
-	if err != nil {
-		return "", err
-	}
-
-	err = os.MkdirAll(tempPath, 0755)
-	if err != nil {
-		return "", err
-	}
-	return tempPath, nil
-}
-
-func (cmd getCmd) headWasChanged(reposPath string, tempGitRepos *git.Repository) bool {
-	tempHead, err := tempGitRepos.Head()
-	if err != nil {
-		return false
-	}
-	hash, err := cmd.getHEADHashString(reposPath)
-	if err != nil {
-		return false
-	}
-	return tempHead.Hash().String() != hash
-}
-
-func (getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) {
-	var r *lockjson.Repos
-	for i := range lockJSON.Repos {
-		if lockJSON.Repos[i].Path == reposPath {
-			r = &lockJSON.Repos[i]
-			break
-		}
-	}
-
-	if r == nil {
-		// vim plugin is not found in lock.json
-		// -> previous operation is install
-
-		// Add repos to 'repos_path'
-		lockJSON.Repos = append(lockJSON.Repos, lockjson.Repos{
-			TrxID:   lockJSON.TrxID,
-			Path:    reposPath,
-			Version: version,
-		})
-		// Add repos to 'profiles[]/repos_path'
-		profile.ReposPath = append(profile.ReposPath, reposPath)
-	} else {
-		// vim plugin is found in lock.json
-		// -> previous operation is upgrade
-		r.TrxID = lockJSON.TrxID
-		r.Version = version
-	}
 }
 
 func (getCmd) getHEADHashString(reposPath string) (string, error) {
@@ -456,34 +281,28 @@ func (getCmd) getHEADHashString(reposPath string) (string, error) {
 	return head.Hash().String(), nil
 }
 
-func (getCmd) installPlugConf(filename string, done chan error) {
-	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + filename
-
-	res, err := http.Get(url)
+func (getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) {
+	repos, err := lockJSON.Repos.FindByPath(reposPath)
 	if err != nil {
-		done <- err
-		return
-	}
-	if res.StatusCode%100 != 2 { // Not 2xx status code
-		done <- errors.New("Returned non-successful status: " + res.Status)
-		return
-	}
-	defer res.Body.Close()
-
-	bytes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		done <- err
-		return
+		repos = nil
 	}
 
-	fn := pathutil.SystemPlugConfOf(filename)
-	dir, _ := filepath.Split(fn)
-	os.MkdirAll(dir, 0755)
+	if repos == nil {
+		// vim plugin is not found in lock.json
+		// -> previous operation is install
 
-	err = ioutil.WriteFile(fn, bytes, 0644)
-	if err != nil {
-		done <- err
-		return
+		// Add repos to 'repos_path'
+		lockJSON.Repos = append(lockJSON.Repos, lockjson.Repos{
+			TrxID:   lockJSON.TrxID,
+			Path:    reposPath,
+			Version: version,
+		})
+		// Add repos to 'profiles[]/repos_path'
+		profile.ReposPath = append(profile.ReposPath, reposPath)
+	} else {
+		// vim plugin is found in lock.json
+		// -> previous operation is upgrade
+		repos.TrxID = lockJSON.TrxID
+		repos.Version = version
 	}
-	done <- nil
 }

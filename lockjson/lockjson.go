@@ -11,13 +11,16 @@ import (
 	"github.com/vim-volt/go-volt/pathutil"
 )
 
+type repos []Repos
+type profiles []Profile
+
 type LockJSON struct {
-	Version       int64     `json:"version"`
-	TrxID         int64     `json:"trx_id"`
-	ActiveProfile string    `json:"active_profile"`
-	LoadInit      bool      `json:"load_init"`
-	Repos         []Repos   `json:"repos"`
-	Profiles      []Profile `json:"profiles"`
+	Version       int64    `json:"version"`
+	TrxID         int64    `json:"trx_id"`
+	ActiveProfile string   `json:"active_profile"`
+	RC            []string `json:"rc"`
+	Repos         repos    `json:"repos"`
+	Profiles      profiles `json:"profiles"`
 }
 
 type Repos struct {
@@ -26,10 +29,12 @@ type Repos struct {
 	Version string `json:"version"`
 }
 
+type profReposPath []string
+
 type Profile struct {
-	Name      string   `json:"name"`
-	ReposPath []string `json:"repos_path"`
-	LoadInit  bool     `json:"load_init"`
+	Name      string        `json:"name"`
+	ReposPath profReposPath `json:"repos_path"`
+	RC        []string      `json:"rc"`
 }
 
 func InitialLockJSON() *LockJSON {
@@ -37,13 +42,13 @@ func InitialLockJSON() *LockJSON {
 		Version:       1,
 		TrxID:         1,
 		ActiveProfile: "default",
-		LoadInit:      true,
+		RC:            []string{"init.vim"},
 		Repos:         make([]Repos, 0),
 		Profiles: []Profile{
 			Profile{
 				Name:      "default",
 				ReposPath: make([]string, 0),
-				LoadInit:  true,
+				RC:        []string{"init.vim"},
 			},
 		},
 	}
@@ -87,7 +92,7 @@ func validate(lockJSON *LockJSON) error {
 	dup := make(map[string]bool, len(lockJSON.Repos))
 	for _, repos := range lockJSON.Repos {
 		if _, exists := dup[repos.Path]; exists {
-			return errors.New("duplicate repos: " + repos.Path)
+			return errors.New("duplicate repos '" + repos.Path + "'")
 		}
 		dup[repos.Path] = true
 	}
@@ -96,7 +101,7 @@ func validate(lockJSON *LockJSON) error {
 	dup = make(map[string]bool, len(lockJSON.Profiles))
 	for _, profile := range lockJSON.Profiles {
 		if _, exists := dup[profile.Name]; exists {
-			return errors.New("duplicate profile: " + profile.Name)
+			return errors.New("duplicate profile '" + profile.Name + "'")
 		}
 		dup[profile.Name] = true
 	}
@@ -106,7 +111,7 @@ func validate(lockJSON *LockJSON) error {
 		dup = make(map[string]bool, len(lockJSON.Profiles)*10)
 		for _, reposPath := range profile.ReposPath {
 			if _, exists := dup[reposPath]; exists {
-				return errors.New("duplicate 'repos_path' (" + reposPath + ") in profile '" + profile.Name + "'")
+				return errors.New("duplicate '" + reposPath + "' (repos_path) in profile '" + profile.Name + "'")
 			}
 			dup[reposPath] = true
 		}
@@ -121,7 +126,7 @@ func validate(lockJSON *LockJSON) error {
 		}
 	}
 	if !found {
-		return errors.New("'active_profile' (" + lockJSON.ActiveProfile + ") doesn't exist in profiles")
+		return errors.New("'" + lockJSON.ActiveProfile + "' (active_profile) doesn't exist in profiles")
 	}
 
 	// Validate if profiles[]/repos_path[] exists in repos[]/path
@@ -136,8 +141,8 @@ func validate(lockJSON *LockJSON) error {
 			}
 			if !found {
 				return errors.New(
-					"'profiles[" + strconv.Itoa(i) + "].repos_path[" + strconv.Itoa(j) +
-						"]' (" + reposPath + ") doesn't exist in repos")
+					"'" + reposPath + "' (profiles[" + strconv.Itoa(i) +
+						"].repos_path[" + strconv.Itoa(j) + "]) doesn't exist in repos")
 			}
 		}
 	}
@@ -147,9 +152,9 @@ func validate(lockJSON *LockJSON) error {
 	for i, repos := range lockJSON.Repos {
 		fullpath := pathutil.FullReposPathOf(repos.Path)
 		if file, err := os.Stat(fullpath); os.IsNotExist(err) {
-			return errors.New("'repos[" + strconv.Itoa(i) + "].path' (" + fullpath + ") doesn't exist on filesystem")
+			return errors.New("'" + fullpath + "' (repos[" + strconv.Itoa(i) + "].path) doesn't exist on filesystem")
 		} else if !file.IsDir() {
-			return errors.New("'repos[" + strconv.Itoa(i) + "].path' (" + fullpath + ") is not a directory")
+			return errors.New("'" + fullpath + "' (repos[" + strconv.Itoa(i) + "].path) is not a directory")
 		}
 	}
 
@@ -163,7 +168,8 @@ func validate(lockJSON *LockJSON) error {
 		}
 	}
 	if max > lockJSON.TrxID {
-		return errors.New("'repos[" + strconv.Itoa(index) + "].trx_id' (" + strconv.FormatInt(max, 10) + ") is greater than 'trx_id' (" + strconv.FormatInt(lockJSON.TrxID, 10) + ")")
+		return errors.New("'" + strconv.FormatInt(max, 10) + "' (repos[" + strconv.Itoa(index) + "].trx_id) " +
+			"is greater than '" + strconv.FormatInt(lockJSON.TrxID, 10) + "' (trx_id)")
 	}
 
 	return nil
@@ -171,45 +177,45 @@ func validate(lockJSON *LockJSON) error {
 
 func validateMissing(lockJSON *LockJSON) error {
 	if lockJSON.Version == 0 {
-		return errors.New("missing 'version'")
+		return errors.New("missing: version")
 	}
 	if lockJSON.TrxID == 0 {
-		return errors.New("missing 'trx_id'")
+		return errors.New("missing: trx_id")
 	}
 	if lockJSON.Repos == nil {
-		return errors.New("missing 'repos'")
+		return errors.New("missing: repos")
 	}
 	for i, repos := range lockJSON.Repos {
 		if repos.TrxID == 0 {
-			return errors.New("missing 'repos[" + strconv.Itoa(i) + "].trx_id'")
+			return errors.New("missing: repos[" + strconv.Itoa(i) + "].trx_id")
 		}
 		if repos.Path == "" {
-			return errors.New("missing 'repos[" + strconv.Itoa(i) + "].path'")
+			return errors.New("missing: repos[" + strconv.Itoa(i) + "].path")
 		}
 		if repos.Version == "" {
-			return errors.New("missing 'repos[" + strconv.Itoa(i) + "].version'")
+			return errors.New("missing: repos[" + strconv.Itoa(i) + "].version")
 		}
 	}
 	if lockJSON.Profiles == nil {
-		return errors.New("missing 'profiles'")
+		return errors.New("missing: profiles")
 	}
 	for i, profile := range lockJSON.Profiles {
 		if profile.Name == "" {
-			return errors.New("missing 'profile[" + strconv.Itoa(i) + "].name'")
+			return errors.New("missing: profile[" + strconv.Itoa(i) + "].name")
 		}
 		if profile.ReposPath == nil {
-			return errors.New("missing 'profile[" + strconv.Itoa(i) + "].repos_path'")
+			return errors.New("missing: profile[" + strconv.Itoa(i) + "].repos_path")
 		}
 		for j, reposPath := range profile.ReposPath {
 			if reposPath == "" {
-				return errors.New("missing 'profile[" + strconv.Itoa(i) + "].repos_path[" + strconv.Itoa(j) + "]'")
+				return errors.New("missing: profile[" + strconv.Itoa(i) + "].repos_path[" + strconv.Itoa(j) + "]")
 			}
 		}
 	}
 	return nil
 }
 
-func Write(lockJSON *LockJSON) error {
+func (lockJSON *LockJSON) Write() error {
 	// Mkdir all if lock.json's directory does not exist
 	lockfile := pathutil.LockJSON()
 	if _, err := os.Stat(filepath.Dir(lockfile)); os.IsNotExist(err) {
@@ -225,4 +231,81 @@ func Write(lockJSON *LockJSON) error {
 		return err
 	}
 	return ioutil.WriteFile(pathutil.LockJSON(), bytes, 0644)
+}
+
+func (profs *profiles) FindByName(name string) (*Profile, error) {
+	for i, p := range *profs {
+		if p.Name == name {
+			return &(*profs)[i], nil
+		}
+	}
+	return nil, errors.New("profile '" + name + "' does not exist")
+}
+
+func (profs *profiles) FindIndexByName(name string) int {
+	for i, p := range *profs {
+		if p.Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
+func (profs *profiles) RemoveAllReposPath(reposPath string) error {
+	for i := range *profs {
+		for j := range (*profs)[i].ReposPath {
+			if (*profs)[i].ReposPath[j] == reposPath {
+				(*profs)[i].ReposPath = append(
+					(*profs)[i].ReposPath[:j],
+					(*profs)[i].ReposPath[j+1:]...,
+				)
+				return nil
+			}
+		}
+	}
+	return errors.New("no matching profiles[]/repos_path[]: " + reposPath)
+}
+
+func (reposList *repos) FindByPath(reposPath string) (*Repos, error) {
+	for i, repos := range *reposList {
+		if repos.Path == reposPath {
+			return &(*reposList)[i], nil
+		}
+	}
+	return nil, errors.New("repos '" + reposPath + "' does not exist")
+}
+
+func (reposList *repos) RemoveAllByPath(reposPath string) error {
+	for i := range *reposList {
+		if (*reposList)[i].Path == reposPath {
+			*reposList = append((*reposList)[:i], (*reposList)[i+1:]...)
+			return nil
+		}
+	}
+	return errors.New("no matching repos[]/path: " + reposPath)
+}
+
+func (reposPathList *profReposPath) Contains(reposPath string) bool {
+	return reposPathList.IndexOf(reposPath) >= 0
+}
+
+func (reposPathList *profReposPath) IndexOf(reposPath string) int {
+	for i := range *reposPathList {
+		if (*reposPathList)[i] == reposPath {
+			return i
+		}
+	}
+	return -1
+}
+
+func (lockJSON *LockJSON) GetReposListByProfile(profile *Profile) ([]Repos, error) {
+	var reposList []Repos
+	for _, reposPath := range profile.ReposPath {
+		repos, err := lockJSON.Repos.FindByPath(reposPath)
+		if err != nil {
+			return nil, err
+		}
+		reposList = append(reposList, *repos)
+	}
+	return reposList, nil
 }

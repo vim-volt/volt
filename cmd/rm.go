@@ -77,11 +77,14 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 	defer transaction.Remove()
 	lockJSON.TrxID++
 
-	// Remove system plugconf (vim, json)
+	// Remove system plugconf
 	fmt.Println("[INFO] Removing plugconf files ...")
-	err = cmd.removeSystemPlugConf(reposPath)
-	if err != nil {
-		return err
+	plugConf := pathutil.SystemPlugConfOf(reposPath + ".vim")
+	if _, err := os.Stat(plugConf); !os.IsNotExist(err) {
+		err = os.Remove(plugConf)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Remove parent directories of system plugconf
@@ -90,8 +93,8 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 
 	// Remove existing repository
 	fullpath := pathutil.FullReposPathOf(reposPath)
+	fmt.Println("[INFO] Removing " + fullpath + " ...")
 	if _, err = os.Stat(fullpath); !os.IsNotExist(err) {
-		fmt.Println("[INFO] Removing " + fullpath + " ...")
 		err = os.RemoveAll(fullpath)
 		if err != nil {
 			return err
@@ -103,45 +106,23 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 	}
 
 	// Delete repos path from lockJSON.Repos[i]
-	for i := range lockJSON.Repos {
-		if lockJSON.Repos[i].Path == reposPath {
-			lockJSON.Repos = append(lockJSON.Repos[:i], lockJSON.Repos[i+1:]...)
-			break
-		}
-	}
-
-	// Delete repos path from profiles[i]/repos_path[j]
-	for i, profile := range lockJSON.Profiles {
-		for j, profReposPath := range profile.ReposPath {
-			if profReposPath == reposPath {
-				lockJSON.Profiles[i].ReposPath = append(
-					lockJSON.Profiles[i].ReposPath[:j],
-					lockJSON.Profiles[i].ReposPath[j+1:]...,
-				)
-				break
-			}
-		}
-	}
-
-	// Write to lock.json
-	err = lockjson.Write(lockJSON)
+	err = lockJSON.Repos.RemoveAllByPath(reposPath)
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func (cmd rmCmd) removeSystemPlugConf(reposPath string) error {
-	for _, ext := range []string{".vim", ".json"} {
-		plugConf := pathutil.SystemPlugConfOf(reposPath + ext)
-		if _, err := os.Stat(plugConf); !os.IsNotExist(err) {
-			err = os.Remove(plugConf)
-			if err != nil {
-				return err
-			}
-		}
+	// Delete repos path from profiles[i]/repos_path[j]
+	err = lockJSON.Profiles.RemoveAllReposPath(reposPath)
+	if err != nil {
+		return err
 	}
+
+	// Write to lock.json
+	err = lockJSON.Write()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

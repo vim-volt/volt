@@ -42,9 +42,10 @@ func Query(args []string) int {
 
 	reposList := make([]lockjson.Repos, 0, len(reposPathList))
 	for _, reposPath := range reposPathList {
-		repos, err := cmd.lookUpRepos(reposPath, lockJSON)
+		repos, err := lockJSON.Repos.FindByPath(reposPath)
 		if err != nil {
-			fmt.Println("Failed to look up '" + reposPath + "': " + err.Error())
+			// TODO: show plugin info on remote
+			fmt.Println("[ERROR] Not implemented yet: remote query")
 			return 13
 		}
 		reposList = append(reposList, *repos)
@@ -98,16 +99,6 @@ func (queryCmd) getReposPathList(flags *queryFlags, args []string, lockJSON *loc
 		reposPathList = append(reposPathList, reposPath)
 	}
 	return reposPathList, nil
-}
-
-func (queryCmd) lookUpRepos(reposPath string, lockJSON *lockjson.LockJSON) (*lockjson.Repos, error) {
-	for i := range lockJSON.Repos {
-		if lockJSON.Repos[i].Path == reposPath {
-			return &lockJSON.Repos[i], nil
-		}
-	}
-	// TODO: show plugin info on remote
-	return nil, errors.New("not implemented yet: remote query")
 }
 
 func (queryCmd) printReposList(reposList []lockjson.Repos, flags *queryFlags) error {
