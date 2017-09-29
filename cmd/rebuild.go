@@ -63,11 +63,11 @@ func (cmd *rebuildCmd) doRebuild() error {
 	fmt.Println("[INFO] Installing vimrc and gvimrc ...")
 
 	// Install vimrc and gvimrc
-	err = cmd.installRCFile("vimrc.vim", filepath.Join(vimDir, "vimrc"))
+	err = cmd.installRCFile(lockJSON.ActiveProfile, "vimrc.vim", filepath.Join(vimDir, "vimrc"))
 	if err != nil {
 		return err
 	}
-	err = cmd.installRCFile("gvimrc.vim", filepath.Join(vimDir, "gvimrc"))
+	err = cmd.installRCFile(lockJSON.ActiveProfile, "gvimrc.vim", filepath.Join(vimDir, "gvimrc"))
 	if err != nil {
 		return err
 	}
@@ -125,25 +125,25 @@ func (cmd *rebuildCmd) doRebuild() error {
 	return nil
 }
 
-func (cmd *rebuildCmd) installRCFile(srcRCFileName, dst string) error {
-	// Skip if rc file does not exist
-	src := pathutil.RCFileOf(srcRCFileName)
-	if _, err := os.Stat(src); os.IsNotExist(err) {
-		return nil
-	}
-
+func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string) error {
 	if _, err := os.Stat(dst); !os.IsNotExist(err) {
 		// Return error if the magic comment does not exist
 		err := cmd.checkMagicComment(dst)
 		if err != nil {
 			return err
 		}
+	}
 
-		// Remove destination (~/.vim/vimrc or ~/.vim/gvimrc)
-		os.Remove(dst)
-		if _, err := os.Stat(dst); !os.IsNotExist(err) {
-			return errors.New("failed to remove " + dst)
-		}
+	// Remove destination (~/.vim/vimrc or ~/.vim/gvimrc)
+	os.Remove(dst)
+	if _, err := os.Stat(dst); !os.IsNotExist(err) {
+		return errors.New("failed to remove " + dst)
+	}
+
+	// Skip if rc file does not exist
+	src := pathutil.RCFileOf(profileName, srcRCFileName)
+	if _, err := os.Stat(src); os.IsNotExist(err) {
+		return nil
 	}
 
 	return cmd.copyFileWithMagicComment(src, dst)
