@@ -238,6 +238,12 @@ func validateMissing(lockJSON *LockJSON) error {
 }
 
 func (lockJSON *LockJSON) Write() error {
+	// Validate lock.json
+	err := validate(lockJSON)
+	if err != nil {
+		return err
+	}
+
 	// Mkdir all if lock.json's directory does not exist
 	lockfile := pathutil.LockJSON()
 	if _, err := os.Stat(filepath.Dir(lockfile)); os.IsNotExist(err) {
