@@ -11,7 +11,7 @@ import (
 // user/name -> github.com/user/name
 // github.com/user/name -> github.com/user/name
 // https://github.com/user/name -> github.com/user/name
-// localhost/imported/name -> localhost/imported/name
+// localhost/local/name -> localhost/local/name
 func NormalizeRepos(rawReposPath string) (string, error) {
 	rawReposPath = filepath.ToSlash(rawReposPath)
 	paths := strings.Split(rawReposPath, "/")
@@ -27,11 +27,11 @@ func NormalizeRepos(rawReposPath string) (string, error) {
 	return "", errors.New("invalid format of repository: " + rawReposPath)
 }
 
-func NormalizeImportedRepos(name string) (string, error) {
+func NormalizeLocalRepos(name string) (string, error) {
 	if strings.Contains(name, "/") {
-		return "", errors.New("imported repos must not contain '/'")
+		return "", errors.New("local repos must not contain '/'")
 	}
-	return "localhost/imported/" + name, nil
+	return "localhost/local/" + name, nil
 }
 
 func HomeDir() string {

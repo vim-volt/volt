@@ -13,10 +13,10 @@ import (
 	"github.com/vim-volt/go-volt/transaction"
 )
 
-type importCmd struct{}
+type addCmd struct{}
 
-func Import(args []string) int {
-	cmd := importCmd{}
+func Add(args []string) int {
+	cmd := addCmd{}
 
 	from, reposPath, err := cmd.parseArgs(args)
 	if err != nil {
@@ -24,29 +24,29 @@ func Import(args []string) int {
 		return 10
 	}
 
-	err = cmd.doImport(from, reposPath)
+	err = cmd.doAdd(from, reposPath)
 	if err != nil {
-		fmt.Println("[ERROR] Failed to import: " + err.Error())
+		fmt.Println("[ERROR] Failed to add: " + err.Error())
 		return 11
 	}
 
 	return 0
 }
 
-func (*importCmd) parseArgs(args []string) (string, string, error) {
+func (*addCmd) parseArgs(args []string) (string, string, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
 		fmt.Println(`
 Usage
-  (1) volt import {repository}
-  (2) volt import {from} {repository}
+  (1) volt add {repository}
+  (2) volt add {from} {repository}
 
 Description
   1st form:
-    Import local {repository} to lock.json
+    Add local {repository} to lock.json
   2nd form:
-    Import local {from} repository as {repository} to lock.json
+    Add local {from} repository as {repository} to lock.json
 
 Options`)
 		fs.PrintDefaults()
@@ -60,7 +60,7 @@ Options`)
 		reposPath, err := pathutil.NormalizeRepos(fsArgs[0])
 		return pathutil.FullReposPathOf(reposPath), reposPath, err
 	case 2:
-		reposPath, err := pathutil.NormalizeImportedRepos(fsArgs[1])
+		reposPath, err := pathutil.NormalizeLocalRepos(fsArgs[1])
 		return fsArgs[0], reposPath, err
 	default:
 		fs.Usage()
@@ -68,7 +68,7 @@ Options`)
 	}
 }
 
-func (cmd *importCmd) doImport(from, reposPath string) error {
+func (cmd *addCmd) doAdd(from, reposPath string) error {
 	// Check from and destination (full path of repos path) path
 	if _, err := os.Stat(from); os.IsNotExist(err) {
 		return errors.New("no such a directory: " + from)
@@ -93,7 +93,7 @@ func (cmd *importCmd) doImport(from, reposPath string) error {
 	defer transaction.Remove()
 	lockJSON.TrxID++
 
-	fmt.Printf("[INFO] Importing '%s' as '%s' ...\n", from, reposPath)
+	fmt.Printf("[INFO] Adding '%s' as '%s' ...\n", from, reposPath)
 
 	// Copy directory from to dst
 	err = copyutil.CopyDir(from, dst)
@@ -136,7 +136,7 @@ func (cmd *importCmd) doImport(from, reposPath string) error {
 	return nil
 }
 
-func (*importCmd) detectReposType(fullpath string) (lockjson.ReposType, error) {
+func (*addCmd) detectReposType(fullpath string) (lockjson.ReposType, error) {
 	if _, err := os.Stat(fullpath); os.IsNotExist(err) {
 		return "", errors.New("no such a directory: " + fullpath)
 	}

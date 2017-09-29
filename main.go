@@ -22,6 +22,8 @@ func Main() int {
 		return cmd.Get(os.Args[2:])
 	case "rm":
 		return cmd.Rm(os.Args[2:])
+	case "add":
+		return cmd.Add(os.Args[2:])
 	case "query":
 		return cmd.Query(os.Args[2:])
 	case "enable":
@@ -30,8 +32,6 @@ func Main() int {
 		return cmd.Disable(os.Args[2:])
 	case "profile":
 		return cmd.Profile(os.Args[2:])
-	case "import":
-		return cmd.Import(os.Args[2:])
 	case "rebuild":
 		return cmd.Rebuild(os.Args[2:])
 	case "version":
