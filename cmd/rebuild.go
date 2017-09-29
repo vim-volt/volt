@@ -14,6 +14,7 @@ import (
 	"github.com/vim-volt/go-volt/transaction"
 
 	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
@@ -229,16 +230,8 @@ func (cmd *rebuildCmd) copyRepos(repos *lockjson.Repos, startDir string, done ch
 		return
 	}
 
-	head, err := r.Head()
-	if err != nil {
-		done <- copyReposResult{
-			errors.New("failed to get HEAD reference: " + err.Error()),
-			repos,
-		}
-		return
-	}
-
-	commit, err := r.CommitObject(head.Hash())
+	commit := plumbing.NewHash(repos.Version)
+	commitObj, err := r.CommitObject(commit)
 	if err != nil {
 		done <- copyReposResult{
 			errors.New("failed to get HEAD commit object: " + err.Error()),
@@ -247,10 +240,10 @@ func (cmd *rebuildCmd) copyRepos(repos *lockjson.Repos, startDir string, done ch
 		return
 	}
 
-	tree, err := r.TreeObject(commit.TreeHash)
+	tree, err := r.TreeObject(commitObj.TreeHash)
 	if err != nil {
 		done <- copyReposResult{
-			errors.New("failed to get tree " + head.Hash().String() + ": " + err.Error()),
+			errors.New("failed to get tree " + commit.String() + ": " + err.Error()),
 			repos,
 		}
 		return
