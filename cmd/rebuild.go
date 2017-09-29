@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/vim-volt/go-volt/lockjson"
@@ -182,9 +185,10 @@ func (*rebuildCmd) copyFileWithMagicComment(src, dst string) error {
 	return err
 }
 
-func (*rebuildCmd) removeStartDir(startDir string) (<-chan error, error) {
+func (cmd *rebuildCmd) removeStartDir(startDir string) (<-chan error, error) {
 	// Rename startDir to {startDir}.bak
-	err := os.Rename(startDir, startDir+".old")
+	oldDir := startDir + ".old" + cmd.randomString()
+	err := os.Rename(startDir, oldDir)
 	if err != nil {
 		return nil, err
 	}
@@ -194,10 +198,16 @@ func (*rebuildCmd) removeStartDir(startDir string) (<-chan error, error) {
 	// Remove files in parallel
 	done := make(chan error, 1)
 	go func() {
-		err = os.RemoveAll(startDir + ".old")
+		err = os.RemoveAll(oldDir)
 		done <- err
 	}()
 	return done, nil
+}
+
+func (*rebuildCmd) randomString() string {
+	var n uint64
+	binary.Read(rand.Reader, binary.LittleEndian, &n)
+	return strconv.FormatUint(n, 36)
 }
 
 type copyReposResult struct {
