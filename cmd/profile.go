@@ -328,7 +328,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 				fmt.Println("[WARN] repository '" + reposPath + "' already exists")
 			} else {
 				profile.ReposPath = append(profile.ReposPath, reposPath)
-				fmt.Println("[INFO] Added repository '" + reposPath + "'")
+				fmt.Println("[INFO] Activate '" + reposPath + "' on profile '" + profileName + "'")
 			}
 		}
 	})
@@ -359,7 +359,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 			if index >= 0 {
 				// Remove profile.ReposPath[index]
 				profile.ReposPath = append(profile.ReposPath[:index], profile.ReposPath[index+1:]...)
-				fmt.Println("[INFO] Removed repository '" + reposPath + "'")
+				fmt.Println("[INFO] Deactivate '" + reposPath + "' from profile '" + profileName + "'")
 			} else {
 				fmt.Println("[WARN] repository '" + reposPath + "' does not exist")
 			}
