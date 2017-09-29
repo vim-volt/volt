@@ -92,7 +92,7 @@ func (queryCmd) getReposPathList(flags *queryFlags, args []string, lockJSON *loc
 		}
 	}
 	for _, arg := range args {
-		reposPath, err := pathutil.NormalizeRepository(arg)
+		reposPath, err := pathutil.NormalizeRepos(arg)
 		if err != nil {
 			return nil, err
 		}

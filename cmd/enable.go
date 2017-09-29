@@ -64,7 +64,7 @@ Options`)
 	// Normalize repos path
 	var reposPathList []string
 	for _, arg := range fs.Args() {
-		reposPath, err := pathutil.NormalizeRepository(arg)
+		reposPath, err := pathutil.NormalizeRepos(arg)
 		if err != nil {
 			return nil, err
 		}

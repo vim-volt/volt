@@ -184,7 +184,7 @@ func (getCmd) getReposPathList(flags *getFlags, args []string, lockJSON *lockjso
 		}
 	} else {
 		for _, arg := range args {
-			reposPath, err := pathutil.NormalizeRepository(arg)
+			reposPath, err := pathutil.NormalizeRepos(arg)
 			if err != nil {
 				return nil, err
 			}

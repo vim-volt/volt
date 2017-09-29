@@ -62,7 +62,7 @@ Options`)
 		return "", errors.New("repository was not given")
 	}
 
-	reposPath, err := pathutil.NormalizeRepository(fs.Args()[0])
+	reposPath, err := pathutil.NormalizeRepos(fs.Args()[0])
 	if err != nil {
 		return "", err
 	}

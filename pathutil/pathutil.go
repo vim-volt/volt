@@ -48,19 +48,35 @@ func VoltPath() string {
 }
 
 func FullReposPathOf(repos string) string {
-	return filepath.Join(VoltPath(), "repos", repos)
+	reposList := strings.Split(filepath.ToSlash(repos), "/")
+	paths := make([]string, 0, len(reposList)+2)
+	paths = append(paths, VoltPath())
+	paths = append(paths, "repos")
+	paths = append(paths, reposList...)
+	return filepath.Join(paths...)
 }
 
 func CloneURLOf(repos string) string {
-	return "https://" + repos
+	return "https://" + filepath.ToSlash(repos)
 }
 
 func SystemPlugConfOf(filename string) string {
-	return filepath.Join(VoltPath(), "plugconf", "system", filename)
+	filenameList := strings.Split(filepath.ToSlash(filename), "/")
+	paths := make([]string, 0, len(filenameList)+3)
+	paths = append(paths, VoltPath())
+	paths = append(paths, "plugconf")
+	paths = append(paths, "system")
+	paths = append(paths, filenameList...)
+	return filepath.Join(paths...)
 }
 
 func RCFileOf(filename string) string {
-	return filepath.Join(VoltPath(), "rc", filename)
+	filenameList := strings.Split(filepath.ToSlash(filename), "/")
+	paths := make([]string, 0, len(filenameList)+2)
+	paths = append(paths, VoltPath())
+	paths = append(paths, "rc")
+	paths = append(paths, filenameList...)
+	return filepath.Join(paths...)
 }
 
 func LockJSON() string {
@@ -81,6 +97,10 @@ func VimDir() string {
 	} else {
 		return filepath.Join(HomeDir(), ".vim")
 	}
+}
+
+func VimVoltDir() string {
+	return filepath.Join(VimDir(), "pack", "volt")
 }
 
 func VimVoltStartDir() string {

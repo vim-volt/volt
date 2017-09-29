@@ -390,7 +390,7 @@ func (cmd *profileCmd) parseAddArgs(subCmd string, args []string) (string, []str
 	profileName := args[0]
 	reposPathList := make([]string, 0, len(args)-1)
 	for _, arg := range args[1:] {
-		reposPath, err := pathutil.NormalizeRepository(arg)
+		reposPath, err := pathutil.NormalizeRepos(arg)
 		if err != nil {
 			return "", nil, err
 		}
