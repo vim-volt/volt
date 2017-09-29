@@ -168,7 +168,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	// Rebuild start dir
 	err = (&rebuildCmd{}).doRebuild()
 	if err != nil {
-		return err
+		return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
 
 	return nil

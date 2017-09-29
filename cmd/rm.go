@@ -20,13 +20,13 @@ func Rm(args []string) int {
 
 	reposPath, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("[ERROR]", err.Error())
 		return 10
 	}
 
 	err = cmd.removeRepos(reposPath)
 	if err != nil {
-		fmt.Println("Failed to remove repository: " + err.Error())
+		fmt.Println("[ERROR] Failed to remove repository: " + err.Error())
 		return 11
 	}
 
