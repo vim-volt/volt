@@ -94,11 +94,9 @@ func (cmd *rebuildCmd) doRebuild() error {
 	}
 
 	// Wait remove
+	var removeErr error
 	if removeDone != nil {
-		err = <-removeDone
-		if err != nil {
-			return errors.New("failed to remove '" + startDir + "': " + err.Error())
-		}
+		removeErr = <-removeDone
 	}
 
 	// Wait copy
@@ -107,6 +105,11 @@ func (cmd *rebuildCmd) doRebuild() error {
 		if result.err != nil {
 			return errors.New("failed to copy repository '" + result.repos.Path + "': " + result.err.Error())
 		}
+	}
+
+	// Show remove error
+	if removeErr != nil {
+		return errors.New("failed to remove '" + startDir + "': " + removeErr.Error())
 	}
 
 	return nil
