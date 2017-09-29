@@ -321,7 +321,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	profileName, reposPathList, err := cmd.parseAddArgs("add", args)
 
 	// Read modified profile and write to lock.json
-	err = cmd.transactProfile(profileName, func(profile *lockjson.Profile) {
+	lockJSON, err := cmd.transactProfile(profileName, func(profile *lockjson.Profile) {
 		// Add repositories to profile if the repository does not exist
 		for _, reposPath := range reposPathList {
 			if profile.ReposPath.Contains(reposPath) {
@@ -336,10 +336,12 @@ func (cmd *profileCmd) doAdd(args []string) error {
 		return err
 	}
 
-	// Rebuild start dir
-	err = (&rebuildCmd{}).doRebuild()
-	if err != nil {
-		return err
+	if lockJSON.ActiveProfile == profileName {
+		// Rebuild start dir
+		err = (&rebuildCmd{}).doRebuild()
+		if err != nil {
+			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+		}
 	}
 
 	return nil
@@ -350,7 +352,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	profileName, reposPathList, err := cmd.parseAddArgs("rm", args)
 
 	// Read modified profile and write to lock.json
-	err = cmd.transactProfile(profileName, func(profile *lockjson.Profile) {
+	lockJSON, err := cmd.transactProfile(profileName, func(profile *lockjson.Profile) {
 		// Remove repositories from profile if the repository does not exist
 		for _, reposPath := range reposPathList {
 			index := profile.ReposPath.IndexOf(reposPath)
@@ -367,10 +369,12 @@ func (cmd *profileCmd) doRm(args []string) error {
 		return err
 	}
 
-	// Rebuild start dir
-	err = (&rebuildCmd{}).doRebuild()
-	if err != nil {
-		return err
+	if lockJSON.ActiveProfile == profileName {
+		// Rebuild start dir
+		err = (&rebuildCmd{}).doRebuild()
+		if err != nil {
+			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+		}
 	}
 
 	return nil
@@ -395,28 +399,32 @@ func (cmd *profileCmd) parseAddArgs(subCmd string, args []string) (string, []str
 	return profileName, reposPathList, nil
 }
 
-func (*profileCmd) transactProfile(profileName string, modifyProfile func(*lockjson.Profile)) error {
+func (*profileCmd) transactProfile(profileName string, modifyProfile func(*lockjson.Profile)) (*lockjson.LockJSON, error) {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
+		return nil, errors.New("failed to read lock.json: " + err.Error())
 	}
 
 	// Return error if profiles[]/name does not match profileName
 	profile, err := lockJSON.Profiles.FindByName(profileName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Begin transaction
 	err = transaction.Create()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer transaction.Remove()
 
 	modifyProfile(profile)
 
 	// Write to lock.json
-	return lockJSON.Write()
+	err = lockJSON.Write()
+	if err != nil {
+		return nil, err
+	}
+	return lockJSON, nil
 }
