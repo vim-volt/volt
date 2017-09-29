@@ -304,8 +304,10 @@ func (getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, 
 			Path:    reposPath,
 			Version: version,
 		})
-		// Add repos to 'profiles[]/repos_path'
-		profile.ReposPath = append(profile.ReposPath, reposPath)
+		if !profile.ReposPath.Contains(reposPath) {
+			// Add repos to 'profiles[]/repos_path'
+			profile.ReposPath = append(profile.ReposPath, reposPath)
+		}
 	} else {
 		// vim plugin is found in lock.json
 		// -> previous operation is upgrade
