@@ -164,6 +164,13 @@ func (cmd *profileCmd) doSet(args []string) error {
 	}
 
 	fmt.Println("[INFO] Set active profile to '" + profileName + "'")
+
+	// Rebuild start dir
+	err = (&rebuildCmd{}).doRebuild()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -313,8 +320,6 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs("add", args)
 
-	added := make([]string, 0, len(reposPathList))
-
 	// Read modified profile and write to lock.json
 	err = cmd.transactProfile(profileName, func(profile *lockjson.Profile) {
 		// Add repositories to profile if the repository does not exist
@@ -323,7 +328,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 				fmt.Println("[WARN] repository '" + reposPath + "' already exists")
 			} else {
 				profile.ReposPath = append(profile.ReposPath, reposPath)
-				added = append(added, reposPath)
+				fmt.Println("[INFO] Added repository '" + reposPath + "'")
 			}
 		}
 	})
@@ -331,8 +336,10 @@ func (cmd *profileCmd) doAdd(args []string) error {
 		return err
 	}
 
-	for _, reposPath := range added {
-		fmt.Println("[INFO] Added repository '" + reposPath + "'")
+	// Rebuild start dir
+	err = (&rebuildCmd{}).doRebuild()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -342,8 +349,6 @@ func (cmd *profileCmd) doRm(args []string) error {
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs("rm", args)
 
-	removed := make([]string, 0, len(reposPathList))
-
 	// Read modified profile and write to lock.json
 	err = cmd.transactProfile(profileName, func(profile *lockjson.Profile) {
 		// Remove repositories from profile if the repository does not exist
@@ -352,7 +357,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 			if index >= 0 {
 				// Remove profile.ReposPath[index]
 				profile.ReposPath = append(profile.ReposPath[:index], profile.ReposPath[index+1:]...)
-				removed = append(removed, reposPath)
+				fmt.Println("[INFO] Removed repository '" + reposPath + "'")
 			} else {
 				fmt.Println("[WARN] repository '" + reposPath + "' does not exist")
 			}
@@ -362,8 +367,10 @@ func (cmd *profileCmd) doRm(args []string) error {
 		return err
 	}
 
-	for _, reposPath := range removed {
-		fmt.Println("[INFO] Removed repository '" + reposPath + "'")
+	// Rebuild start dir
+	err = (&rebuildCmd{}).doRebuild()
+	if err != nil {
+		return err
 	}
 
 	return nil

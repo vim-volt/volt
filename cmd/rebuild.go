@@ -41,7 +41,7 @@ func Rebuild(args []string) int {
 
 func (cmd *rebuildCmd) doRebuild() error {
 	vimDir := pathutil.VimDir()
-	startDir := filepath.Join(vimDir, "pack", "volt", "start")
+	startDir := pathutil.VimVoltStartDir()
 
 	// Read lock.json
 	lockJSON, err := lockjson.Read()

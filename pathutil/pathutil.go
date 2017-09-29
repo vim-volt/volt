@@ -82,3 +82,7 @@ func VimDir() string {
 		return filepath.Join(HomeDir(), ".vim")
 	}
 }
+
+func VimVoltStartDir() string {
+	return filepath.Join(VimDir(), "pack", "volt", "start")
+}
