@@ -11,9 +11,11 @@ import (
 // user/name -> github.com/user/name
 // github.com/user/name -> github.com/user/name
 // https://github.com/user/name -> github.com/user/name
-func NormalizeRepository(rawReposPath string) (string, error) {
+// localhost/imported/name -> localhost/imported/name
+func NormalizeRepos(rawReposPath string) (string, error) {
+	rawReposPath = filepath.ToSlash(rawReposPath)
 	paths := strings.Split(rawReposPath, "/")
-	if paths[0] == "github.com" && len(paths) == 3 {
+	if len(paths) == 3 {
 		return rawReposPath, nil
 	}
 	if len(paths) == 2 {

@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/vim-volt/go-volt/copyutil"
 	"github.com/vim-volt/go-volt/lockjson"
 	"github.com/vim-volt/go-volt/pathutil"
 	"github.com/vim-volt/go-volt/transaction"
@@ -90,7 +91,16 @@ func (cmd *rebuildCmd) doRebuild() error {
 	// Copy all repositories files to startDir
 	copyDone := make(chan copyReposResult, len(reposList))
 	for i := range reposList {
-		go cmd.copyRepos(&reposList[i], startDir, copyDone)
+		if reposList[i].Type == lockjson.ReposGitType {
+			go cmd.copyGitRepos(&reposList[i], startDir, copyDone)
+		} else if reposList[i].Type == lockjson.ReposStaticType {
+			go cmd.copyStaticRepos(&reposList[i], startDir, copyDone)
+		} else {
+			copyDone <- copyReposResult{
+				errors.New("invalid repository type: " + string(reposList[i].Type)),
+				&reposList[i],
+			}
+		}
 	}
 
 	// Wait remove
@@ -230,7 +240,7 @@ func (*rebuildCmd) getActiveProfileRepos(lockJSON *lockjson.LockJSON) ([]lockjso
 	return lockJSON.GetReposListByProfile(profile)
 }
 
-func (cmd *rebuildCmd) copyRepos(repos *lockjson.Repos, startDir string, done chan copyReposResult) {
+func (cmd *rebuildCmd) copyGitRepos(repos *lockjson.Repos, startDir string, done chan copyReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := filepath.Join(startDir, cmd.encodeReposPath(repos.Path))
 
@@ -284,11 +294,29 @@ func (cmd *rebuildCmd) copyRepos(repos *lockjson.Repos, startDir string, done ch
 		return
 	}
 
-	fmt.Println("[INFO] Installing repository " + repos.Path + " ... Done.")
+	fmt.Println("[INFO] Installing git repository " + repos.Path + " ... Done.")
 
 	done <- copyReposResult{nil, repos}
 }
 
 func (*rebuildCmd) encodeReposPath(reposPath string) string {
 	return strings.NewReplacer("_", "__", "/", "_").Replace(reposPath)
+}
+
+func (cmd *rebuildCmd) copyStaticRepos(repos *lockjson.Repos, startDir string, done chan copyReposResult) {
+	src := pathutil.FullReposPathOf(repos.Path)
+	dst := filepath.Join(startDir, cmd.encodeReposPath(repos.Path))
+
+	err := copyutil.CopyDir(src, dst)
+	if err != nil {
+		done <- copyReposResult{
+			errors.New("failed to copy static directory: " + err.Error()),
+			repos,
+		}
+		return
+	}
+
+	fmt.Println("[INFO] Installing static directory " + repos.Path + " ... Done.")
+
+	done <- copyReposResult{nil, repos}
 }

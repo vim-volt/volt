@@ -300,6 +300,7 @@ func (getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, 
 
 		// Add repos to 'repos_path'
 		lockJSON.Repos = append(lockJSON.Repos, lockjson.Repos{
+			Type:    lockjson.ReposGitType,
 			TrxID:   lockJSON.TrxID,
 			Path:    reposPath,
 			Version: version,

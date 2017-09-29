@@ -24,10 +24,18 @@ type LockJSON struct {
 	Profiles      profiles `json:"profiles"`
 }
 
+type ReposType string
+
+const (
+	ReposGitType    ReposType = "git"
+	ReposStaticType ReposType = "static"
+)
+
 type Repos struct {
-	TrxID   int64  `json:"trx_id"`
-	Path    string `json:"path"`
-	Version string `json:"version"`
+	Type    ReposType `json:"type"`
+	TrxID   int64     `json:"trx_id"`
+	Path    string    `json:"path"`
+	Version string    `json:"version"`
 }
 
 type profReposPath []string
@@ -190,14 +198,24 @@ func validateMissing(lockJSON *LockJSON) error {
 		return errors.New("missing: repos")
 	}
 	for i, repos := range lockJSON.Repos {
-		if repos.TrxID == 0 {
-			return errors.New("missing: repos[" + strconv.Itoa(i) + "].trx_id")
+		if repos.Type == "" {
+			return errors.New("missing: repos[" + strconv.Itoa(i) + "].type")
 		}
-		if repos.Path == "" {
-			return errors.New("missing: repos[" + strconv.Itoa(i) + "].path")
-		}
-		if repos.Version == "" {
-			return errors.New("missing: repos[" + strconv.Itoa(i) + "].version")
+		switch repos.Type {
+		case ReposGitType:
+			if repos.Version == "" {
+				return errors.New("missing: repos[" + strconv.Itoa(i) + "].version")
+			}
+			fallthrough
+		case ReposStaticType:
+			if repos.TrxID == 0 {
+				return errors.New("missing: repos[" + strconv.Itoa(i) + "].trx_id")
+			}
+			if repos.Path == "" {
+				return errors.New("missing: repos[" + strconv.Itoa(i) + "].path")
+			}
+		default:
+			return errors.New("repos[" + strconv.Itoa(i) + "].type is invalid type: " + string(repos.Type))
 		}
 	}
 	if lockJSON.Profiles == nil {
