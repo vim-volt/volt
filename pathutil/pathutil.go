@@ -25,6 +25,13 @@ func NormalizeRepository(rawReposPath string) (string, error) {
 	return "", errors.New("invalid format of repository: " + rawReposPath)
 }
 
+func NormalizeImportedRepos(name string) (string, error) {
+	if strings.Contains(name, "/") {
+		return "", errors.New("imported repos must not contain '/'")
+	}
+	return "localhost/imported/" + name, nil
+}
+
 func HomeDir() string {
 	home := os.Getenv("HOME")
 	if home != "" {
