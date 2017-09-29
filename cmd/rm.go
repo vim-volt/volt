@@ -119,10 +119,7 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 	}
 
 	// Delete repos path from profiles[i]/repos_path[j]
-	err = lockJSON.Profiles.RemoveAllReposPath(reposPath)
-	if err != nil {
-		return err
-	}
+	lockJSON.Profiles.RemoveAllReposPath(reposPath)
 
 	// Write to lock.json
 	err = lockJSON.Write()
