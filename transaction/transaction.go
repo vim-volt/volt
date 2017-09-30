@@ -2,12 +2,12 @@ package transaction
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 
+	"github.com/vim-volt/go-volt/logger"
 	"github.com/vim-volt/go-volt/pathutil"
 )
 
@@ -46,13 +46,13 @@ func Remove() {
 	trxLockFile := pathutil.TrxLock()
 	pid, err := ioutil.ReadFile(trxLockFile)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "[ERROR] trx.lock was already removed")
+		logger.Error("trx.lock was already removed")
 		return
 	}
 
 	// Remove trx.lock if pid is same
 	if string(pid) != strconv.Itoa(os.Getpid()) {
-		fmt.Fprintln(os.Stderr, "[ERROR] Cannot remove another process's trx.lock")
+		logger.Error("Cannot remove another process's trx.lock")
 		return
 	}
 	os.Remove(trxLockFile)

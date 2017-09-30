@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/vim-volt/go-volt/lockjson"
+	"github.com/vim-volt/go-volt/logger"
 	"github.com/vim-volt/go-volt/pathutil"
 )
 
@@ -23,20 +24,20 @@ func Query(args []string) int {
 
 	args, flags, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Error(err.Error())
 		return 10
 	}
 
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		fmt.Println("[ERROR] Failed to read lock.json: " + err.Error())
+		logger.Error("Failed to read lock.json: " + err.Error())
 		return 11
 	}
 
 	reposPathList, err := cmd.getReposPathList(flags, args, lockJSON)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Error(err.Error())
 		return 12
 	}
 
@@ -45,7 +46,7 @@ func Query(args []string) int {
 		repos, err := lockJSON.Repos.FindByPath(reposPath)
 		if err != nil {
 			// TODO: show plugin info on remote
-			fmt.Println("[ERROR] Not implemented yet: remote query")
+			logger.Error("Not implemented yet: remote query")
 			return 13
 		}
 		reposList = append(reposList, *repos)

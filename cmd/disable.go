@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/vim-volt/go-volt/logger"
 	"github.com/vim-volt/go-volt/pathutil"
 )
 
@@ -16,14 +17,14 @@ func Disable(args []string) int {
 
 	reposPathList, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Println("[ERROR] Failed to parse args: " + err.Error())
+		logger.Error("Failed to parse args: " + err.Error())
 		return 10
 	}
 
 	profCmd := profileCmd{}
 	currentProfile, err := profCmd.getCurrentProfile()
 	if err != nil {
-		fmt.Println("[ERROR]", err.Error())
+		logger.Error(err.Error())
 		return 11
 	}
 

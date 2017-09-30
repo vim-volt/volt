@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/vim-volt/go-volt/lockjson"
+	"github.com/vim-volt/go-volt/logger"
 	"github.com/vim-volt/go-volt/pathutil"
 	"github.com/vim-volt/go-volt/transaction"
 )
@@ -20,20 +21,20 @@ func Rm(args []string) int {
 
 	reposPath, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Println("[ERROR]", err.Error())
+		logger.Error(err.Error())
 		return 10
 	}
 
 	err = cmd.removeRepos(reposPath)
 	if err != nil {
-		fmt.Println("[ERROR] Failed to remove repository: " + err.Error())
+		logger.Error("Failed to remove repository: " + err.Error())
 		return 11
 	}
 
 	// Rebuild start dir
 	err = (&rebuildCmd{}).doRebuild()
 	if err != nil {
-		fmt.Println("[ERROR] Could not rebuild " + pathutil.VimVoltStartDir() + ": " + err.Error())
+		logger.Error("Could not rebuild " + pathutil.VimVoltStartDir() + ": " + err.Error())
 		return 12
 	}
 
@@ -85,7 +86,7 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 	lockJSON.TrxID++
 
 	// Remove system plugconf
-	fmt.Println("[INFO] Removing plugconf files ...")
+	logger.Info("Removing plugconf files ...")
 	plugConf := pathutil.SystemPlugConfOf(reposPath + ".vim")
 	if _, err := os.Stat(plugConf); !os.IsNotExist(err) {
 		err = os.Remove(plugConf)
@@ -100,7 +101,7 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 
 	// Remove existing repository
 	fullpath := pathutil.FullReposPathOf(reposPath)
-	fmt.Println("[INFO] Removing " + fullpath + " ...")
+	logger.Info("Removing " + fullpath + " ...")
 	if _, err = os.Stat(fullpath); !os.IsNotExist(err) {
 		err = os.RemoveAll(fullpath)
 		if err != nil {

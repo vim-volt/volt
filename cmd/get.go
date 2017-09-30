@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/vim-volt/go-volt/lockjson"
+	"github.com/vim-volt/go-volt/logger"
 	"github.com/vim-volt/go-volt/pathutil"
 	"github.com/vim-volt/go-volt/transaction"
 
@@ -31,20 +32,20 @@ func Get(args []string) int {
 	// Parse args
 	args, flags, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Println("[ERROR] Failed to parse args: " + err.Error())
+		logger.Error("Failed to parse args: " + err.Error())
 		return 10
 	}
 
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		fmt.Println("[ERROR] Could not read lock.json: " + err.Error())
+		logger.Error("Could not read lock.json: " + err.Error())
 		return 11
 	}
 
 	reposPathList, err := cmd.getReposPathList(flags, args, lockJSON)
 	if err != nil {
-		fmt.Println("[ERROR] Could not get repos list: " + err.Error())
+		logger.Error("Could not get repos list: " + err.Error())
 		return 12
 	}
 
@@ -53,14 +54,14 @@ func Get(args []string) int {
 	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates if the matching profile exists
-		fmt.Println("[ERROR]", err.Error())
+		logger.Error(err.Error())
 		return 15
 	}
 
 	// Begin transaction
 	err = transaction.Create()
 	if err != nil {
-		fmt.Println("[ERROR] Failed to begin transaction: " + err.Error())
+		logger.Error("Failed to begin transaction: " + err.Error())
 		return 16
 	}
 	defer transaction.Remove()
@@ -73,7 +74,7 @@ func Get(args []string) int {
 			// Upgrade plugin
 			err = cmd.upgradePlugin(reposPath, flags)
 			if err != git.NoErrAlreadyUpToDate && err != nil {
-				fmt.Println("[WARN] Failed to upgrade plugin: " + err.Error())
+				logger.Warn("Failed to upgrade plugin: " + err.Error())
 				results = append(results, "! "+reposPath+" : upgrade failed")
 				continue
 			}
@@ -86,26 +87,26 @@ func Get(args []string) int {
 			// Install plugin
 			err = cmd.installPlugin(reposPath, flags)
 			if err != nil {
-				fmt.Println("[WARN] Failed to install plugin: " + err.Error())
+				logger.Warn("Failed to install plugin: " + err.Error())
 				results = append(results, "! "+reposPath+" : install failed")
 				continue
 			}
 			results = append(results, "+ "+reposPath+" : installed")
 
 			// Install plugconf
-			fmt.Println("[INFO] Installing plugconf " + reposPath + " ...")
+			logger.Info("Installing plugconf " + reposPath + " ...")
 			err = cmd.installPlugConf(reposPath + ".vim")
 			if err != nil {
-				fmt.Println("[INFO] Not found plugconf")
+				logger.Info("Not found plugconf")
 			} else {
-				fmt.Println("[INFO] Found plugconf")
+				logger.Info("Found plugconf")
 			}
 		}
 
 		// Get HEAD hash string
 		hash, err := cmd.getHEADHashString(reposPath)
 		if err != nil {
-			fmt.Println("[ERROR] Failed to get HEAD commit hash: " + err.Error())
+			logger.Error("Failed to get HEAD commit hash: " + err.Error())
 			continue
 		}
 
@@ -118,7 +119,7 @@ func Get(args []string) int {
 	if updatedLockJSON {
 		err = lockJSON.Write()
 		if err != nil {
-			fmt.Println("[ERROR] Could not write to lock.json: " + err.Error())
+			logger.Error("Could not write to lock.json: " + err.Error())
 			return 19
 		}
 	}
@@ -126,7 +127,7 @@ func Get(args []string) int {
 	// Rebuild start dir
 	err = (&rebuildCmd{}).doRebuild()
 	if err != nil {
-		fmt.Println("[ERROR] Could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+		logger.Error("Could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
 		return 20
 	}
 
@@ -202,7 +203,7 @@ func (getCmd) pathExists(fullpath string) bool {
 func (cmd getCmd) upgradePlugin(reposPath string, flags *getFlags) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 
-	fmt.Println("[INFO] Upgrading " + reposPath + " ...")
+	logger.Info("Upgrading " + reposPath + " ...")
 
 	var progress sideband.Progress = nil
 	if flags.verbose {
@@ -226,7 +227,7 @@ func (cmd getCmd) installPlugin(reposPath string, flags *getFlags) error {
 		return errors.New("repository exists")
 	}
 
-	fmt.Println("[INFO] Installing " + reposPath + " ...")
+	logger.Info("Installing " + reposPath + " ...")
 
 	var progress sideband.Progress = nil
 	if flags.verbose {

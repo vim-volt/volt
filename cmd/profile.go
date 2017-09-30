@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/vim-volt/go-volt/lockjson"
+	"github.com/vim-volt/go-volt/logger"
 	"github.com/vim-volt/go-volt/pathutil"
 	"github.com/vim-volt/go-volt/transaction"
 )
@@ -35,7 +36,7 @@ func Profile(args []string) int {
 	// Parse args
 	args, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Error(err.Error())
 		return 10
 	}
 
@@ -46,7 +47,7 @@ func Profile(args []string) int {
 	if fn, exists := profileSubCmd[args[0]]; exists {
 		err = fn(args[1:])
 		if err != nil {
-			fmt.Println("[ERROR]", err.Error())
+			logger.Error(err.Error())
 			return 11
 		}
 	}
@@ -124,7 +125,7 @@ func (*profileCmd) getCurrentProfile() (string, error) {
 func (cmd *profileCmd) doSet(args []string) error {
 	if len(args) == 0 {
 		cmd.showUsage()
-		fmt.Println("[ERROR] 'volt profile set' receives profile name.")
+		logger.Error("'volt profile set' receives profile name.")
 		return nil
 	}
 	profileName := args[0]
@@ -137,7 +138,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 
 	// Exit if current active_profile is same as profileName
 	if lockJSON.ActiveProfile == profileName {
-		fmt.Println("[INFO] Unchanged active profile '" + profileName + "'")
+		logger.Info("Unchanged active profile '" + profileName + "'")
 		return nil
 	}
 
@@ -163,7 +164,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 		return err
 	}
 
-	fmt.Println("[INFO] Set active profile to '" + profileName + "'")
+	logger.Info("Set active profile to '" + profileName + "'")
 
 	// Rebuild start dir
 	err = (&rebuildCmd{}).doRebuild()
@@ -177,7 +178,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 func (cmd *profileCmd) doShow(args []string) error {
 	if len(args) == 0 {
 		cmd.showUsage()
-		fmt.Println("[ERROR] 'volt profile show' receives profile name.")
+		logger.Error("'volt profile show' receives profile name.")
 		return nil
 	}
 	profileName := args[0]
@@ -227,7 +228,7 @@ func (cmd *profileCmd) doList(args []string) error {
 func (cmd *profileCmd) doNew(args []string) error {
 	if len(args) == 0 {
 		cmd.showUsage()
-		fmt.Println("[ERROR] 'volt profile new' receives profile name.")
+		logger.Error("'volt profile new' receives profile name.")
 		return nil
 	}
 	profileName := args[0]
@@ -265,7 +266,7 @@ func (cmd *profileCmd) doNew(args []string) error {
 		return err
 	}
 
-	fmt.Println("[INFO] Created new profile '" + profileName + "'")
+	logger.Info("Created new profile '" + profileName + "'")
 
 	return nil
 }
@@ -273,7 +274,7 @@ func (cmd *profileCmd) doNew(args []string) error {
 func (cmd *profileCmd) doDestroy(args []string) error {
 	if len(args) == 0 {
 		cmd.showUsage()
-		fmt.Println("[ERROR] 'volt profile destroy' receives profile name.")
+		logger.Error("'volt profile destroy' receives profile name.")
 		return nil
 	}
 	profileName := args[0]
@@ -311,7 +312,7 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 		return err
 	}
 
-	fmt.Println("[INFO] Deleted profile '" + profileName + "'")
+	logger.Info("Deleted profile '" + profileName + "'")
 
 	return nil
 }
@@ -325,10 +326,10 @@ func (cmd *profileCmd) doAdd(args []string) error {
 		// Add repositories to profile if the repository does not exist
 		for _, reposPath := range reposPathList {
 			if profile.ReposPath.Contains(reposPath) {
-				fmt.Println("[WARN] repository '" + reposPath + "' already exists")
+				logger.Warn("repository '" + reposPath + "' already exists")
 			} else {
 				profile.ReposPath = append(profile.ReposPath, reposPath)
-				fmt.Println("[INFO] Activate '" + reposPath + "' on profile '" + profileName + "'")
+				logger.Info("Activate '" + reposPath + "' on profile '" + profileName + "'")
 			}
 		}
 	})
@@ -359,9 +360,9 @@ func (cmd *profileCmd) doRm(args []string) error {
 			if index >= 0 {
 				// Remove profile.ReposPath[index]
 				profile.ReposPath = append(profile.ReposPath[:index], profile.ReposPath[index+1:]...)
-				fmt.Println("[INFO] Deactivate '" + reposPath + "' from profile '" + profileName + "'")
+				logger.Info("Deactivate '" + reposPath + "' from profile '" + profileName + "'")
 			} else {
-				fmt.Println("[WARN] repository '" + reposPath + "' does not exist")
+				logger.Warn("repository '" + reposPath + "' does not exist")
 			}
 		}
 	})
@@ -383,7 +384,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 func (cmd *profileCmd) parseAddArgs(subCmd string, args []string) (string, []string, error) {
 	if len(args) == 0 {
 		cmd.showUsage()
-		fmt.Printf("[ERROR] 'volt profile %s' receives profile name and one or more repositories.\n", subCmd)
+		logger.Errorf("'volt profile %s' receives profile name and one or more repositories.", subCmd)
 		return "", nil, nil
 	}
 

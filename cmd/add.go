@@ -9,6 +9,7 @@ import (
 
 	"github.com/vim-volt/go-volt/copyutil"
 	"github.com/vim-volt/go-volt/lockjson"
+	"github.com/vim-volt/go-volt/logger"
 	"github.com/vim-volt/go-volt/pathutil"
 	"github.com/vim-volt/go-volt/transaction"
 )
@@ -20,13 +21,13 @@ func Add(args []string) int {
 
 	from, reposPath, err := cmd.parseArgs(args)
 	if err != nil {
-		fmt.Println("[ERROR] Failed to parse args: " + err.Error())
+		logger.Error("Failed to parse args: " + err.Error())
 		return 10
 	}
 
 	err = cmd.doAdd(from, reposPath)
 	if err != nil {
-		fmt.Println("[ERROR] Failed to add: " + err.Error())
+		logger.Error("Failed to add: " + err.Error())
 		return 11
 	}
 
@@ -93,7 +94,7 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 	defer transaction.Remove()
 	lockJSON.TrxID++
 
-	fmt.Printf("[INFO] Adding '%s' as '%s' ...\n", from, reposPath)
+	logger.Infof("Adding '%s' as '%s' ...", from, reposPath)
 
 	// Copy directory from to dst
 	err = copyutil.CopyDir(from, dst)

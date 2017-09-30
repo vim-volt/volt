@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/vim-volt/go-volt/cmd"
+	"github.com/vim-volt/go-volt/logger"
 )
 
 func main() {
@@ -37,10 +38,10 @@ func Main() int {
 	case "version":
 		return cmd.Version(os.Args[2:])
 	case "help":
-		fmt.Printf("[ERROR] Run 'volt %s -help' to see its help\n", os.Args[2])
+		logger.Errorf("Run 'volt %s -help' to see its help", os.Args[2])
 		return 2
 	default:
-		fmt.Fprintln(os.Stderr, "[ERROR] Unknown command '"+os.Args[1]+"'")
+		logger.Error("Unknown command '" + os.Args[1] + "'")
 		return 3
 	}
 }

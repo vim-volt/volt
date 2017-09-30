@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/vim-volt/go-volt/copyutil"
 	"github.com/vim-volt/go-volt/lockjson"
+	"github.com/vim-volt/go-volt/logger"
 	"github.com/vim-volt/go-volt/pathutil"
 	"github.com/vim-volt/go-volt/transaction"
 
@@ -28,7 +28,7 @@ func Rebuild(args []string) int {
 	// Begin transaction
 	err := transaction.Create()
 	if err != nil {
-		fmt.Println("[ERROR] Failed to begin transaction:", err.Error())
+		logger.Error("Failed to begin transaction:", err.Error())
 		return 10
 	}
 	defer transaction.Remove()
@@ -36,7 +36,7 @@ func Rebuild(args []string) int {
 	cmd := rebuildCmd{}
 	err = cmd.doRebuild()
 	if err != nil {
-		fmt.Println("[ERROR] Failed to rebuild:", err.Error())
+		logger.Error("Failed to rebuild:", err.Error())
 		return 11
 	}
 
@@ -59,8 +59,8 @@ func (cmd *rebuildCmd) doRebuild() error {
 		return err
 	}
 
-	fmt.Println("[INFO] Rebuilding " + startDir + " directory ...")
-	fmt.Println("[INFO] Installing vimrc and gvimrc ...")
+	logger.Info("Rebuilding " + startDir + " directory ...")
+	logger.Info("Installing vimrc and gvimrc ...")
 
 	// Install vimrc and gvimrc
 	err = cmd.installRCFile(lockJSON.ActiveProfile, "vimrc.vim", filepath.Join(vimDir, "vimrc"))
@@ -86,7 +86,7 @@ func (cmd *rebuildCmd) doRebuild() error {
 		return err
 	}
 
-	fmt.Println("[INFO] Installing all repositories files ...")
+	logger.Info("Installing all repositories files ...")
 
 	// Copy all repositories files to startDir
 	copyDone := make(chan copyReposResult, len(reposList))
@@ -206,7 +206,7 @@ func (cmd *rebuildCmd) removeStartDir(startDir string) (<-chan error, error) {
 		return nil, err
 	}
 
-	fmt.Println("[INFO] Removing " + startDir + " ...")
+	logger.Info("Removing " + startDir + " ...")
 
 	// Remove files in parallel
 	done := make(chan error, 1)
@@ -294,7 +294,7 @@ func (cmd *rebuildCmd) copyGitRepos(repos *lockjson.Repos, startDir string, done
 		return
 	}
 
-	fmt.Println("[INFO] Installing git repository " + repos.Path + " ... Done.")
+	logger.Info("Installing git repository " + repos.Path + " ... Done.")
 
 	done <- copyReposResult{nil, repos}
 }
@@ -316,7 +316,7 @@ func (cmd *rebuildCmd) copyStaticRepos(repos *lockjson.Repos, startDir string, d
 		return
 	}
 
-	fmt.Println("[INFO] Installing static directory " + repos.Path + " ... Done.")
+	logger.Info("Installing static directory " + repos.Path + " ... Done.")
 
 	done <- copyReposResult{nil, repos}
 }
