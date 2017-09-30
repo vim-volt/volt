@@ -40,7 +40,7 @@ func HomeDir() string {
 		return home
 	}
 
-	home = os.Getenv("APPDATA") // windows
+	home = os.Getenv("USERPROFILE") // windows
 	if home != "" {
 		return home
 	}
@@ -115,6 +115,54 @@ func VimVoltDir() string {
 
 func VimVoltStartDir() string {
 	return filepath.Join(VimDir(), "pack", "volt", "start")
+}
+
+func LookUpVimrcOrGvimrc() []string {
+	return append(LookUpVimrc(), LookUpGvimrc()...)
+}
+
+func LookUpVimrc() []string {
+	var vimrcPaths []string
+	if runtime.GOOS == "windows" {
+		vimrcPaths = []string{
+			filepath.Join(HomeDir(), "_vimrc"),
+			filepath.Join(HomeDir(), "vimfiles", "vimrc"),
+		}
+	} else {
+		vimrcPaths = []string{
+			filepath.Join(HomeDir(), ".vimrc"),
+			filepath.Join(HomeDir(), ".vim", "vimrc"),
+		}
+	}
+	rclist := make([]string, 0, len(vimrcPaths))
+	for i := range vimrcPaths {
+		if Exists(vimrcPaths[i]) {
+			rclist = append(rclist, vimrcPaths[i])
+		}
+	}
+	return rclist
+}
+
+func LookUpGvimrc() []string {
+	var gvimrcPaths []string
+	if runtime.GOOS == "windows" {
+		gvimrcPaths = []string{
+			filepath.Join(HomeDir(), "_gvimrc"),
+			filepath.Join(HomeDir(), "vimfiles", "gvimrc"),
+		}
+	} else {
+		gvimrcPaths = []string{
+			filepath.Join(HomeDir(), ".gvimrc"),
+			filepath.Join(HomeDir(), ".vim", "gvimrc"),
+		}
+	}
+	rclist := make([]string, 0, len(gvimrcPaths))
+	for i := range gvimrcPaths {
+		if Exists(gvimrcPaths[i]) {
+			rclist = append(rclist, gvimrcPaths[i])
+		}
+	}
+	return rclist
 }
 
 func Exists(path string) bool {
