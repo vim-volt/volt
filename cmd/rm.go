@@ -88,7 +88,7 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 	// Remove system plugconf
 	logger.Info("Removing plugconf files ...")
 	plugConf := pathutil.SystemPlugConfOf(reposPath + ".vim")
-	if _, err := os.Stat(plugConf); !os.IsNotExist(err) {
+	if pathutil.Exists(plugConf) {
 		err = os.Remove(plugConf)
 		if err != nil {
 			return err
@@ -102,7 +102,7 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 	// Remove existing repository
 	fullpath := pathutil.FullReposPathOf(reposPath)
 	logger.Info("Removing " + fullpath + " ...")
-	if _, err = os.Stat(fullpath); !os.IsNotExist(err) {
+	if pathutil.Exists(fullpath) {
 		err = os.RemoveAll(fullpath)
 		if err != nil {
 			return err

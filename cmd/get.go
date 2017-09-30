@@ -70,7 +70,7 @@ func Get(args []string) int {
 	var updatedLockJSON bool
 	var results []string
 	for _, reposPath := range reposPathList {
-		if flags.upgrade && cmd.pathExists(pathutil.FullReposPathOf(reposPath)) {
+		if flags.upgrade && pathutil.Exists(pathutil.FullReposPathOf(reposPath)) {
 			// Upgrade plugin
 			err = cmd.upgradePlugin(reposPath, flags)
 			if err != git.NoErrAlreadyUpToDate && err != nil {
@@ -195,11 +195,6 @@ func (getCmd) getReposPathList(flags *getFlags, args []string, lockJSON *lockjso
 	return reposPathList, nil
 }
 
-func (getCmd) pathExists(fullpath string) bool {
-	_, err := os.Stat(fullpath)
-	return !os.IsNotExist(err)
-}
-
 func (cmd getCmd) upgradePlugin(reposPath string, flags *getFlags) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 
@@ -223,7 +218,7 @@ func (cmd getCmd) upgradePlugin(reposPath string, flags *getFlags) error {
 
 func (cmd getCmd) installPlugin(reposPath string, flags *getFlags) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
-	if cmd.pathExists(fullpath) {
+	if pathutil.Exists(fullpath) {
 		return errors.New("repository exists")
 	}
 

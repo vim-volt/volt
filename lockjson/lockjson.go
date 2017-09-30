@@ -69,7 +69,7 @@ func InitialLockJSON() *LockJSON {
 func Read() (*LockJSON, error) {
 	// Return initial lock.json struct if lockfile does not exist
 	lockfile := pathutil.LockJSON()
-	if _, err := os.Stat(lockfile); os.IsNotExist(err) {
+	if !pathutil.Exists(lockfile) {
 		return InitialLockJSON(), nil
 	}
 
@@ -246,7 +246,7 @@ func (lockJSON *LockJSON) Write() error {
 
 	// Mkdir all if lock.json's directory does not exist
 	lockfile := pathutil.LockJSON()
-	if _, err := os.Stat(filepath.Dir(lockfile)); os.IsNotExist(err) {
+	if !pathutil.Exists(filepath.Dir(lockfile)) {
 		err = os.MkdirAll(filepath.Dir(lockfile), 0755)
 		if err != nil {
 			return err

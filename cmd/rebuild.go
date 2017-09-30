@@ -74,7 +74,7 @@ func (cmd *rebuildCmd) doRebuild() error {
 
 	// Remove start dir
 	var removeDone <-chan error
-	if _, err := os.Stat(startDir); !os.IsNotExist(err) {
+	if pathutil.Exists(startDir) {
 		var err error
 		removeDone, err = cmd.removeStartDir(startDir)
 		if err != nil {
@@ -126,7 +126,7 @@ func (cmd *rebuildCmd) doRebuild() error {
 }
 
 func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string) error {
-	if _, err := os.Stat(dst); !os.IsNotExist(err) {
+	if pathutil.Exists(dst) {
 		// Return error if the magic comment does not exist
 		err := cmd.checkMagicComment(dst)
 		if err != nil {
@@ -136,13 +136,13 @@ func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string) err
 
 	// Remove destination (~/.vim/vimrc or ~/.vim/gvimrc)
 	os.Remove(dst)
-	if _, err := os.Stat(dst); !os.IsNotExist(err) {
+	if pathutil.Exists(dst) {
 		return errors.New("failed to remove " + dst)
 	}
 
 	// Skip if rc file does not exist
 	src := pathutil.RCFileOf(profileName, srcRCFileName)
-	if _, err := os.Stat(src); os.IsNotExist(err) {
+	if !pathutil.Exists(src) {
 		return nil
 	}
 

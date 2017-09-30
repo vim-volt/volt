@@ -71,12 +71,12 @@ Options`)
 
 func (cmd *addCmd) doAdd(from, reposPath string) error {
 	// Check from and destination (full path of repos path) path
-	if _, err := os.Stat(from); os.IsNotExist(err) {
+	if !pathutil.Exists(from) {
 		return errors.New("no such a directory: " + from)
 	}
 
 	dst := pathutil.FullReposPathOf(reposPath)
-	if _, err := os.Stat(dst); !os.IsNotExist(err) {
+	if pathutil.Exists(dst) {
 		return errors.New("the repository already exists: " + reposPath)
 	}
 
@@ -138,10 +138,10 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 }
 
 func (*addCmd) detectReposType(fullpath string) (lockjson.ReposType, error) {
-	if _, err := os.Stat(fullpath); os.IsNotExist(err) {
+	if !pathutil.Exists(fullpath) {
 		return "", errors.New("no such a directory: " + fullpath)
 	}
-	if _, err := os.Stat(filepath.Join(fullpath, ".git")); !os.IsNotExist(err) {
+	if pathutil.Exists(filepath.Join(fullpath, ".git")) {
 		return lockjson.ReposGitType, nil
 	}
 	return lockjson.ReposStaticType, nil
