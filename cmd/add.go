@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/vim-volt/go-volt/copyutil"
+	"github.com/vim-volt/go-volt/fileutil"
 	"github.com/vim-volt/go-volt/lockjson"
 	"github.com/vim-volt/go-volt/logger"
 	"github.com/vim-volt/go-volt/pathutil"
@@ -97,7 +97,7 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 	logger.Infof("Adding '%s' as '%s' ...", from, reposPath)
 
 	// Copy directory from to dst
-	err = copyutil.CopyDir(from, dst)
+	err = fileutil.CopyDir(from, dst)
 	if err != nil {
 		return err
 	}

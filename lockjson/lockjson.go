@@ -87,7 +87,7 @@ func Read() (*LockJSON, error) {
 	// Validate lock.json
 	err = validate(&lockJSON)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("validation failed: lock.json: " + err.Error())
 	}
 
 	return &lockJSON, nil

@@ -1,17 +1,16 @@
 package cmd
 
 import (
-	"crypto/rand"
-	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
+	"time"
 
-	"github.com/vim-volt/go-volt/copyutil"
+	"github.com/vim-volt/go-volt/fileutil"
 	"github.com/vim-volt/go-volt/lockjson"
 	"github.com/vim-volt/go-volt/logger"
 	"github.com/vim-volt/go-volt/pathutil"
@@ -43,6 +42,108 @@ func Rebuild(args []string) int {
 	return 0
 }
 
+type buildInfoType struct {
+	Repos reposList `json:"repos"`
+}
+
+type reposList []repos
+
+type repos struct {
+	Type    reposType `json:"type"`
+	Path    string    `json:"path"`
+	Version string    `json:"version"`
+	Files   []file    `json:"files"`
+}
+
+type reposType string
+
+const (
+	reposGitType    reposType = "git"
+	reposStaticType reposType = "static"
+	reposSystemType reposType = "system"
+)
+
+type file struct {
+	Path    string `json:"path"`
+	Version string `json:"version"`
+}
+
+func (cmd *rebuildCmd) readBuildInfo() (*buildInfoType, error) {
+	// Return initial build-info.json struct
+	// if the file does not exist
+	file := pathutil.BuildInfoJSON()
+	if !pathutil.Exists(file) {
+		return &buildInfoType{}, nil
+	}
+
+	// Read build-info.json
+	bytes, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+	var buildInfo buildInfoType
+	err = json.Unmarshal(bytes, &buildInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate build-info.json
+	err = buildInfo.validate()
+	if err != nil {
+		return nil, errors.New("validation failed: build-info.json: " + err.Error())
+	}
+
+	return &buildInfo, nil
+}
+
+func (buildInfo *buildInfoType) write() error {
+	// Validate build-info.json
+	err := buildInfo.validate()
+	if err != nil {
+		return errors.New("validation failed: build-info.json: " + err.Error())
+	}
+
+	// Write to build-info.json
+	bytes, err := json.MarshalIndent(buildInfo, "", "  ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(pathutil.BuildInfoJSON(), bytes, 0644)
+}
+
+func (buildInfo *buildInfoType) validate() error {
+	// Validate if repos do not have duplicate repository
+	dupRepos := make(map[string]bool, len(buildInfo.Repos))
+	for i := range buildInfo.Repos {
+		r := &buildInfo.Repos[i]
+		if _, exists := dupRepos[r.Path]; exists {
+			return errors.New("duplicate repos: " + r.Path)
+		}
+		dupRepos[r.Path] = true
+
+		// Validate if files do not have duplicate repository
+		dupFiles := make(map[string]bool, len(r.Files))
+		for j := range r.Files {
+			f := &r.Files[j]
+			if _, exists := dupFiles[f.Path]; exists {
+				return errors.New(r.Path + ": duplicate files: " + f.Path)
+			}
+			dupFiles[f.Path] = true
+		}
+	}
+	return nil
+}
+
+func (reposList *reposList) findByReposPath(reposPath string) *repos {
+	for i := range *reposList {
+		repos := &(*reposList)[i]
+		if repos.Path == reposPath {
+			return repos
+		}
+	}
+	return nil
+}
+
 func (cmd *rebuildCmd) doRebuild() error {
 	vimDir := pathutil.VimDir()
 	startDir := pathutil.VimVoltStartDir()
@@ -59,12 +160,26 @@ func (cmd *rebuildCmd) doRebuild() error {
 		return err
 	}
 
+	// Exit with an error if vimrc or gvimrc without magic comment exists
 	for _, file := range pathutil.LookUpVimrcOrGvimrc() {
 		err = cmd.shouldHaveMagicComment(file)
 		// If the file does not have magic comment
 		if err != nil {
 			return errors.New("already exists user vimrc or gvimrc: " + err.Error())
 		}
+	}
+
+	// Read ~/.vim/pack/volt/start/build-info.json
+	buildInfo, err := cmd.readBuildInfo()
+	if err != nil {
+		return err
+	}
+
+	// Put repos into map to be able to search with O(1)
+	buildReposMap := make(map[string]*repos, len(buildInfo.Repos))
+	for i := range buildInfo.Repos {
+		repos := &buildInfo.Repos[i]
+		buildReposMap[repos.Path] = repos
 	}
 
 	logger.Info("Rebuilding " + startDir + " directory ...")
@@ -80,29 +195,30 @@ func (cmd *rebuildCmd) doRebuild() error {
 		return err
 	}
 
-	// Remove start dir
-	var removeDone <-chan error
-	if pathutil.Exists(startDir) {
-		var err error
-		removeDone, err = cmd.removeStartDir(startDir)
-		if err != nil {
-			return err
-		}
-	}
-	err = os.MkdirAll(startDir, 0755)
-	if err != nil {
-		return err
+	// Mkdir start dir
+	os.MkdirAll(startDir, 0755)
+	if !pathutil.Exists(startDir) {
+		return errors.New("could not create " + startDir)
 	}
 
 	logger.Info("Installing all repositories files ...")
 
 	// Copy all repositories files to startDir
 	copyDone := make(chan copyReposResult, len(reposList))
+	copyCount := 0
 	for i := range reposList {
 		if reposList[i].Type == lockjson.ReposGitType {
-			go cmd.copyGitRepos(&reposList[i], startDir, copyDone)
+			buildRepos, exists := buildReposMap[reposList[i].Path]
+			if !exists || cmd.hasChangedGitRepos(&reposList[i], buildRepos) {
+				go cmd.updateGitRepos(&reposList[i], startDir, copyDone)
+				copyCount++
+			}
 		} else if reposList[i].Type == lockjson.ReposStaticType {
-			go cmd.copyStaticRepos(&reposList[i], startDir, copyDone)
+			buildRepos, exists := buildReposMap[reposList[i].Path]
+			if !exists || cmd.hasChangedStaticRepos(&reposList[i], buildRepos, startDir) {
+				go cmd.updateStaticRepos(&reposList[i], startDir, copyDone)
+				copyCount++
+			}
 		} else {
 			copyDone <- copyReposResult{
 				errors.New("invalid repository type: " + string(reposList[i].Type)),
@@ -111,23 +227,54 @@ func (cmd *rebuildCmd) doRebuild() error {
 		}
 	}
 
-	// Wait remove
-	var removeErr error
-	if removeDone != nil {
-		removeErr = <-removeDone
-	}
-
-	// Wait copy
-	for i := 0; i < len(reposList); i++ {
+	// Wait copy. construct buildInfo from the results
+	modified := false
+	for i := 0; i < copyCount; i++ {
 		result := <-copyDone
 		if result.err != nil {
 			return errors.New("failed to copy repository '" + result.repos.Path + "': " + result.err.Error())
+		} else if result.repos.Type == lockjson.ReposGitType {
+			logger.Info("Installing git repository " + result.repos.Path + " ... Done.")
+			r := buildInfo.Repos.findByReposPath(result.repos.Path)
+			if r != nil {
+				r.Version = result.repos.Version
+			} else {
+				buildInfo.Repos = append(
+					buildInfo.Repos,
+					repos{
+						Type:    reposGitType,
+						Path:    result.repos.Path,
+						Version: result.repos.Version,
+					},
+				)
+			}
+			modified = true
+		} else if result.repos.Type == lockjson.ReposStaticType {
+			logger.Info("Installing static directory " + result.repos.Path + " ... Done.")
+			r := buildInfo.Repos.findByReposPath(result.repos.Path)
+			if r != nil {
+				r.Version = time.Now().Format(time.RFC3339)
+			} else {
+				buildInfo.Repos = append(
+					buildInfo.Repos,
+					repos{
+						Type:    reposStaticType,
+						Path:    result.repos.Path,
+						Version: time.Now().Format(time.RFC3339),
+					},
+				)
+			}
+			modified = true
 		}
 	}
 
-	// Show remove error
-	if removeErr != nil {
-		return errors.New("failed to remove '" + startDir + "': " + removeErr.Error())
+	// Write to build-info.json if modified
+	if modified {
+		err = buildInfo.write()
+		if err != nil {
+			return err
+		}
+		logger.Info("Written build-info.json")
 	}
 
 	return nil
@@ -204,31 +351,6 @@ func (*rebuildCmd) copyFileWithMagicComment(src, dst string) error {
 	return err
 }
 
-func (cmd *rebuildCmd) removeStartDir(startDir string) (<-chan error, error) {
-	// Rename startDir to {startDir}.bak
-	oldDir := startDir + ".old" + cmd.randomString()
-	err := os.Rename(startDir, oldDir)
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Info("Removing " + startDir + " ...")
-
-	// Remove files in parallel
-	done := make(chan error, 1)
-	go func() {
-		err = os.RemoveAll(oldDir)
-		done <- err
-	}()
-	return done, nil
-}
-
-func (*rebuildCmd) randomString() string {
-	var n uint64
-	binary.Read(rand.Reader, binary.LittleEndian, &n)
-	return strconv.FormatUint(n, 36)
-}
-
 type copyReposResult struct {
 	err   error
 	repos *lockjson.Repos
@@ -246,10 +368,44 @@ func (*rebuildCmd) getActiveProfileRepos(lockJSON *lockjson.LockJSON) ([]lockjso
 	return lockJSON.GetReposListByProfile(profile)
 }
 
-func (cmd *rebuildCmd) copyGitRepos(repos *lockjson.Repos, startDir string, done chan copyReposResult) {
+func (*rebuildCmd) getLatestModTime(path string) (time.Time, error) {
+	mtime := time.Unix(0, 0)
+	err := fileutil.Traverse(path, func(fi os.FileInfo) {
+		t := fi.ModTime()
+		if mtime.Before(t) {
+			mtime = t
+		}
+	})
+	if err != nil {
+		return time.Now(), errors.New("failed to readdir: " + err.Error())
+	}
+	return mtime, nil
+}
+
+func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *repos) bool {
+	if repos.Version != buildRepos.Version {
+		// repository has changed, do copy
+		return true
+	}
+	return false
+}
+
+// Remove ~/.vim/volt/start/{repos} and copy from ~/volt/repos/{repos}
+func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, startDir string, done chan copyReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := filepath.Join(startDir, cmd.encodeReposPath(repos.Path))
 
+	// Remove ~/.vim/volt/start/{repos}
+	err := os.RemoveAll(dst)
+	if err != nil {
+		done <- copyReposResult{
+			errors.New("failed to remove repository: " + err.Error()),
+			repos,
+		}
+		return
+	}
+
+	// Open ~/volt/repos/{repos}
 	r, err := git.PlainOpen(src)
 	if err != nil {
 		done <- copyReposResult{
@@ -259,6 +415,7 @@ func (cmd *rebuildCmd) copyGitRepos(repos *lockjson.Repos, startDir string, done
 		return
 	}
 
+	// Get locked commit hash
 	commit := plumbing.NewHash(repos.Version)
 	commitObj, err := r.CommitObject(commit)
 	if err != nil {
@@ -269,6 +426,7 @@ func (cmd *rebuildCmd) copyGitRepos(repos *lockjson.Repos, startDir string, done
 		return
 	}
 
+	// Get tree hash of commit hash
 	tree, err := r.TreeObject(commitObj.TreeHash)
 	if err != nil {
 		done <- copyReposResult{
@@ -278,6 +436,7 @@ func (cmd *rebuildCmd) copyGitRepos(repos *lockjson.Repos, startDir string, done
 		return
 	}
 
+	// Copy files
 	err = tree.Files().ForEach(func(file *object.File) error {
 		osMode, err := file.Mode.ToOSFileMode()
 		if err != nil {
@@ -300,8 +459,6 @@ func (cmd *rebuildCmd) copyGitRepos(repos *lockjson.Repos, startDir string, done
 		return
 	}
 
-	logger.Info("Installing git repository " + repos.Path + " ... Done.")
-
 	done <- copyReposResult{nil, repos}
 }
 
@@ -309,11 +466,48 @@ func (*rebuildCmd) encodeReposPath(reposPath string) string {
 	return strings.NewReplacer("_", "__", "/", "_").Replace(reposPath)
 }
 
-func (cmd *rebuildCmd) copyStaticRepos(repos *lockjson.Repos, startDir string, done chan copyReposResult) {
+func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *repos, startDir string) bool {
+	src := pathutil.FullReposPathOf(repos.Path)
+
+	// Get latest mtime of src
+	srcModTime, err := cmd.getLatestModTime(src)
+	if err != nil {
+		// failed to readdir, do copy again
+		return true
+	}
+
+	if buildRepos.Version == "" {
+		// not found mtime, do copy again
+		return true
+	}
+
+	// Get latest mtime of dst from build-info.json
+	dstModTime, err := time.Parse(time.RFC3339, buildRepos.Version)
+	if err != nil {
+		// failed to parse datetime, do copy again
+		return true
+	}
+
+	return dstModTime.Before(srcModTime)
+}
+
+// Remove ~/.vim/volt/start/{repos} and copy from ~/volt/repos/{repos}
+func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, startDir string, done chan copyReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := filepath.Join(startDir, cmd.encodeReposPath(repos.Path))
 
-	err := copyutil.CopyDir(src, dst)
+	// Remove ~/.vim/volt/start/{repos}
+	err := os.RemoveAll(dst)
+	if err != nil {
+		done <- copyReposResult{
+			errors.New("failed to remove repository: " + err.Error()),
+			repos,
+		}
+		return
+	}
+
+	// Copy ~/volt/repos/{repos} to ~/.vim/volt/start/{repos}
+	err = fileutil.CopyDir(src, dst)
 	if err != nil {
 		done <- copyReposResult{
 			errors.New("failed to copy static directory: " + err.Error()),
@@ -321,8 +515,6 @@ func (cmd *rebuildCmd) copyStaticRepos(repos *lockjson.Repos, startDir string, d
 		}
 		return
 	}
-
-	logger.Info("Installing static directory " + repos.Path + " ... Done.")
 
 	done <- copyReposResult{nil, repos}
 }

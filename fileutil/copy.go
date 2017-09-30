@@ -1,4 +1,4 @@
-package copyutil
+package fileutil
 
 import (
 	"fmt"

@@ -117,6 +117,10 @@ func VimVoltStartDir() string {
 	return filepath.Join(VimDir(), "pack", "volt", "start")
 }
 
+func BuildInfoJSON() string {
+	return filepath.Join(VimVoltStartDir(), "build-info.json")
+}
+
 func LookUpVimrcOrGvimrc() []string {
 	return append(LookUpVimrc(), LookUpGvimrc()...)
 }
