@@ -3,6 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
+	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -23,23 +25,59 @@ import (
 
 type rebuildCmd struct{}
 
+type rebuildFlags struct {
+	full bool
+}
+
 func Rebuild(args []string) int {
+	cmd := rebuildCmd{}
+
+	// Parse args
+	flags, err := cmd.parseArgs(args)
+	if err != nil {
+		logger.Error("Failed to parse args: " + err.Error())
+		return 10
+	}
+
 	// Begin transaction
-	err := transaction.Create()
+	err = transaction.Create()
 	if err != nil {
 		logger.Error("Failed to begin transaction:", err.Error())
-		return 10
+		return 11
 	}
 	defer transaction.Remove()
 
-	cmd := rebuildCmd{}
-	err = cmd.doRebuild()
+	err = cmd.doRebuild(flags.full)
 	if err != nil {
 		logger.Error("Failed to rebuild:", err.Error())
-		return 11
+		return 12
 	}
 
 	return 0
+}
+
+func (rebuildCmd) parseArgs(args []string) (*rebuildFlags, error) {
+	var flags rebuildFlags
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
+	fs.Usage = func() {
+		fmt.Println(`
+Usage
+  volt rebuild [-help] [-full]
+
+Description
+  Rebuild ~/.vim/pack/volt/ directory.
+  If -full was given, remove and update all repositories again.
+  If -full was not given, remove and update only updated repositories.
+
+Options`)
+		fs.PrintDefaults()
+		fmt.Println()
+	}
+	fs.BoolVar(&flags.full, "full", false, "full rebuild")
+	fs.Parse(args)
+
+	return &flags, nil
 }
 
 type buildInfoType struct {
@@ -144,7 +182,7 @@ func (reposList *reposList) findByReposPath(reposPath string) *repos {
 	return nil
 }
 
-func (cmd *rebuildCmd) doRebuild() error {
+func (cmd *rebuildCmd) doRebuild(full bool) error {
 	vimDir := pathutil.VimDir()
 	startDir := pathutil.VimVoltStartDir()
 
@@ -169,10 +207,18 @@ func (cmd *rebuildCmd) doRebuild() error {
 		}
 	}
 
-	// Read ~/.vim/pack/volt/start/build-info.json
-	buildInfo, err := cmd.readBuildInfo()
-	if err != nil {
-		return err
+	var buildInfo *buildInfoType
+	if full {
+		// Use empty build-info.json struct
+		// if the -full option was given
+		buildInfo = &buildInfoType{}
+	} else {
+		// Read ~/.vim/pack/volt/start/build-info.json
+		var err error
+		buildInfo, err = cmd.readBuildInfo()
+		if err != nil {
+			return err
+		}
 	}
 
 	// Put repos into map to be able to search with O(1)

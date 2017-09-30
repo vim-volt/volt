@@ -125,7 +125,7 @@ func Get(args []string) int {
 	}
 
 	// Rebuild start dir
-	err = (&rebuildCmd{}).doRebuild()
+	err = (&rebuildCmd{}).doRebuild(false)
 	if err != nil {
 		logger.Error("Could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
 		return 20

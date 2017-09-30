@@ -94,6 +94,9 @@ Command
   profile rm {name} {repository} [{repository2} ...]
     Remove one or more repositories to profile
 
+  rebuild [-full]
+    Rebuild ~/.vim/pack/volt/ directory
+
   version
     Show volt command version
 `)

@@ -129,7 +129,7 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 	}
 
 	// Rebuild start dir
-	err = (&rebuildCmd{}).doRebuild()
+	err = (&rebuildCmd{}).doRebuild(false)
 	if err != nil {
 		return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
 	}

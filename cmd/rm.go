@@ -32,7 +32,7 @@ func Rm(args []string) int {
 	}
 
 	// Rebuild start dir
-	err = (&rebuildCmd{}).doRebuild()
+	err = (&rebuildCmd{}).doRebuild(false)
 	if err != nil {
 		logger.Error("Could not rebuild " + pathutil.VimVoltStartDir() + ": " + err.Error())
 		return 12

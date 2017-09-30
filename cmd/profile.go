@@ -167,7 +167,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	logger.Info("Set active profile to '" + profileName + "'")
 
 	// Rebuild start dir
-	err = (&rebuildCmd{}).doRebuild()
+	err = (&rebuildCmd{}).doRebuild(false)
 	if err != nil {
 		return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
@@ -339,7 +339,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 
 	if lockJSON.ActiveProfile == profileName {
 		// Rebuild start dir
-		err = (&rebuildCmd{}).doRebuild()
+		err = (&rebuildCmd{}).doRebuild(false)
 		if err != nil {
 			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
 		}
@@ -372,7 +372,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 
 	if lockJSON.ActiveProfile == profileName {
 		// Rebuild start dir
-		err = (&rebuildCmd{}).doRebuild()
+		err = (&rebuildCmd{}).doRebuild(false)
 		if err != nil {
 			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
 		}
