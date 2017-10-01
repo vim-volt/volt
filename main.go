@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/vim-volt/go-volt/cmd"
-	"github.com/vim-volt/go-volt/logger"
+	"github.com/vim-volt/volt/cmd"
+	"github.com/vim-volt/volt/logger"
 )
 
 func main() {

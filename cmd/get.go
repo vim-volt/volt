@@ -9,10 +9,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/vim-volt/go-volt/lockjson"
-	"github.com/vim-volt/go-volt/logger"
-	"github.com/vim-volt/go-volt/pathutil"
-	"github.com/vim-volt/go-volt/transaction"
+	"github.com/vim-volt/volt/lockjson"
+	"github.com/vim-volt/volt/logger"
+	"github.com/vim-volt/volt/pathutil"
+	"github.com/vim-volt/volt/transaction"
 
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"

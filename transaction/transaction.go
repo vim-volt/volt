@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/vim-volt/go-volt/logger"
-	"github.com/vim-volt/go-volt/pathutil"
+	"github.com/vim-volt/volt/logger"
+	"github.com/vim-volt/volt/pathutil"
 )
 
 // Create $VOLTPATH/trx.lock file

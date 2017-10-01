@@ -7,11 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/vim-volt/go-volt/fileutil"
-	"github.com/vim-volt/go-volt/lockjson"
-	"github.com/vim-volt/go-volt/logger"
-	"github.com/vim-volt/go-volt/pathutil"
-	"github.com/vim-volt/go-volt/transaction"
+	"github.com/vim-volt/volt/fileutil"
+	"github.com/vim-volt/volt/lockjson"
+	"github.com/vim-volt/volt/logger"
+	"github.com/vim-volt/volt/pathutil"
+	"github.com/vim-volt/volt/transaction"
 )
 
 type addCmd struct{}

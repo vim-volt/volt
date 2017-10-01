@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/vim-volt/go-volt/pathutil"
+	"github.com/vim-volt/volt/pathutil"
 )
 
 type repos []Repos
