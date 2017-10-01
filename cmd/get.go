@@ -49,20 +49,81 @@ func Get(args []string) int {
 		return 12
 	}
 
+	err = cmd.doGet(reposPathList, flags, lockJSON)
+	if err != nil {
+		logger.Error(err.Error())
+		return 13
+	}
+
+	return 0
+}
+
+func (*getCmd) parseArgs(args []string) ([]string, *getFlags, error) {
+	var flags getFlags
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
+	fs.Usage = func() {
+		fmt.Println(`
+Usage
+  volt get [-help] [-l] [-u] [-v] [{repository} ...]
+
+Description
+  Install / Upgrade vim plugin, and system plugconf files from
+  https://github.com/vim-volt/plugconf-templates
+
+Options`)
+		fs.PrintDefaults()
+		fmt.Println()
+	}
+	fs.BoolVar(&flags.lockJSON, "l", false, "from lock.json")
+	fs.BoolVar(&flags.upgrade, "u", false, "upgrade installed vim plugin")
+	fs.BoolVar(&flags.verbose, "v", false, "show git-clone output")
+	fs.Parse(args)
+
+	if !flags.lockJSON && len(fs.Args()) == 0 {
+		fs.Usage()
+		return nil, nil, errors.New("repository was not given")
+	}
+
+	if flags.lockJSON && !flags.upgrade {
+		fs.Usage()
+		return nil, nil, errors.New("-l must be used with -u")
+	}
+
+	return fs.Args(), &flags, nil
+}
+
+func (*getCmd) getReposPathList(flags *getFlags, args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
+	reposPathList := make([]string, 0, 32)
+	if flags.lockJSON {
+		for _, repos := range lockJSON.Repos {
+			reposPathList = append(reposPathList, repos.Path)
+		}
+	} else {
+		for _, arg := range args {
+			reposPath, err := pathutil.NormalizeRepos(arg)
+			if err != nil {
+				return nil, err
+			}
+			reposPathList = append(reposPathList, reposPath)
+		}
+	}
+	return reposPathList, nil
+}
+
+func (cmd *getCmd) doGet(reposPathList []string, flags *getFlags, lockJSON *lockjson.LockJSON) error {
 	// Find matching profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.ActiveProfile)
 	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates if the matching profile exists
-		logger.Error(err.Error())
-		return 15
+		return err
 	}
 
 	// Begin transaction
 	err = transaction.Create()
 	if err != nil {
-		logger.Error("Failed to begin transaction: " + err.Error())
-		return 16
+		return errors.New("failed to begin transaction: " + err.Error())
 	}
 	defer transaction.Remove()
 	lockJSON.TrxID++
@@ -119,16 +180,14 @@ func Get(args []string) int {
 	if updatedLockJSON {
 		err = lockJSON.Write()
 		if err != nil {
-			logger.Error("Could not write to lock.json: " + err.Error())
-			return 19
+			return errors.New("could not write to lock.json: " + err.Error())
 		}
 	}
 
 	// Rebuild start dir
 	err = (&rebuildCmd{}).doRebuild(false)
 	if err != nil {
-		logger.Error("Could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
-		return 20
+		return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
 
 	// Show results
@@ -138,64 +197,10 @@ func Get(args []string) int {
 			fmt.Println(results[i])
 		}
 	}
-
-	return 0
+	return nil
 }
 
-func (getCmd) parseArgs(args []string) ([]string, *getFlags, error) {
-	var flags getFlags
-	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	fs.SetOutput(os.Stdout)
-	fs.Usage = func() {
-		fmt.Println(`
-Usage
-  volt get [-help] [-l] [-u] [-v] [{repository} ...]
-
-Description
-  Install / Upgrade vim plugin, and system plugconf files from
-  https://github.com/vim-volt/plugconf-templates
-
-Options`)
-		fs.PrintDefaults()
-		fmt.Println()
-	}
-	fs.BoolVar(&flags.lockJSON, "l", false, "from lock.json")
-	fs.BoolVar(&flags.upgrade, "u", false, "upgrade installed vim plugin")
-	fs.BoolVar(&flags.verbose, "v", false, "show git-clone output")
-	fs.Parse(args)
-
-	if !flags.lockJSON && len(fs.Args()) == 0 {
-		fs.Usage()
-		return nil, nil, errors.New("repository was not given")
-	}
-
-	if flags.lockJSON && !flags.upgrade {
-		fs.Usage()
-		return nil, nil, errors.New("-l must be used with -u")
-	}
-
-	return fs.Args(), &flags, nil
-}
-
-func (getCmd) getReposPathList(flags *getFlags, args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
-	reposPathList := make([]string, 0, 32)
-	if flags.lockJSON {
-		for _, repos := range lockJSON.Repos {
-			reposPathList = append(reposPathList, repos.Path)
-		}
-	} else {
-		for _, arg := range args {
-			reposPath, err := pathutil.NormalizeRepos(arg)
-			if err != nil {
-				return nil, err
-			}
-			reposPathList = append(reposPathList, reposPath)
-		}
-	}
-	return reposPathList, nil
-}
-
-func (cmd getCmd) upgradePlugin(reposPath string, flags *getFlags) error {
+func (cmd *getCmd) upgradePlugin(reposPath string, flags *getFlags) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 
 	logger.Info("Upgrading " + reposPath + " ...")
@@ -216,7 +221,7 @@ func (cmd getCmd) upgradePlugin(reposPath string, flags *getFlags) error {
 	})
 }
 
-func (cmd getCmd) installPlugin(reposPath string, flags *getFlags) error {
+func (cmd *getCmd) installPlugin(reposPath string, flags *getFlags) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 	if pathutil.Exists(fullpath) {
 		return errors.New("repository exists")
@@ -244,7 +249,7 @@ func (cmd getCmd) installPlugin(reposPath string, flags *getFlags) error {
 	return err
 }
 
-func (getCmd) installPlugConf(filename string) error {
+func (*getCmd) installPlugConf(filename string) error {
 	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + filename
 
 	res, err := http.Get(url)
@@ -272,7 +277,7 @@ func (getCmd) installPlugConf(filename string) error {
 	return nil
 }
 
-func (getCmd) getHEADHashString(reposPath string) (string, error) {
+func (*getCmd) getHEADHashString(reposPath string) (string, error) {
 	repos, err := git.PlainOpen(pathutil.FullReposPathOf(reposPath))
 	if err != nil {
 		return "", err
@@ -284,7 +289,7 @@ func (getCmd) getHEADHashString(reposPath string) (string, error) {
 	return head.Hash().String(), nil
 }
 
-func (getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) {
+func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) {
 	repos, err := lockJSON.Repos.FindByPath(reposPath)
 	if err != nil {
 		repos = nil
