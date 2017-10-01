@@ -41,7 +41,7 @@ func Rm(args []string) int {
 	return 0
 }
 
-func (rmCmd) parseArgs(args []string) (string, error) {
+func (*rmCmd) parseArgs(args []string) (string, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -70,7 +70,7 @@ Options`)
 	return reposPath, nil
 }
 
-func (cmd rmCmd) removeRepos(reposPath string) error {
+func (cmd *rmCmd) removeRepos(reposPath string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -131,7 +131,7 @@ func (cmd rmCmd) removeRepos(reposPath string) error {
 	return nil
 }
 
-func (cmd rmCmd) removeDirs(dir string) error {
+func (cmd *rmCmd) removeDirs(dir string) error {
 	// Remove trailing slashes
 	dir = strings.TrimRight(dir, "/")
 

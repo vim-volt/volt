@@ -39,7 +39,7 @@ func Enable(args []string) int {
 	return 0
 }
 
-func (enableCmd) parseArgs(args []string) ([]string, error) {
+func (*enableCmd) parseArgs(args []string) ([]string, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {

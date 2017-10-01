@@ -57,7 +57,7 @@ func Query(args []string) int {
 	return 0
 }
 
-func (queryCmd) parseArgs(args []string) ([]string, *queryFlags, error) {
+func (*queryCmd) parseArgs(args []string) ([]string, *queryFlags, error) {
 	var flags queryFlags
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
@@ -85,7 +85,7 @@ Options`)
 	return fs.Args(), &flags, nil
 }
 
-func (queryCmd) getReposPathList(flags *queryFlags, args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
+func (*queryCmd) getReposPathList(flags *queryFlags, args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
 	reposPathList := make([]string, 0, 32)
 	if flags.lockJSON {
 		for _, repos := range lockJSON.Repos {
@@ -102,7 +102,7 @@ func (queryCmd) getReposPathList(flags *queryFlags, args []string, lockJSON *loc
 	return reposPathList, nil
 }
 
-func (queryCmd) printReposList(reposList []lockjson.Repos, flags *queryFlags) error {
+func (*queryCmd) printReposList(reposList []lockjson.Repos, flags *queryFlags) error {
 	if flags.json {
 		bytes, err := json.Marshal(reposList)
 		if err != nil {

@@ -56,7 +56,7 @@ func Rebuild(args []string) int {
 	return 0
 }
 
-func (rebuildCmd) parseArgs(args []string) (*rebuildFlags, error) {
+func (*rebuildCmd) parseArgs(args []string) (*rebuildFlags, error) {
 	var flags rebuildFlags
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
