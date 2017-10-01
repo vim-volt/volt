@@ -102,7 +102,8 @@ func validate(lockJSON *LockJSON) error {
 
 	// Validate if duplicate repos[]/path exist
 	dup := make(map[string]bool, len(lockJSON.Repos))
-	for _, repos := range lockJSON.Repos {
+	for i := range lockJSON.Repos {
+		repos := &lockJSON.Repos[i]
 		if _, exists := dup[repos.Path]; exists {
 			return errors.New("duplicate repos '" + repos.Path + "'")
 		}
@@ -111,7 +112,8 @@ func validate(lockJSON *LockJSON) error {
 
 	// Validate if duplicate profiles[]/name exist
 	dup = make(map[string]bool, len(lockJSON.Profiles))
-	for _, profile := range lockJSON.Profiles {
+	for i := range lockJSON.Profiles {
+		profile := &lockJSON.Profiles[i]
 		if _, exists := dup[profile.Name]; exists {
 			return errors.New("duplicate profile '" + profile.Name + "'")
 		}
@@ -119,7 +121,8 @@ func validate(lockJSON *LockJSON) error {
 	}
 
 	// Validate if duplicate profiles[]/repos_path[] exist
-	for _, profile := range lockJSON.Profiles {
+	for i := range lockJSON.Profiles {
+		profile := &lockJSON.Profiles[i]
 		dup = make(map[string]bool, len(lockJSON.Profiles)*10)
 		for _, reposPath := range profile.ReposPath {
 			if _, exists := dup[reposPath]; exists {
@@ -131,7 +134,8 @@ func validate(lockJSON *LockJSON) error {
 
 	// Validate if active_profile exists in profiles[]/name
 	found := false
-	for _, profile := range lockJSON.Profiles {
+	for i := range lockJSON.Profiles {
+		profile := &lockJSON.Profiles[i]
 		if profile.Name == lockJSON.ActiveProfile {
 			found = true
 			break
@@ -142,11 +146,12 @@ func validate(lockJSON *LockJSON) error {
 	}
 
 	// Validate if profiles[]/repos_path[] exists in repos[]/path
-	for i, profile := range lockJSON.Profiles {
+	for i := range lockJSON.Profiles {
+		profile := &lockJSON.Profiles[i]
 		for j, reposPath := range profile.ReposPath {
 			found := false
-			for _, repos := range lockJSON.Repos {
-				if reposPath == repos.Path {
+			for k := range lockJSON.Repos {
+				if reposPath == lockJSON.Repos[k].Path {
 					found = true
 					break
 				}
@@ -161,7 +166,8 @@ func validate(lockJSON *LockJSON) error {
 
 	// Validate if repos[]/path exists on filesystem
 	// and is a directory
-	for i, repos := range lockJSON.Repos {
+	for i := range lockJSON.Repos {
+		repos := &lockJSON.Repos[i]
 		fullpath := pathutil.FullReposPathOf(repos.Path)
 		if file, err := os.Stat(fullpath); os.IsNotExist(err) {
 			return errors.New("'" + fullpath + "' (repos[" + strconv.Itoa(i) + "].path) doesn't exist on filesystem")
@@ -173,7 +179,8 @@ func validate(lockJSON *LockJSON) error {
 	// Validate if trx_id is equal or greater than repos[]/trx_id
 	index := -1
 	var max int64
-	for i, repos := range lockJSON.Repos {
+	for i := range lockJSON.Repos {
+		repos := &lockJSON.Repos[i]
 		if max < repos.TrxID {
 			index = i
 			max = repos.TrxID
@@ -197,7 +204,8 @@ func validateMissing(lockJSON *LockJSON) error {
 	if lockJSON.Repos == nil {
 		return errors.New("missing: repos")
 	}
-	for i, repos := range lockJSON.Repos {
+	for i := range lockJSON.Repos {
+		repos := &lockJSON.Repos[i]
 		if repos.Type == "" {
 			return errors.New("missing: repos[" + strconv.Itoa(i) + "].type")
 		}
@@ -221,7 +229,8 @@ func validateMissing(lockJSON *LockJSON) error {
 	if lockJSON.Profiles == nil {
 		return errors.New("missing: profiles")
 	}
-	for i, profile := range lockJSON.Profiles {
+	for i := range lockJSON.Profiles {
+		profile := &lockJSON.Profiles[i]
 		if profile.Name == "" {
 			return errors.New("missing: profile[" + strconv.Itoa(i) + "].name")
 		}
@@ -262,8 +271,8 @@ func (lockJSON *LockJSON) Write() error {
 }
 
 func (profs *profiles) FindByName(name string) (*Profile, error) {
-	for i, p := range *profs {
-		if p.Name == name {
+	for i := range *profs {
+		if (*profs)[i].Name == name {
 			return &(*profs)[i], nil
 		}
 	}
@@ -271,8 +280,8 @@ func (profs *profiles) FindByName(name string) (*Profile, error) {
 }
 
 func (profs *profiles) FindIndexByName(name string) int {
-	for i, p := range *profs {
-		if p.Name == name {
+	for i := range *profs {
+		if (*profs)[i].Name == name {
 			return i
 		}
 	}
@@ -295,9 +304,10 @@ func (profs *profiles) RemoveAllReposPath(reposPath string) error {
 }
 
 func (reposList *repos) FindByPath(reposPath string) (*Repos, error) {
-	for i, repos := range *reposList {
+	for i := range *reposList {
+		repos := &(*reposList)[i]
 		if repos.Path == reposPath {
-			return &(*reposList)[i], nil
+			return repos, nil
 		}
 	}
 	return nil, errors.New("repos '" + reposPath + "' does not exist")
