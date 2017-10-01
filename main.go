@@ -59,6 +59,12 @@ Command
   rm {repository}
     Uninstall vim plugin and system plugconf files
 
+  add {repository}
+    Add local {repository} to lock.json
+
+  add {from} {repository}
+    Add local {from} repository as {repository} to lock.json
+
   query [-j] [-l] [{repository}]
     Output queried vim plugin info
 
