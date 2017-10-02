@@ -303,6 +303,11 @@ func (profs *profiles) RemoveAllReposPath(reposPath string) error {
 	return errors.New("no matching profiles[]/repos_path[]: " + reposPath)
 }
 
+func (reposList *repos) Contains(reposPath string) bool {
+	_, err := reposList.FindByPath(reposPath)
+	return err == nil
+}
+
 func (reposList *repos) FindByPath(reposPath string) (*Repos, error) {
 	for i := range *reposList {
 		repos := &(*reposList)[i]

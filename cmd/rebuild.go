@@ -182,6 +182,16 @@ func (reposList *reposList) findByReposPath(reposPath string) *repos {
 	return nil
 }
 
+func (reposList *reposList) removeAllByReposPath(reposPath string) {
+	for i := range *reposList {
+		repos := &(*reposList)[i]
+		if repos.Path == reposPath {
+			*reposList = append((*reposList)[:i], (*reposList)[i+1:]...)
+			break
+		}
+	}
+}
+
 func (cmd *rebuildCmd) doRebuild(full bool) error {
 	vimDir := pathutil.VimDir()
 	startDir := pathutil.VimVoltStartDir()
@@ -207,28 +217,28 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		}
 	}
 
-	var buildInfo *buildInfoType
-	if full {
-		// Use empty build-info.json struct
-		// if the -full option was given
-		buildInfo = &buildInfoType{}
-	} else {
-		// Read ~/.vim/pack/volt/start/build-info.json
-		var err error
-		buildInfo, err = cmd.readBuildInfo()
-		if err != nil {
-			return err
-		}
+	// Read ~/.vim/pack/volt/start/build-info.json
+	buildInfo, err := cmd.readBuildInfo()
+	if err != nil {
+		return err
 	}
 
 	// Put repos into map to be able to search with O(1)
-	buildReposMap := make(map[string]*repos, len(buildInfo.Repos))
-	for i := range buildInfo.Repos {
-		repos := &buildInfo.Repos[i]
-		buildReposMap[repos.Path] = repos
+	var buildReposMap map[string]*repos
+	if full {
+		// Use empty build-info.json map
+		// if the -full option was given
+		buildReposMap = make(map[string]*repos)
+		logger.Info("Full rebuilding " + startDir + " directory ...")
+	} else {
+		buildReposMap = make(map[string]*repos, len(buildInfo.Repos))
+		for i := range buildInfo.Repos {
+			repos := &buildInfo.Repos[i]
+			buildReposMap[repos.Path] = repos
+		}
+		logger.Info("Rebuilding " + startDir + " directory ...")
 	}
 
-	logger.Info("Rebuilding " + startDir + " directory ...")
 	logger.Info("Installing vimrc and gvimrc ...")
 
 	// Install vimrc and gvimrc
@@ -250,7 +260,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	logger.Info("Installing all repositories files ...")
 
 	// Copy all repositories files to startDir
-	copyDone := make(chan copyReposResult, len(reposList))
+	copyDone := make(chan actionReposResult, len(reposList))
 	copyCount := 0
 	for i := range reposList {
 		if reposList[i].Type == lockjson.ReposGitType {
@@ -266,11 +276,30 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 				copyCount++
 			}
 		} else {
-			copyDone <- copyReposResult{
+			copyDone <- actionReposResult{
 				errors.New("invalid repository type: " + string(reposList[i].Type)),
 				&reposList[i],
 			}
 		}
+	}
+
+	// Remove all repositories found in build-info.json, but not in lock.json
+	var removeList []repos
+	for i := range buildInfo.Repos {
+		if !lockJSON.Repos.Contains(buildInfo.Repos[i].Path) {
+			removeList = append(removeList, buildInfo.Repos[i])
+		}
+	}
+	removeDone := make(chan actionReposResult, len(removeList))
+	for i := range removeList {
+		go func(repos *repos) {
+			err := os.RemoveAll(pathutil.FullReposPathOf(repos.Path))
+			logger.Info("Removing " + string(repos.Type) + " repository " + repos.Path + " ... Done.")
+			removeDone <- actionReposResult{
+				err,
+				&lockjson.Repos{Path: repos.Path},
+			}
+		}(&removeList[i])
 	}
 
 	// Wait copy. construct buildInfo from the results
@@ -310,6 +339,17 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 					},
 				)
 			}
+			modified = true
+		}
+	}
+
+	// Wait remove
+	for i := 0; i < len(removeList); i++ {
+		result := <-removeDone
+		if result.err != nil {
+			logger.Error("Failed to remove " + result.repos.Path + ": " + result.err.Error())
+		} else {
+			buildInfo.Repos.removeAllByReposPath(result.repos.Path)
 			modified = true
 		}
 	}
@@ -397,7 +437,7 @@ func (*rebuildCmd) copyFileWithMagicComment(src, dst string) error {
 	return err
 }
 
-type copyReposResult struct {
+type actionReposResult struct {
 	err   error
 	repos *lockjson.Repos
 }
@@ -437,14 +477,14 @@ func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *repos) 
 }
 
 // Remove ~/.vim/volt/start/{repos} and copy from ~/volt/repos/{repos}
-func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, startDir string, done chan copyReposResult) {
+func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, startDir string, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := filepath.Join(startDir, cmd.encodeReposPath(repos.Path))
 
 	// Remove ~/.vim/volt/start/{repos}
 	err := os.RemoveAll(dst)
 	if err != nil {
-		done <- copyReposResult{
+		done <- actionReposResult{
 			errors.New("failed to remove repository: " + err.Error()),
 			repos,
 		}
@@ -454,7 +494,7 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, startDir string, do
 	// Open ~/volt/repos/{repos}
 	r, err := git.PlainOpen(src)
 	if err != nil {
-		done <- copyReposResult{
+		done <- actionReposResult{
 			errors.New("failed to open repository: " + err.Error()),
 			repos,
 		}
@@ -465,7 +505,7 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, startDir string, do
 	commit := plumbing.NewHash(repos.Version)
 	commitObj, err := r.CommitObject(commit)
 	if err != nil {
-		done <- copyReposResult{
+		done <- actionReposResult{
 			errors.New("failed to get HEAD commit object: " + err.Error()),
 			repos,
 		}
@@ -475,7 +515,7 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, startDir string, do
 	// Get tree hash of commit hash
 	tree, err := r.TreeObject(commitObj.TreeHash)
 	if err != nil {
-		done <- copyReposResult{
+		done <- actionReposResult{
 			errors.New("failed to get tree " + commit.String() + ": " + err.Error()),
 			repos,
 		}
@@ -501,11 +541,11 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, startDir string, do
 		return nil
 	})
 	if err != nil {
-		done <- copyReposResult{err, repos}
+		done <- actionReposResult{err, repos}
 		return
 	}
 
-	done <- copyReposResult{nil, repos}
+	done <- actionReposResult{nil, repos}
 }
 
 func (*rebuildCmd) encodeReposPath(reposPath string) string {
@@ -538,14 +578,14 @@ func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *
 }
 
 // Remove ~/.vim/volt/start/{repos} and copy from ~/volt/repos/{repos}
-func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, startDir string, done chan copyReposResult) {
+func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, startDir string, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := filepath.Join(startDir, cmd.encodeReposPath(repos.Path))
 
 	// Remove ~/.vim/volt/start/{repos}
 	err := os.RemoveAll(dst)
 	if err != nil {
-		done <- copyReposResult{
+		done <- actionReposResult{
 			errors.New("failed to remove repository: " + err.Error()),
 			repos,
 		}
@@ -555,12 +595,12 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, startDir string,
 	// Copy ~/volt/repos/{repos} to ~/.vim/volt/start/{repos}
 	err = fileutil.CopyDir(src, dst)
 	if err != nil {
-		done <- copyReposResult{
+		done <- actionReposResult{
 			errors.New("failed to copy static directory: " + err.Error()),
 			repos,
 		}
 		return
 	}
 
-	done <- copyReposResult{nil, repos}
+	done <- actionReposResult{nil, repos}
 }
