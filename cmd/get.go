@@ -128,52 +128,25 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlags, lockJSON *lock
 	defer transaction.Remove()
 	lockJSON.TrxID++
 
-	var updatedLockJSON bool
-	var results []string
+	// Invoke installing / upgrading tasks
+	done := make(chan getParallelResult)
 	for _, reposPath := range reposPathList {
-		if flags.upgrade && pathutil.Exists(pathutil.FullReposPathOf(reposPath)) {
-			// Upgrade plugin
-			err = cmd.upgradePlugin(reposPath, flags)
-			if err != git.NoErrAlreadyUpToDate && err != nil {
-				logger.Warn("Failed to upgrade plugin: " + err.Error())
-				results = append(results, "! "+reposPath+" : upgrade failed")
-				continue
-			}
-			if err == git.NoErrAlreadyUpToDate {
-				results = append(results, "# "+reposPath+" : no change")
-			} else {
-				results = append(results, "* "+reposPath+" : upgraded")
-			}
-		} else {
-			// Install plugin
-			err = cmd.installPlugin(reposPath, flags)
-			if err != nil {
-				logger.Warn("Failed to install plugin: " + err.Error())
-				results = append(results, "! "+reposPath+" : install failed")
-				continue
-			}
-			results = append(results, "+ "+reposPath+" : installed")
+		go cmd.getParallel(reposPath, flags, done)
+	}
 
-			// Install plugconf
-			logger.Info("Installing plugconf " + reposPath + " ...")
-			err = cmd.installPlugConf(reposPath + ".vim")
-			if err != nil {
-				logger.Info("Not found plugconf")
-			} else {
-				logger.Info("Found plugconf")
-			}
+	// Wait results
+	var statusList []string
+	var updatedLockJSON bool
+	for i := 0; i < len(reposPathList); i++ {
+		r := <-done
+		if r.status != "" {
+			statusList = append(statusList, r.status)
 		}
-
-		// Get HEAD hash string
-		hash, err := cmd.getHEADHashString(reposPath)
-		if err != nil {
-			logger.Error("Failed to get HEAD commit hash: " + err.Error())
-			continue
-		}
-
 		// Update repos[]/trx_id, repos[]/version
-		cmd.updateReposVersion(lockJSON, reposPath, hash, profile)
-		updatedLockJSON = true
+		if r.reposPath != "" && r.hash != "" {
+			cmd.updateReposVersion(lockJSON, r.reposPath, r.hash, profile)
+			updatedLockJSON = true
+		}
 	}
 
 	// Write to lock.json
@@ -191,13 +164,80 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlags, lockJSON *lock
 	}
 
 	// Show results
-	if len(results) > 0 {
+	if len(statusList) > 0 {
 		fmt.Print("\nDone!\n\n")
-		for i := range results {
-			fmt.Println(results[i])
+		for i := range statusList {
+			fmt.Println(statusList[i])
 		}
 	}
 	return nil
+}
+
+type getParallelResult struct {
+	reposPath string
+	status    string
+	hash      string
+}
+
+func (cmd *getCmd) getParallel(reposPath string, flags *getFlags, done chan getParallelResult) {
+	var status string
+
+	if flags.upgrade && pathutil.Exists(pathutil.FullReposPathOf(reposPath)) {
+		// Upgrade plugin
+		err := cmd.upgradePlugin(reposPath, flags)
+		if err != git.NoErrAlreadyUpToDate && err != nil {
+			logger.Warn("Failed to upgrade plugin: " + err.Error())
+
+			done <- getParallelResult{
+				reposPath: reposPath,
+				status:    "! " + reposPath + " : upgrade failed",
+			}
+			return
+		}
+		if err == git.NoErrAlreadyUpToDate {
+			status = "# " + reposPath + " : no change"
+		} else {
+			status = "* " + reposPath + " : upgraded"
+		}
+	} else {
+		// Install plugin
+		err := cmd.installPlugin(reposPath, flags)
+		if err != nil {
+			logger.Warn("Failed to install plugin: " + err.Error())
+			done <- getParallelResult{
+				reposPath: reposPath,
+				status:    "! " + reposPath + " : install failed",
+			}
+			return
+		}
+		status = "+ " + reposPath + " : installed"
+
+		// Install plugconf
+		logger.Info("Installing plugconf " + reposPath + " ...")
+		err = cmd.installPlugConf(reposPath + ".vim")
+		if err != nil {
+			logger.Info("Installing plugconf " + reposPath + " ... not found")
+		} else {
+			logger.Info("Installing plugconf " + reposPath + " ... found")
+		}
+	}
+
+	// Get HEAD hash string
+	hash, err := cmd.getHEADHashString(reposPath)
+	if err != nil {
+		logger.Error("Failed to get HEAD commit hash: " + err.Error())
+		done <- getParallelResult{
+			reposPath: reposPath,
+			status:    "! " + reposPath + " : install failed",
+		}
+		return
+	}
+
+	done <- getParallelResult{
+		reposPath: reposPath,
+		status:    status,
+		hash:      hash,
+	}
 }
 
 func (cmd *getCmd) upgradePlugin(reposPath string, flags *getFlags) error {
