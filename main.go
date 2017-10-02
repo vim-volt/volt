@@ -52,11 +52,11 @@ Usage
   volt COMMAND ARGS
 
 Command
-  get [-l] [-u] [-v] {repository}
+  get [-l] [-u] [-v] [{repository} ...]
     Install / Upgrade vim plugin, and system plugconf files from
     https://github.com/vim-volt/plugconf-templates
 
-  rm {repository}
+  rm {repository} [{repository2} ...]
     Uninstall vim plugin and system plugconf files
 
   add {repository}

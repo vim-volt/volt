@@ -19,16 +19,18 @@ type rmCmd struct{}
 func Rm(args []string) int {
 	cmd := rmCmd{}
 
-	reposPath, err := cmd.parseArgs(args)
+	reposPathList, err := cmd.parseArgs(args)
 	if err != nil {
 		logger.Error(err.Error())
 		return 10
 	}
 
-	err = cmd.removeRepos(reposPath)
-	if err != nil {
-		logger.Error("Failed to remove repository: " + err.Error())
-		return 11
+	for _, reposPath := range reposPathList {
+		err = cmd.removeRepos(reposPath)
+		if err != nil {
+			logger.Error("Failed to remove repository: " + err.Error())
+			return 11
+		}
 	}
 
 	// Rebuild start dir
@@ -41,13 +43,13 @@ func Rm(args []string) int {
 	return 0
 }
 
-func (*rmCmd) parseArgs(args []string) (string, error) {
+func (*rmCmd) parseArgs(args []string) ([]string, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
 		fmt.Println(`
 Usage
-  volt rm [-help] {repository}
+  volt rm [-help] {repository} [{repository2} ...]
 
 Description
   Uninstall vim plugin and system plugconf files
@@ -60,14 +62,18 @@ Options`)
 
 	if len(fs.Args()) == 0 {
 		fs.Usage()
-		return "", errors.New("repository was not given")
+		return nil, errors.New("repository was not given")
 	}
 
-	reposPath, err := pathutil.NormalizeRepos(fs.Args()[0])
-	if err != nil {
-		return "", err
+	var reposPathList []string
+	for _, arg := range fs.Args() {
+		reposPath, err := pathutil.NormalizeRepos(arg)
+		if err != nil {
+			return nil, err
+		}
+		reposPathList = append(reposPathList, reposPath)
 	}
-	return reposPath, nil
+	return reposPathList, nil
 }
 
 func (cmd *rmCmd) removeRepos(reposPath string) error {
