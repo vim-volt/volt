@@ -25,12 +25,10 @@ func Rm(args []string) int {
 		return 10
 	}
 
-	for _, reposPath := range reposPathList {
-		err = cmd.removeRepos(reposPath)
-		if err != nil {
-			logger.Error("Failed to remove repository: " + err.Error())
-			return 11
-		}
+	err = cmd.doRemove(reposPathList)
+	if err != nil {
+		logger.Error("Failed to remove repository: " + err.Error())
+		return 11
 	}
 
 	// Rebuild start dir
@@ -76,7 +74,7 @@ Options`)
 	return reposPathList, nil
 }
 
-func (cmd *rmCmd) removeRepos(reposPath string) error {
+func (cmd *rmCmd) doRemove(reposPathList []string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -91,11 +89,24 @@ func (cmd *rmCmd) removeRepos(reposPath string) error {
 	defer transaction.Remove()
 	lockJSON.TrxID++
 
+	// Remove each repository
+	for _, reposPath := range reposPathList {
+		err = cmd.removeRepos(reposPath, lockJSON)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Write to lock.json
+	return lockJSON.Write()
+}
+
+func (cmd *rmCmd) removeRepos(reposPath string, lockJSON *lockjson.LockJSON) error {
 	// Remove system plugconf
 	logger.Info("Removing plugconf files ...")
 	plugConf := pathutil.SystemPlugConfOf(reposPath + ".vim")
 	if pathutil.Exists(plugConf) {
-		err = os.Remove(plugConf)
+		err := os.Remove(plugConf)
 		if err != nil {
 			return err
 		}
@@ -103,7 +114,7 @@ func (cmd *rmCmd) removeRepos(reposPath string) error {
 
 	// Remove parent directories of system plugconf
 	dir, _ := filepath.Split(pathutil.SystemPlugConfOf(reposPath))
-	err = cmd.removeDirs(dir)
+	err := cmd.removeDirs(dir)
 
 	// Remove existing repository
 	fullpath := pathutil.FullReposPathOf(reposPath)
@@ -127,12 +138,6 @@ func (cmd *rmCmd) removeRepos(reposPath string) error {
 
 	// Delete repos path from profiles[i]/repos_path[j]
 	lockJSON.Profiles.RemoveAllReposPath(reposPath)
-
-	// Write to lock.json
-	err = lockJSON.Write()
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
