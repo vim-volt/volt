@@ -203,7 +203,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	}
 
 	// Get active profile's repos list
-	reposList, err := cmd.getActiveProfileRepos(lockJSON)
+	profile, reposList, err := cmd.getActiveProfileAndReposList(lockJSON)
 	if err != nil {
 		return err
 	}
@@ -241,12 +241,24 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 
 	logger.Info("Installing vimrc and gvimrc ...")
 
-	// Install vimrc and gvimrc
-	err = cmd.installRCFile(lockJSON.ActiveProfile, "vimrc.vim", filepath.Join(vimDir, "vimrc"))
+	// Install vimrc
+	err = cmd.installRCFile(
+		lockJSON.ActiveProfile,
+		"vimrc.vim",
+		filepath.Join(vimDir, "vimrc"),
+		profile.LoadVimrc,
+	)
 	if err != nil {
 		return err
 	}
-	err = cmd.installRCFile(lockJSON.ActiveProfile, "gvimrc.vim", filepath.Join(vimDir, "gvimrc"))
+
+	// Install gvimrc
+	err = cmd.installRCFile(
+		lockJSON.ActiveProfile,
+		"gvimrc.vim",
+		filepath.Join(vimDir, "gvimrc"),
+		profile.LoadGvimrc,
+	)
 	if err != nil {
 		return err
 	}
@@ -366,7 +378,8 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	return nil
 }
 
-func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string) error {
+func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string, install bool) error {
+	// Return error if destination file has magic comment
 	if pathutil.Exists(dst) {
 		err := cmd.shouldHaveMagicComment(dst)
 		// If the file does not have magic comment
@@ -381,9 +394,9 @@ func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string) err
 		return errors.New("failed to remove " + dst)
 	}
 
-	// Skip if rc file does not exist
+	// Skip if load_vimrc/load_gvimrc is false or rc file does not exist
 	src := pathutil.RCFileOf(profileName, srcRCFileName)
-	if !pathutil.Exists(src) {
+	if !install || !pathutil.Exists(src) {
 		return nil
 	}
 
@@ -442,16 +455,17 @@ type actionReposResult struct {
 	repos *lockjson.Repos
 }
 
-func (*rebuildCmd) getActiveProfileRepos(lockJSON *lockjson.LockJSON) ([]lockjson.Repos, error) {
+func (*rebuildCmd) getActiveProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
 	// Find active profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.ActiveProfile)
 	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates that the matching profile exists
-		return nil, err
+		return nil, nil, err
 	}
 
-	return lockJSON.GetReposListByProfile(profile)
+	reposList, err := lockJSON.GetReposListByProfile(profile)
+	return profile, reposList, err
 }
 
 func (*rebuildCmd) getLatestModTime(path string) (time.Time, error) {
