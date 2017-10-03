@@ -18,8 +18,6 @@ type LockJSON struct {
 	Version       int64    `json:"version"`
 	TrxID         int64    `json:"trx_id"`
 	ActiveProfile string   `json:"active_profile"`
-	LoadVimrc     bool     `json:"load_vimrc"`
-	LoadGvimrc    bool     `json:"load_gvimrc"`
 	Repos         repos    `json:"repos"`
 	Profiles      profiles `json:"profiles"`
 }
@@ -52,8 +50,6 @@ func InitialLockJSON() *LockJSON {
 		Version:       1,
 		TrxID:         1,
 		ActiveProfile: "default",
-		LoadVimrc:     true,
-		LoadGvimrc:    true,
 		Repos:         make([]Repos, 0),
 		Profiles: []Profile{
 			Profile{
