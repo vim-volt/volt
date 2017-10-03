@@ -97,6 +97,10 @@ Command
   profile rm {name} {repository} [{repository2} ...]
     Remove one or more repositories to profile
 
+  profile use [-current | {name}] vimrc [true | false]
+  profile use [-current | {name}] gvimrc [true | false]
+    Set vimrc / gvimrc flag to true or false.
+
   rebuild [-full]
     Rebuild ~/.vim/pack/volt/ directory
 

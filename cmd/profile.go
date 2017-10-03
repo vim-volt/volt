@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -28,6 +29,7 @@ func init() {
 	profileSubCmd["destroy"] = cmd.doDestroy
 	profileSubCmd["add"] = cmd.doAdd
 	profileSubCmd["rm"] = cmd.doRm
+	profileSubCmd["use"] = cmd.doUse
 }
 
 func Profile(args []string) int {
@@ -82,6 +84,17 @@ Usage
 
   profile rm {name} {repository} [{repository2} ...]
     Remove one or more repositories from profile {name}.
+
+  profile use [-current | {name}] vimrc [true | false]
+  profile use [-current | {name}] gvimrc [true | false]
+    Set vimrc / gvimrc flag to true or false.
+
+    e.g.:
+      # Do not install vimrc on current active profile on "volt rebuild"
+      volt profile use -current vimrc false
+
+      # Do not install gvimrc on profile foo on "volt rebuild"
+      volt profile use foo gvimrc false
 
 Options`)
 }
@@ -426,4 +439,94 @@ func (*profileCmd) transactProfile(profileName string, modifyProfile func(*lockj
 		return nil, err
 	}
 	return lockJSON, nil
+}
+
+func (cmd *profileCmd) doUse(args []string) error {
+	// Validate arguments
+	if len(args) != 3 {
+		cmd.showUsage()
+		logger.Error("'volt profile use' receives profile name, rc name, value.")
+		return nil
+	}
+	if args[1] != "vimrc" && args[1] != "gvimrc" {
+		cmd.showUsage()
+		logger.Error("volt profile use: Please specify \"vimrc\" or \"gvimrc\" to the 2nd argument")
+		return nil
+	}
+	if args[2] != "true" && args[2] != "false" {
+		cmd.showUsage()
+		logger.Error("volt profile use: Please specify \"true\" or \"false\" to the 3rd argument")
+		return nil
+	}
+
+	// Read lock.json
+	lockJSON, err := lockjson.Read()
+	if err != nil {
+		return errors.New("failed to read lock.json: " + err.Error())
+	}
+
+	// Convert arguments
+	var profileName string
+	var rcName string
+	var value bool
+	if args[0] == "-current" {
+		profileName = lockJSON.ActiveProfile
+	} else {
+		profileName = args[0]
+	}
+	rcName = args[1]
+	if args[2] == "true" {
+		value = true
+	} else {
+		value = false
+	}
+
+	// Look up specified profile
+	profile, err := lockJSON.Profiles.FindByName(profileName)
+	if err != nil {
+		return err
+	}
+
+	// Begin transaction
+	err = transaction.Create()
+	if err != nil {
+		return err
+	}
+	defer transaction.Remove()
+
+	// Set use_vimrc / use_gvimrc flag
+	changed := false
+	if rcName == "vimrc" {
+		if profile.UseVimrc != value {
+			logger.Infof("Set vimrc flag of profile '%s' to '%s'", profileName, strconv.FormatBool(value))
+			profile.UseVimrc = value
+			changed = true
+		} else {
+			logger.Warnf("vimrc flag of profile '%s' is already '%s'", profileName, strconv.FormatBool(value))
+		}
+	} else {
+		if profile.UseGvimrc != value {
+			logger.Infof("Set gvimrc flag of profile '%s' to '%s'", profileName, strconv.FormatBool(value))
+			profile.UseGvimrc = value
+			changed = true
+		} else {
+			logger.Warnf("gvimrc flag of profile '%s' is already '%s'", profileName, strconv.FormatBool(value))
+		}
+	}
+
+	if changed {
+		// Write to lock.json
+		err = lockJSON.Write()
+		if err != nil {
+			return err
+		}
+
+		// Rebuild start dir
+		err = (&rebuildCmd{}).doRebuild(false)
+		if err != nil {
+			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+		}
+	}
+
+	return nil
 }
