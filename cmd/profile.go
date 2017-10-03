@@ -194,8 +194,8 @@ func (cmd *profileCmd) doShow(args []string) error {
 	}
 
 	fmt.Println("name:", profile.Name)
-	fmt.Println("load vimrc:", profile.LoadVimrc)
-	fmt.Println("load gvimrc:", profile.LoadGvimrc)
+	fmt.Println("use vimrc:", profile.UseVimrc)
+	fmt.Println("use gvimrc:", profile.UseGvimrc)
 	fmt.Println("repos path:")
 	for _, reposPath := range profile.ReposPath {
 		fmt.Println("  " + reposPath)
@@ -252,10 +252,10 @@ func (cmd *profileCmd) doNew(args []string) error {
 
 	// Add profile
 	lockJSON.Profiles = append(lockJSON.Profiles, lockjson.Profile{
-		Name:       profileName,
-		ReposPath:  make([]string, 0),
-		LoadVimrc:  true,
-		LoadGvimrc: true,
+		Name:      profileName,
+		ReposPath: make([]string, 0),
+		UseVimrc:  true,
+		UseGvimrc: true,
 	})
 
 	// Write to lock.json

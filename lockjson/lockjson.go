@@ -39,10 +39,10 @@ type Repos struct {
 type profReposPath []string
 
 type Profile struct {
-	Name       string        `json:"name"`
-	ReposPath  profReposPath `json:"repos_path"`
-	LoadVimrc  bool          `json:"load_vimrc"`
-	LoadGvimrc bool          `json:"load_gvimrc"`
+	Name      string        `json:"name"`
+	ReposPath profReposPath `json:"repos_path"`
+	UseVimrc  bool          `json:"use_vimrc"`
+	UseGvimrc bool          `json:"use_gvimrc"`
 }
 
 func InitialLockJSON() *LockJSON {
@@ -53,10 +53,10 @@ func InitialLockJSON() *LockJSON {
 		Repos:         make([]Repos, 0),
 		Profiles: []Profile{
 			Profile{
-				Name:       "default",
-				ReposPath:  make([]string, 0),
-				LoadVimrc:  true,
-				LoadGvimrc: true,
+				Name:      "default",
+				ReposPath: make([]string, 0),
+				UseVimrc:  true,
+				UseGvimrc: true,
 			},
 		},
 	}

@@ -262,7 +262,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		lockJSON.ActiveProfile,
 		"vimrc.vim",
 		filepath.Join(vimDir, "vimrc"),
-		profile.LoadVimrc,
+		profile.UseVimrc,
 	)
 	if err != nil {
 		return err
@@ -273,7 +273,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		lockJSON.ActiveProfile,
 		"gvimrc.vim",
 		filepath.Join(vimDir, "gvimrc"),
-		profile.LoadGvimrc,
+		profile.UseGvimrc,
 	)
 	if err != nil {
 		return err
@@ -414,7 +414,7 @@ func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string, ins
 		return errors.New("failed to remove " + dst)
 	}
 
-	// Skip if load_vimrc/load_gvimrc is false or rc file does not exist
+	// Skip if use_vimrc/use_gvimrc is false or rc file does not exist
 	src := pathutil.RCFileOf(profileName, srcRCFileName)
 	if !install || !pathutil.Exists(src) {
 		return nil
