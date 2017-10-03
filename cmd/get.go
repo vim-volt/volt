@@ -151,14 +151,22 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlags, lockJSON *lock
 
 	// Invoke installing / upgrading tasks
 	done := make(chan getParallelResult)
+	getCount := 0
 	for _, reposPath := range reposPathList {
-		go cmd.getParallel(reposPath, flags, done)
+		repos, err := lockJSON.Repos.FindByPath(reposPath)
+		if err != nil {
+			repos = nil
+		}
+		if repos == nil || repos.Type == lockjson.ReposGitType {
+			go cmd.getParallel(reposPath, repos, flags, done)
+			getCount++
+		}
 	}
 
 	// Wait results
 	var statusList []string
 	var updatedLockJSON bool
-	for i := 0; i < len(reposPathList); i++ {
+	for i := 0; i < getCount; i++ {
 		r := <-done
 		if r.status != "" {
 			statusList = append(statusList, r.status)
