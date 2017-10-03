@@ -119,7 +119,7 @@ func VimVoltStartDir() string {
 }
 
 func BuildInfoJSON() string {
-	return filepath.Join(VimVoltStartDir(), "build-info.json")
+	return filepath.Join(VimVoltDir(), "build-info.json")
 }
 
 func LookUpVimrcOrGvimrc() []string {
