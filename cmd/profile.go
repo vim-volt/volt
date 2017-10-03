@@ -194,9 +194,9 @@ func (cmd *profileCmd) doShow(args []string) error {
 	}
 
 	fmt.Println("name:", profile.Name)
-	fmt.Println("load_vimrc:", profile.LoadVimrc)
-	fmt.Println("load_gvimrc:", profile.LoadGvimrc)
-	fmt.Println("repos_path:")
+	fmt.Println("load vimrc:", profile.LoadVimrc)
+	fmt.Println("load gvimrc:", profile.LoadGvimrc)
+	fmt.Println("repos path:")
 	for _, reposPath := range profile.ReposPath {
 		fmt.Println("  " + reposPath)
 	}
