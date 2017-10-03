@@ -210,8 +210,9 @@ type getParallelResult struct {
 	hash      string
 }
 
-func (cmd *getCmd) getParallel(reposPath string, flags *getFlags, done chan getParallelResult) {
+func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlags, done chan getParallelResult) {
 	var status string
+	upgraded := false
 
 	if flags.upgrade && pathutil.Exists(pathutil.FullReposPathOf(reposPath)) {
 		// Upgrade plugin
@@ -228,7 +229,7 @@ func (cmd *getCmd) getParallel(reposPath string, flags *getFlags, done chan getP
 		if err == git.NoErrAlreadyUpToDate {
 			status = "# " + reposPath + " : no change"
 		} else {
-			status = "* " + reposPath + " : upgraded"
+			upgraded = true
 		}
 	} else {
 		// Install plugin
@@ -262,6 +263,12 @@ func (cmd *getCmd) getParallel(reposPath string, flags *getFlags, done chan getP
 			status:    "! " + reposPath + " : install failed",
 		}
 		return
+	}
+
+	// Show old and new revisions: "upgraded ({from}..{to})".
+	// Normally, when upgraded is true, repos is also non-nil.
+	if upgraded && repos != nil {
+		status = fmt.Sprintf("* %s : upgraded (%s..%s)", reposPath, repos.Version, hash)
 	}
 
 	done <- getParallelResult{
