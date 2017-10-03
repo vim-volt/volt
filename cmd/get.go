@@ -68,7 +68,7 @@ Usage
   volt get [-help] [-l] [-u] [-v] [{repository} ...]
 
 Description
-  Install vim plugin from {repository}, or upgrade vim plugin of {repository}. And fetch system plugconf files from:
+  Install vim plugin from {repository}, or upgrade vim plugin of {repository} list. And fetch system plugconf files from:
     https://github.com/vim-volt/plugconf-templates
   and install it to:
     $VOLTPATH/plugconf/system/{repository}.vim
@@ -80,6 +80,17 @@ Description
   2. {site}/{user}/{name}
   3. https://{site}/{user}/{name}
   4. http://{site}/{user}/{name}
+
+  {repository} list is determined as followings:
+
+  * If -l option and -u option is specified, installed all vim plugins (regardless current profile) are used
+  * If {repository} arguments are specified, the specified vim plugins are used
+
+  If both are specified, just error message will be returned.
+
+  If -l and -u options were specified (two options must be used together), upgrade git repositories of installed all vim plugins (static repositories are ignored).
+
+  If -v option was specified, show git-clone(1) output too.
 
 Options`)
 		fs.PrintDefaults()
