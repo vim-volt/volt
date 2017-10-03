@@ -230,11 +230,11 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		return err
 	}
 
-	// Put repos into map to be able to search with O(1)
+	// Put repos into map to be able to search with O(1).
+	// Use empty build-info.json map if the -full option was given
+	// because the repos info is unnecessary because it is not referenced.
 	var buildReposMap map[string]*repos
 	if full {
-		// Use empty build-info.json map
-		// if the -full option was given
 		buildReposMap = make(map[string]*repos)
 		logger.Info("Full rebuilding " + startDir + " directory ...")
 	} else {
@@ -244,6 +244,15 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 			buildReposMap[repos.Path] = repos
 		}
 		logger.Info("Rebuilding " + startDir + " directory ...")
+	}
+
+	// Remove ~/.vim/pack/volt/ if -full option was given
+	if full {
+		vimVoltDir := pathutil.VimVoltDir()
+		err = os.RemoveAll(vimVoltDir)
+		if err != nil {
+			return errors.New("failed to remove " + vimVoltDir + ": " + err.Error())
+		}
 	}
 
 	logger.Info("Installing vimrc and gvimrc ...")
@@ -284,13 +293,17 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	for i := range reposList {
 		if reposList[i].Type == lockjson.ReposGitType {
 			buildRepos, exists := buildReposMap[reposList[i].Path]
-			if !exists || cmd.hasChangedGitRepos(&reposList[i], buildRepos) {
+			if !exists ||
+				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
+				cmd.hasChangedGitRepos(&reposList[i], buildRepos) {
 				go cmd.updateGitRepos(&reposList[i], startDir, copyDone)
 				copyCount++
 			}
 		} else if reposList[i].Type == lockjson.ReposStaticType {
 			buildRepos, exists := buildReposMap[reposList[i].Path]
-			if !exists || cmd.hasChangedStaticRepos(&reposList[i], buildRepos, startDir) {
+			if !exists ||
+				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
+				cmd.hasChangedStaticRepos(&reposList[i], buildRepos, startDir) {
 				go cmd.updateStaticRepos(&reposList[i], startDir, copyDone)
 				copyCount++
 			}
