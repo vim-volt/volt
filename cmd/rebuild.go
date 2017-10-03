@@ -90,7 +90,7 @@ type repos struct {
 	Type    reposType `json:"type"`
 	Path    string    `json:"path"`
 	Version string    `json:"version"`
-	Files   []file    `json:"files"`
+	Files   []file    `json:"files,omitempty"`
 }
 
 type reposType string
