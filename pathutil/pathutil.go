@@ -28,10 +28,11 @@ func NormalizeRepos(rawReposPath string) (string, error) {
 }
 
 func NormalizeLocalRepos(name string) (string, error) {
-	if strings.Contains(name, "/") {
-		return "", errors.New("local repos must not contain '/'")
+	if !strings.Contains(name, "/") {
+		return "localhost/local/" + name, nil
+	} else {
+		return NormalizeRepos(name)
 	}
-	return "localhost/local/" + name, nil
 }
 
 func HomeDir() string {
