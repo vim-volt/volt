@@ -64,10 +64,12 @@ func (*queryCmd) parseArgs(args []string) ([]string, *queryFlags, error) {
 	fs.Usage = func() {
 		fmt.Println(`
 Usage
-  volt query [-help] [-j] [-l] [{repository}]
+  volt query [-help] [-j] [-l] [{repository} ...]
 
 Description
-  Output queried vim plugin info
+  Output vim plugin info.
+
+  {repository} is treated as same format as "volt get" (see "volt get -help").
 
 Options`)
 		fs.PrintDefaults()

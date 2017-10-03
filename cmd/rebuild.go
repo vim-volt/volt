@@ -66,9 +66,16 @@ Usage
   volt rebuild [-help] [-full]
 
 Description
-  Rebuild ~/.vim/pack/volt/ directory.
-  If -full was given, remove and update all repositories again.
-  If -full was not given, remove and update only updated repositories.
+  Rebuild ~/.vim/pack/volt/start/ and ~/.vim/pack/volt/opt/ directory:
+    1. Copy repositories' files into ~/.vim/pack/volt/start/ and ~/.vim/pack/volt/opt/
+      * If the repository is git repository, extract files from locked revision of tree object and copy them into above vim directories
+      * If the repository is static repository (imported non-git directory by "volt add" command), copy files into above vim directories
+    2. Remove directories from above vim directories, which exist in ~/.vim/pack/volt/build-info.json but not in $VOLTPATH/lock.json
+
+  ~/.vim/pack/volt/build-info.json is a file which holds the information that what vim plugins are installed in ~/.vim/pack/volt/ and its type (git repository, static repository, or system repository), its version. A user normally doesn't need to know the contents of build-info.json .
+
+  If -full option was given, remove all directories in ~/.vim/pack/volt/start/ and ~/.vim/pack/volt/opt/ , and copy repositories' files into above vim directories.
+  Otherwise, it will perform smart rebuild: copy / remove only changed repositories' files.
 
 Options`)
 		fs.PrintDefaults()

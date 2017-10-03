@@ -50,7 +50,9 @@ Usage
   volt rm [-help] {repository} [{repository2} ...]
 
 Description
-  Uninstall vim plugin and system plugconf files
+  Uninstall vim plugin of {repository}.
+
+  {repository} is treated as same format as "volt get" (see "volt get -help").
 
 Options`)
 		fs.PrintDefaults()

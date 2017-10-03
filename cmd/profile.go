@@ -60,32 +60,30 @@ func (cmd *profileCmd) showUsage() {
 	fmt.Println(`
 Usage
   profile [get]
-    Get current profile name
+    Get current profile name.
 
   profile set {name}
-    Set profile name
+    Set profile name to {name}.
 
   profile show {name}
-    Show profile info
+    Show profile info of {name}.
 
   profile list
-    List all profiles
+    List all profiles.
 
   profile new {name}
-    Create new profile
+    Create new profile of {name}. This command does not switch to profile {name}.
 
   profile destroy {name}
-    Delete profile
+    Delete profile of {name}. This command exits with an error when {name} is current active profile.
 
   profile add {name} {repository} [{repository2} ...]
-    Add one or more repositories to profile
+    Add one or more repositories to profile {name}.
 
   profile rm {name} {repository} [{repository2} ...]
-    Remove one or more repositories to profile
+    Remove one or more repositories from profile {name}.
 
-Description
-  Subcommands about profile feature
-`)
+Options`)
 }
 
 func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {

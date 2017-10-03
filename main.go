@@ -62,7 +62,7 @@ Command
   add {from} {repository}
     Add local {from} repository as {repository} to lock.json
 
-  query [-j] [-l] [{repository}]
+  query [-j] [-l] [{repository} ...]
     Output queried vim plugin info
 
   enable {repository} [{repository2} ...]

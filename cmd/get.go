@@ -68,8 +68,18 @@ Usage
   volt get [-help] [-l] [-u] [-v] [{repository} ...]
 
 Description
-  Install / Upgrade vim plugin, and system plugconf files from
-  https://github.com/vim-volt/plugconf-templates
+  Install vim plugin from {repository}, or upgrade vim plugin of {repository}. And fetch system plugconf files from:
+    https://github.com/vim-volt/plugconf-templates
+  and install it to:
+    $VOLTPATH/plugconf/system/{repository}.vim
+
+  {repository}'s format is one of the followings:
+
+  1. {user}/{name}
+       This is same as "github.com/{user}/{name}"
+  2. {site}/{user}/{name}
+  3. https://{site}/{user}/{name}
+  4. http://{site}/{user}/{name}
 
 Options`)
 		fs.PrintDefaults()
