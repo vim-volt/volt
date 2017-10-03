@@ -40,14 +40,14 @@ func (*addCmd) parseArgs(args []string) (string, string, error) {
 	fs.Usage = func() {
 		fmt.Println(`
 Usage
-  (1) volt add {repository}
-  (2) volt add {from} {repository}
+  volt add {from} {local repository}
 
 Description
-  1st form:
-    Add local {repository} to lock.json
-  2nd form:
-    Add local {from} repository as {repository} to lock.json
+    Add local {from} repository as {local repository} to lock.json .
+    If {local repository} does not contain "/", it is treated as
+    "localhost/local/{local repository}" repository.
+    If {local repository} contains "/", it is treated as
+    same format as "volt get" (see "volt get -help").
 
 Options`)
 		fs.PrintDefaults()
@@ -56,14 +56,10 @@ Options`)
 	fs.Parse(args)
 
 	fsArgs := fs.Args()
-	switch len(fsArgs) {
-	case 1:
-		reposPath, err := pathutil.NormalizeRepos(fsArgs[0])
-		return pathutil.FullReposPathOf(reposPath), reposPath, err
-	case 2:
+	if len(fsArgs) == 2 {
 		reposPath, err := pathutil.NormalizeLocalRepos(fsArgs[1])
 		return fsArgs[0], reposPath, err
-	default:
+	} else {
 		fs.Usage()
 		return "", "", errors.New("invalid arguments")
 	}

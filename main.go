@@ -59,9 +59,6 @@ Command
   rm {repository} [{repository2} ...]
     Uninstall vim plugin and system plugconf files
 
-  add {repository}
-    Add local {repository} to lock.json
-
   add {from} {repository}
     Add local {from} repository as {repository} to lock.json
 
