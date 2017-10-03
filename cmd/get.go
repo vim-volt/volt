@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -15,6 +16,7 @@ import (
 	"github.com/vim-volt/volt/transaction"
 
 	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"
 )
 
@@ -252,7 +254,7 @@ func (cmd *getCmd) getParallel(reposPath string, flags *getFlags, done chan getP
 	}
 
 	// Get HEAD hash string
-	hash, err := cmd.getHEADHashString(reposPath)
+	hash, err := cmd.getRemoteHEAD(reposPath)
 	if err != nil {
 		logger.Error("Failed to get HEAD commit hash: " + err.Error())
 		done <- getParallelResult{
@@ -346,16 +348,32 @@ func (*getCmd) installPlugConf(filename string) error {
 	return nil
 }
 
-func (*getCmd) getHEADHashString(reposPath string) (string, error) {
+var refHeadBranchRx = regexp.MustCompile(`^refs/heads/(.+)$`)
+
+func (*getCmd) getRemoteHEAD(reposPath string) (string, error) {
 	repos, err := git.PlainOpen(pathutil.FullReposPathOf(reposPath))
 	if err != nil {
 		return "", err
 	}
+
 	head, err := repos.Head()
 	if err != nil {
 		return "", err
 	}
-	return head.Hash().String(), nil
+
+	// e.g. head.Name() = "refs/heads/master"
+	match := refHeadBranchRx.FindStringSubmatch(head.Name().String())
+	if len(match) == 0 {
+		return "", errors.New("could not find branch name from HEAD")
+	}
+
+	// Get reference of refs/remotes/origin/{branchName}
+	ref, err := repos.Reference(plumbing.ReferenceName("refs/remotes/origin/"+match[1]), true)
+	if err != nil {
+		return "", err
+	}
+
+	return ref.Hash().String(), nil
 }
 
 func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) {
