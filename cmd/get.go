@@ -108,11 +108,6 @@ Options`)
 		return nil, nil, errors.New("repository was not given")
 	}
 
-	if flags.lockJSON && !flags.upgrade {
-		fs.Usage()
-		return nil, nil, errors.New("-l must be used with -u")
-	}
-
 	return fs.Args(), &flags, nil
 }
 
