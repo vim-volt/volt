@@ -85,12 +85,12 @@ Description
 
   {repository} list is determined as followings:
 
-  * If -l option and -u option is specified, installed all vim plugins (regardless current profile) are used
+  * If -l option is specified, all installed vim plugins (regardless current profile) are used
   * If {repository} arguments are specified, the specified vim plugins are used
 
-  If both are specified, just error message will be returned.
-
-  If -l and -u options were specified (two options must be used together), upgrade git repositories of installed all vim plugins (static repositories are ignored).
+  If -u is specified, upgrade given git repositories (static repositories are ignored).
+  If -l option is specified, all installed vim plugins are used for targets to install or upgrade.
+  If -l and -u options were specified together, upgrade all installed vim plugins (static repositories are ignored).
 
   If -v option was specified, show git-clone(1) output too.
 
