@@ -91,7 +91,7 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 	// Begin transaction
 	err = transaction.Create()
 	if err != nil {
-		return errors.New("failed to begin transaction: " + err.Error())
+		return err
 	}
 	defer transaction.Remove()
 	lockJSON.TrxID++

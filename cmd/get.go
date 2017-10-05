@@ -147,7 +147,7 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlags, lockJSON *lock
 	// Begin transaction
 	err = transaction.Create()
 	if err != nil {
-		return errors.New("failed to begin transaction: " + err.Error())
+		return err
 	}
 	defer transaction.Remove()
 	lockJSON.TrxID++

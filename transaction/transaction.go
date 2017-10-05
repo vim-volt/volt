@@ -19,19 +19,24 @@ func Create() error {
 	// Create trx.lock parent directories
 	err := os.MkdirAll(filepath.Dir(trxLockFile), 0755)
 	if err != nil {
-		return err
+		return errors.New("failed to begin transaction: " + err.Error())
+	}
+
+	// Return error if the file exists
+	if pathutil.Exists(trxLockFile) {
+		return errors.New("failed to begin transaction: " + pathutil.TrxLock() + " exists: if no other volt process is currentl y running, this probably means a volt process crashed earlier. Make sure no other volt process is running and remove the file manually to continue")
 	}
 
 	// Write pid to trx.lock file
 	err = ioutil.WriteFile(trxLockFile, ownPid, 0644)
 	if err != nil {
-		return err
+		return errors.New("failed to begin transaction: " + err.Error())
 	}
 
 	// Read pid from trx.lock file
 	pid, err := ioutil.ReadFile(trxLockFile)
 	if err != nil {
-		return err
+		return errors.New("failed to begin transaction: " + err.Error())
 	}
 
 	if string(pid) != string(ownPid) {
