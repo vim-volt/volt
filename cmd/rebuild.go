@@ -65,6 +65,10 @@ func (*rebuildCmd) parseArgs(args []string) (*rebuildFlags, error) {
 Usage
   volt rebuild [-help] [-full]
 
+Quick example
+  $ volt rebuild        # rebuilds directories under ~/.vim/pack/volt
+  $ volt rebuild -full  # full rebuild (remove ~/.vim/pack/volt, and re-create all)
+
 Description
   Rebuild ~/.vim/pack/volt/start/ and ~/.vim/pack/volt/opt/ directory:
     1. Copy repositories' files into ~/.vim/pack/volt/start/ and ~/.vim/pack/volt/opt/

@@ -69,8 +69,14 @@ func (*getCmd) parseArgs(args []string) ([]string, *getFlags, error) {
 Usage
   volt get [-help] [-l] [-u] [-v] [{repository} ...]
 
+Quick example
+  $ volt get tyru/caw.vim    # will install tyru/caw.vim plugin
+  $ volt get -u tyru/caw.vim # will upgrade tyru/caw.vim plugin
+  $ volt get -l -u           # will upgrade all installed plugins
+  $ volt get -v tyru/caw.vim # will output verbose git-clone(1) output
+
 Description
-  Install vim plugin from {repository}, or upgrade vim plugin of {repository} list. And fetch system plugconf files from:
+  Install vim plugin from {repository}, or upgrade vim plugin of {repository} list on current active profile. And fetch system plugconf files from:
     https://github.com/vim-volt/plugconf-templates
   and install it to:
     $VOLTPATH/plugconf/system/{repository}.vim

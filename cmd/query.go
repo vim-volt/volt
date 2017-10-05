@@ -66,8 +66,13 @@ func (*queryCmd) parseArgs(args []string) ([]string, *queryFlags, error) {
 Usage
   volt query [-help] [-j] [-l] [{repository} ...]
 
+Quick example
+  $ volt query -l # show all installed vim plugins info
+  $ volt query -l -j # show all installed vim plugins info as JSON
+  $ volt query tyru/caw.vim # show tyru/caw.vim plugin info (if tyru/caw.vim is not installed, fetch vim plugin info from remote)
+
 Description
-  Output vim plugin info.
+  Output queried vim plugins info ("version" and "trx_id"). "version" is vim plugin's locked version. "trx_id" is transaction ID (transaction is volt's internal operation unit). The ID is incremented when plugins are installed or uninstalled by "volt add", "volt get", "volt rm".
 
   {repository} is treated as same format as "volt get" (see "volt get -help").
 

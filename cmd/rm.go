@@ -49,8 +49,11 @@ func (*rmCmd) parseArgs(args []string) ([]string, error) {
 Usage
   volt rm [-help] {repository} [{repository2} ...]
 
+Quick example
+  $ volt rm tyru/caw.vim # Uninstall tyru/caw.vim plugin
+
 Description
-  Uninstall vim plugin of {repository}.
+  Uninstall vim plugin of {repository} on every profile.
 
   {repository} is treated as same format as "volt get" (see "volt get -help").
 

@@ -77,7 +77,8 @@ Usage
     Create new profile of {name}. This command does not switch to profile {name}.
 
   profile destroy {name}
-    Delete profile of {name}. This command exits with an error when {name} is current active profile.
+    Delete profile of {name}.
+    NOTE: Cannot delete current active profile.
 
   profile add {name} {repository} [{repository2} ...]
     Add one or more repositories to profile {name}.
@@ -89,12 +90,27 @@ Usage
   profile use [-current | {name}] gvimrc [true | false]
     Set vimrc / gvimrc flag to true or false.
 
-    e.g.:
-      # Do not install vimrc on current active profile on "volt rebuild"
-      volt profile use -current vimrc false
+Quick example
+  $ volt profile list
+  * default
+  $ volt profile new foo # will create profile "foo"
+  $ volt profile list
+  * default
+    foo
+  $ volt profile set foo # will switch profile to "foo"
+  $ volt profile list
+    default
+  * foo
 
-      # Do not install gvimrc on profile foo on "volt rebuild"
-      volt profile use foo gvimrc false
+  $ volt profile use -current vimrc false # Disable installing vimrc on current active profile on "volt rebuild"
+  $ volt profile use default gvimrc true  # Enable installing gvimrc on profile default on "volt rebuild"
+
+  $ volt profile set default # will switch profile to "default"
+  $ volt profile rm foo tyru/caw.vim # will disable loading tyru/caw.vim plugin on profile "foo"
+  $ volt disable tyru/open-browser.vim # if profile name is current active profile, you can also use "volt disable" command instead
+  $ volt profile add foo tyru/caw.vim # will enable loading tyru/caw.vim plugin on profile "foo"
+  $ volt enable tyru/open-browser.vim
+  $ volt profile destroy foo # will delete profile "foo"
 
 Options`)
 }

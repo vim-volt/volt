@@ -42,6 +42,12 @@ func (*addCmd) parseArgs(args []string) (string, string, error) {
 Usage
   volt add {from} {local repository}
 
+Quick example
+  $ mkdir -p hello/plugin
+  $ echo 'command! Hello echom "hello"' >hello/plugin/hello.vim
+  $ volt add hello
+  $ vim -c Hello # will output "hello"
+
 Description
     Add local {from} repository as {local repository} to lock.json .
     If {local repository} does not contain "/", it is treated as

@@ -47,6 +47,9 @@ func (*disableCmd) parseArgs(args []string) ([]string, error) {
 Usage
   volt disable {repository} [{repository2} ...]
 
+Quick example
+  $ volt disable tyru/caw.vim # will disable tyru/caw.vim plugin in current profile
+
 Description
   This is shortcut of:
   volt profile rm {current profile} {repository} [{repository2} ...]

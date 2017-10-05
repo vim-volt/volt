@@ -47,6 +47,9 @@ func (*enableCmd) parseArgs(args []string) ([]string, error) {
 Usage
   volt enable {repository} [{repository2} ...]
 
+Quick example
+  $ volt enable tyru/caw.vim # will enable tyru/caw.vim plugin in current profile
+
 Description
   This is shortcut of:
   volt profile add {current profile} {repository} [{repository2} ...]
