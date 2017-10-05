@@ -115,8 +115,7 @@ func (cmd *rmCmd) removeRepos(reposPath string, lockJSON *lockjson.LockJSON) err
 	}
 
 	// Remove parent directories of system plugconf
-	dir, _ := filepath.Split(pathutil.SystemPlugConfOf(reposPath))
-	err := cmd.removeDirs(dir)
+	err := cmd.removeDirs(filepath.Dir(pathutil.SystemPlugConfOf(reposPath)))
 
 	// Remove existing repository
 	fullpath := pathutil.FullReposPathOf(reposPath)
@@ -126,8 +125,7 @@ func (cmd *rmCmd) removeRepos(reposPath string, lockJSON *lockjson.LockJSON) err
 		if err != nil {
 			return err
 		}
-		dir, _ := filepath.Split(fullpath)
-		cmd.removeDirs(dir)
+		cmd.removeDirs(filepath.Dir(fullpath))
 	} else {
 		return errors.New("no repository was installed: " + fullpath)
 	}
@@ -151,7 +149,6 @@ func (cmd *rmCmd) removeDirs(dir string) error {
 	if err := os.Remove(dir); err != nil {
 		return err
 	} else {
-		parent, _ := filepath.Split(dir)
-		return cmd.removeDirs(parent)
+		return cmd.removeDirs(filepath.Dir(dir))
 	}
 }

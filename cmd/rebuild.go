@@ -578,8 +578,7 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, startDir string, do
 		}
 
 		filename := filepath.Join(dst, file.Name)
-		dir, _ := filepath.Split(filename)
-		os.MkdirAll(dir, 0755)
+		os.MkdirAll(filepath.Dir(filename), 0755)
 		ioutil.WriteFile(filename, []byte(contents), osMode)
 		return nil
 	})

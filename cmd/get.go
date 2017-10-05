@@ -340,8 +340,7 @@ func (*getCmd) installPlugConf(filename string) error {
 	}
 
 	fn := pathutil.SystemPlugConfOf(filename)
-	dir, _ := filepath.Split(fn)
-	os.MkdirAll(dir, 0755)
+	os.MkdirAll(filepath.Dir(fn), 0755)
 
 	err = ioutil.WriteFile(fn, bytes, 0644)
 	if err != nil {
