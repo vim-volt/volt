@@ -60,5 +60,9 @@ func Remove() {
 		logger.Error("Cannot remove another process's trx.lock")
 		return
 	}
-	os.Remove(trxLockFile)
+	err = os.Remove(trxLockFile)
+	if err != nil {
+		logger.Error("Cannot remove trx.lock: " + err.Error())
+		return
+	}
 }
