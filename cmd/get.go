@@ -20,48 +20,16 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"
 )
 
-type getCmd struct{}
-
-type getFlags struct {
+type getFlagsType struct {
+	helped   bool
 	lockJSON bool
 	upgrade  bool
 	verbose  bool
 }
 
-func Get(args []string) int {
-	cmd := getCmd{}
+var getFlags getFlagsType
 
-	// Parse args
-	args, flags, err := cmd.parseArgs(args)
-	if err != nil {
-		logger.Error("Failed to parse args: " + err.Error())
-		return 10
-	}
-
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		logger.Error("Could not read lock.json: " + err.Error())
-		return 11
-	}
-
-	reposPathList, err := cmd.getReposPathList(flags, args, lockJSON)
-	if err != nil {
-		logger.Error("Could not get repos list: " + err.Error())
-		return 12
-	}
-
-	err = cmd.doGet(reposPathList, flags, lockJSON)
-	if err != nil {
-		logger.Error(err.Error())
-		return 13
-	}
-
-	return 0
-}
-
-func (*getCmd) parseArgs(args []string) ([]string, *getFlags, error) {
-	var flags getFlags
+func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -103,21 +71,68 @@ Description
 Options`)
 		fs.PrintDefaults()
 		fmt.Println()
+		getFlags.helped = true
 	}
-	fs.BoolVar(&flags.lockJSON, "l", false, "from lock.json")
-	fs.BoolVar(&flags.upgrade, "u", false, "upgrade installed vim plugin")
-	fs.BoolVar(&flags.verbose, "v", false, "show git-clone output")
-	fs.Parse(args)
+	fs.BoolVar(&getFlags.lockJSON, "l", false, "from lock.json")
+	fs.BoolVar(&getFlags.upgrade, "u", false, "upgrade installed vim plugin")
+	fs.BoolVar(&getFlags.verbose, "v", false, "show git-clone output")
 
-	if !flags.lockJSON && len(fs.Args()) == 0 {
+	cmdFlagSet["get"] = fs
+}
+
+type getCmd struct{}
+
+func Get(args []string) int {
+	cmd := getCmd{}
+
+	// Parse args
+	args, flags, err := cmd.parseArgs(args)
+	if err == ErrShowedHelp {
+		return 0
+	}
+	if err != nil {
+		logger.Error("Failed to parse args: " + err.Error())
+		return 10
+	}
+
+	// Read lock.json
+	lockJSON, err := lockjson.Read()
+	if err != nil {
+		logger.Error("Could not read lock.json: " + err.Error())
+		return 11
+	}
+
+	reposPathList, err := cmd.getReposPathList(flags, args, lockJSON)
+	if err != nil {
+		logger.Error("Could not get repos list: " + err.Error())
+		return 12
+	}
+
+	err = cmd.doGet(reposPathList, flags, lockJSON)
+	if err != nil {
+		logger.Error(err.Error())
+		return 13
+	}
+
+	return 0
+}
+
+func (*getCmd) parseArgs(args []string) ([]string, *getFlagsType, error) {
+	fs := cmdFlagSet["get"]
+	fs.Parse(args)
+	if getFlags.helped {
+		return nil, nil, ErrShowedHelp
+	}
+
+	if !getFlags.lockJSON && len(fs.Args()) == 0 {
 		fs.Usage()
 		return nil, nil, errors.New("repository was not given")
 	}
 
-	return fs.Args(), &flags, nil
+	return fs.Args(), &getFlags, nil
 }
 
-func (*getCmd) getReposPathList(flags *getFlags, args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
+func (*getCmd) getReposPathList(flags *getFlagsType, args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
 	reposPathList := make([]string, 0, 32)
 	if flags.lockJSON {
 		for _, repos := range lockJSON.Repos {
@@ -135,7 +150,7 @@ func (*getCmd) getReposPathList(flags *getFlags, args []string, lockJSON *lockjs
 	return reposPathList, nil
 }
 
-func (cmd *getCmd) doGet(reposPathList []string, flags *getFlags, lockJSON *lockjson.LockJSON) error {
+func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *lockjson.LockJSON) error {
 	// Find matching profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.ActiveProfile)
 	if err != nil {
@@ -211,7 +226,7 @@ type getParallelResult struct {
 	hash      string
 }
 
-func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlags, done chan getParallelResult) {
+func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
 	var status string
 	upgraded := false
 
@@ -279,7 +294,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	}
 }
 
-func (cmd *getCmd) upgradePlugin(reposPath string, flags *getFlags) error {
+func (cmd *getCmd) upgradePlugin(reposPath string, flags *getFlagsType) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 
 	logger.Info("Upgrading " + reposPath + " ...")
@@ -300,7 +315,7 @@ func (cmd *getCmd) upgradePlugin(reposPath string, flags *getFlags) error {
 	})
 }
 
-func (cmd *getCmd) installPlugin(reposPath string, flags *getFlags) error {
+func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 	if pathutil.Exists(fullpath) {
 		return errors.New("repository exists")

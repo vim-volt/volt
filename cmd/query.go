@@ -12,17 +12,52 @@ import (
 	"github.com/vim-volt/volt/pathutil"
 )
 
-type queryCmd struct{}
-
-type queryFlags struct {
+type queryFlagsType struct {
+	helped   bool
 	json     bool
 	lockJSON bool
 }
+
+var queryFlags queryFlagsType
+
+func init() {
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
+	fs.Usage = func() {
+		fmt.Println(`
+Usage
+  volt query [-help] [-j] [-l] [{repository} ...]
+
+Quick example
+  $ volt query -l # show all installed vim plugins info
+  $ volt query -l -j # show all installed vim plugins info as JSON
+  $ volt query tyru/caw.vim # show tyru/caw.vim plugin info (if tyru/caw.vim is not installed, fetch vim plugin info from remote)
+
+Description
+  Output queried vim plugins info ("version" and "trx_id"). "version" is vim plugin's locked version. "trx_id" is transaction ID (transaction is volt's internal operation unit). The ID is incremented when plugins are installed or uninstalled by "volt add", "volt get", "volt rm".
+
+  {repository} is treated as same format as "volt get" (see "volt get -help").
+`)
+		fmt.Println("Options")
+		fs.PrintDefaults()
+		fmt.Println()
+		queryFlags.helped = true
+	}
+	fs.BoolVar(&queryFlags.json, "j", false, "output as JSON")
+	fs.BoolVar(&queryFlags.lockJSON, "l", false, "show installed plugins")
+
+	cmdFlagSet["query"] = fs
+}
+
+type queryCmd struct{}
 
 func Query(args []string) int {
 	cmd := queryCmd{}
 
 	args, flags, err := cmd.parseArgs(args)
+	if err == ErrShowedHelp {
+		return 0
+	}
 	if err != nil {
 		logger.Error(err.Error())
 		return 10
@@ -57,42 +92,22 @@ func Query(args []string) int {
 	return 0
 }
 
-func (*queryCmd) parseArgs(args []string) ([]string, *queryFlags, error) {
-	var flags queryFlags
-	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	fs.SetOutput(os.Stdout)
-	fs.Usage = func() {
-		fmt.Println(`
-Usage
-  volt query [-help] [-j] [-l] [{repository} ...]
-
-Quick example
-  $ volt query -l # show all installed vim plugins info
-  $ volt query -l -j # show all installed vim plugins info as JSON
-  $ volt query tyru/caw.vim # show tyru/caw.vim plugin info (if tyru/caw.vim is not installed, fetch vim plugin info from remote)
-
-Description
-  Output queried vim plugins info ("version" and "trx_id"). "version" is vim plugin's locked version. "trx_id" is transaction ID (transaction is volt's internal operation unit). The ID is incremented when plugins are installed or uninstalled by "volt add", "volt get", "volt rm".
-
-  {repository} is treated as same format as "volt get" (see "volt get -help").
-
-Options`)
-		fs.PrintDefaults()
-		fmt.Println()
-	}
-	fs.BoolVar(&flags.json, "j", false, "output as JSON")
-	fs.BoolVar(&flags.lockJSON, "l", false, "show installed plugins")
+func (*queryCmd) parseArgs(args []string) ([]string, *queryFlagsType, error) {
+	fs := cmdFlagSet["query"]
 	fs.Parse(args)
+	if queryFlags.helped {
+		return nil, nil, ErrShowedHelp
+	}
 
-	if !flags.lockJSON && len(fs.Args()) == 0 {
+	if !queryFlags.lockJSON && len(fs.Args()) == 0 {
 		fs.Usage()
 		return nil, nil, errors.New("repository was not given")
 	}
 
-	return fs.Args(), &flags, nil
+	return fs.Args(), &queryFlags, nil
 }
 
-func (*queryCmd) getReposPathList(flags *queryFlags, args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
+func (*queryCmd) getReposPathList(flags *queryFlagsType, args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
 	reposPathList := make([]string, 0, 32)
 	if flags.lockJSON {
 		for _, repos := range lockJSON.Repos {
@@ -109,7 +124,7 @@ func (*queryCmd) getReposPathList(flags *queryFlags, args []string, lockJSON *lo
 	return reposPathList, nil
 }
 
-func (*queryCmd) printReposList(reposList []lockjson.Repos, flags *queryFlags) error {
+func (*queryCmd) printReposList(reposList []lockjson.Repos, flags *queryFlagsType) error {
 	if flags.json {
 		bytes, err := json.Marshal(reposList)
 		if err != nil {

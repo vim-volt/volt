@@ -14,27 +14,13 @@ import (
 	"github.com/vim-volt/volt/transaction"
 )
 
-type addCmd struct{}
-
-func Add(args []string) int {
-	cmd := addCmd{}
-
-	from, reposPath, err := cmd.parseArgs(args)
-	if err != nil {
-		logger.Error("Failed to parse args: " + err.Error())
-		return 10
-	}
-
-	err = cmd.doAdd(from, reposPath)
-	if err != nil {
-		logger.Error("Failed to add: " + err.Error())
-		return 11
-	}
-
-	return 0
+type addFlagsType struct {
+	helped bool
 }
 
-func (*addCmd) parseArgs(args []string) (string, string, error) {
+var addFlags addFlagsType
+
+func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -54,12 +40,45 @@ Description
     "localhost/local/{local repository}" repository.
     If {local repository} contains "/", it is treated as
     same format as "volt get" (see "volt get -help").
-
-Options`)
-		fs.PrintDefaults()
+`)
+		//fmt.Println("Options")
+		//fs.PrintDefaults()
 		fmt.Println()
+		addFlags.helped = true
 	}
+
+	cmdFlagSet["add"] = fs
+}
+
+type addCmd struct{}
+
+func Add(args []string) int {
+	cmd := addCmd{}
+
+	from, reposPath, err := cmd.parseArgs(args)
+	if err == ErrShowedHelp {
+		return 0
+	}
+	if err != nil {
+		logger.Error("Failed to parse args: " + err.Error())
+		return 10
+	}
+
+	err = cmd.doAdd(from, reposPath)
+	if err != nil {
+		logger.Error("Failed to add: " + err.Error())
+		return 11
+	}
+
+	return 0
+}
+
+func (*addCmd) parseArgs(args []string) (string, string, error) {
+	fs := cmdFlagSet["add"]
 	fs.Parse(args)
+	if addFlags.helped {
+		return "", "", ErrShowedHelp
+	}
 
 	fsArgs := fs.Args()
 	if len(fsArgs) == 2 {

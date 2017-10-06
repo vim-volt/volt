@@ -13,9 +13,13 @@ import (
 	"github.com/vim-volt/volt/transaction"
 )
 
-type profileCmd struct {
-	showedUsage bool
+type profileFlagsType struct {
+	helped bool
 }
+
+var profileFlags profileFlagsType
+
+type profileCmd struct{}
 
 var profileSubCmd = make(map[string]func([]string) error)
 
@@ -30,36 +34,11 @@ func init() {
 	profileSubCmd["add"] = cmd.doAdd
 	profileSubCmd["rm"] = cmd.doRm
 	profileSubCmd["use"] = cmd.doUse
-}
 
-func Profile(args []string) int {
-	cmd := profileCmd{}
-
-	// Parse args
-	args, err := cmd.parseArgs(args)
-	if err != nil {
-		logger.Error(err.Error())
-		return 10
-	}
-
-	if cmd.showedUsage {
-		return 0
-	}
-
-	if fn, exists := profileSubCmd[args[0]]; exists {
-		err = fn(args[1:])
-		if err != nil {
-			logger.Error(err.Error())
-			return 11
-		}
-	}
-
-	return 0
-}
-
-func (cmd *profileCmd) showUsage() {
-	cmd.showedUsage = true
-	fmt.Println(`
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
+	fs.Usage = func() {
+		fmt.Println(`
 Usage
   profile [get]
     Get current profile name.
@@ -111,15 +90,43 @@ Quick example
   $ volt profile add foo tyru/caw.vim # will enable loading tyru/caw.vim plugin on profile "foo"
   $ volt enable tyru/open-browser.vim
   $ volt profile destroy foo # will delete profile "foo"
+`)
+		profileFlags.helped = true
+	}
 
-Options`)
+	cmdFlagSet["profile"] = fs
+}
+
+func Profile(args []string) int {
+	cmd := profileCmd{}
+
+	// Parse args
+	args, err := cmd.parseArgs(args)
+	if err == ErrShowedHelp {
+		return 0
+	}
+	if err != nil {
+		logger.Error(err.Error())
+		return 10
+	}
+
+	if fn, exists := profileSubCmd[args[0]]; exists {
+		err = fn(args[1:])
+		if err != nil {
+			logger.Error(err.Error())
+			return 11
+		}
+	}
+
+	return 0
 }
 
 func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
-	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	fs.SetOutput(os.Stdout)
-	fs.Usage = cmd.showUsage
+	fs := cmdFlagSet["profile"]
 	fs.Parse(args)
+	if profileFlags.helped {
+		return nil, ErrShowedHelp
+	}
 
 	if len(fs.Args()) == 0 {
 		return append([]string{"get"}, fs.Args()...), nil
@@ -151,7 +158,7 @@ func (*profileCmd) getCurrentProfile() (string, error) {
 
 func (cmd *profileCmd) doSet(args []string) error {
 	if len(args) == 0 {
-		cmd.showUsage()
+		cmdFlagSet["profile"].Usage()
 		logger.Error("'volt profile set' receives profile name.")
 		return nil
 	}
@@ -204,7 +211,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 
 func (cmd *profileCmd) doShow(args []string) error {
 	if len(args) == 0 {
-		cmd.showUsage()
+		cmdFlagSet["profile"].Usage()
 		logger.Error("'volt profile show' receives profile name.")
 		return nil
 	}
@@ -254,7 +261,7 @@ func (cmd *profileCmd) doList(args []string) error {
 
 func (cmd *profileCmd) doNew(args []string) error {
 	if len(args) == 0 {
-		cmd.showUsage()
+		cmdFlagSet["profile"].Usage()
 		logger.Error("'volt profile new' receives profile name.")
 		return nil
 	}
@@ -300,7 +307,7 @@ func (cmd *profileCmd) doNew(args []string) error {
 
 func (cmd *profileCmd) doDestroy(args []string) error {
 	if len(args) == 0 {
-		cmd.showUsage()
+		cmdFlagSet["profile"].Usage()
 		logger.Error("'volt profile destroy' receives profile name.")
 		return nil
 	}
@@ -410,7 +417,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 
 func (cmd *profileCmd) parseAddArgs(subCmd string, args []string) (string, []string, error) {
 	if len(args) == 0 {
-		cmd.showUsage()
+		cmdFlagSet["profile"].Usage()
 		logger.Errorf("'volt profile %s' receives profile name and one or more repositories.", subCmd)
 		return "", nil, nil
 	}
@@ -460,17 +467,17 @@ func (*profileCmd) transactProfile(profileName string, modifyProfile func(*lockj
 func (cmd *profileCmd) doUse(args []string) error {
 	// Validate arguments
 	if len(args) != 3 {
-		cmd.showUsage()
+		cmdFlagSet["profile"].Usage()
 		logger.Error("'volt profile use' receives profile name, rc name, value.")
 		return nil
 	}
 	if args[1] != "vimrc" && args[1] != "gvimrc" {
-		cmd.showUsage()
+		cmdFlagSet["profile"].Usage()
 		logger.Error("volt profile use: Please specify \"vimrc\" or \"gvimrc\" to the 2nd argument")
 		return nil
 	}
 	if args[2] != "true" && args[2] != "false" {
-		cmd.showUsage()
+		cmdFlagSet["profile"].Usage()
 		logger.Error("volt profile use: Please specify \"true\" or \"false\" to the 3rd argument")
 		return nil
 	}

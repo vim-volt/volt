@@ -23,41 +23,14 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
-type rebuildCmd struct{}
-
-type rebuildFlags struct {
-	full bool
+type rebuildFlagsType struct {
+	helped bool
+	full   bool
 }
 
-func Rebuild(args []string) int {
-	cmd := rebuildCmd{}
+var rebuildFlags rebuildFlagsType
 
-	// Parse args
-	flags, err := cmd.parseArgs(args)
-	if err != nil {
-		logger.Error("Failed to parse args: " + err.Error())
-		return 10
-	}
-
-	// Begin transaction
-	err = transaction.Create()
-	if err != nil {
-		logger.Error("Failed to begin transaction:", err.Error())
-		return 11
-	}
-	defer transaction.Remove()
-
-	err = cmd.doRebuild(flags.full)
-	if err != nil {
-		logger.Error("Failed to rebuild:", err.Error())
-		return 12
-	}
-
-	return 0
-}
-
-func (*rebuildCmd) parseArgs(args []string) (*rebuildFlags, error) {
-	var flags rebuildFlags
+func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -80,15 +53,44 @@ Description
 
   If -full option was given, remove all directories in ~/.vim/pack/volt/start/ and ~/.vim/pack/volt/opt/ , and copy repositories' files into above vim directories.
   Otherwise, it will perform smart rebuild: copy / remove only changed repositories' files.
-
-Options`)
+`)
+		fmt.Println("Options")
 		fs.PrintDefaults()
 		fmt.Println()
+		rebuildFlags.helped = true
 	}
-	fs.BoolVar(&flags.full, "full", false, "full rebuild")
-	fs.Parse(args)
+	fs.BoolVar(&rebuildFlags.full, "full", false, "full rebuild")
 
-	return &flags, nil
+	cmdFlagSet["rebuild"] = fs
+}
+
+type rebuildCmd struct{}
+
+func Rebuild(args []string) int {
+	cmd := rebuildCmd{}
+
+	// Parse args
+	fs := cmdFlagSet["rebuild"]
+	fs.Parse(args)
+	if rebuildFlags.helped {
+		return 0
+	}
+
+	// Begin transaction
+	err := transaction.Create()
+	if err != nil {
+		logger.Error("Failed to begin transaction:", err.Error())
+		return 11
+	}
+	defer transaction.Remove()
+
+	err = cmd.doRebuild(rebuildFlags.full)
+	if err != nil {
+		logger.Error("Failed to rebuild:", err.Error())
+		return 12
+	}
+
+	return 0
 }
 
 const CurrentRebuildVersion = 1

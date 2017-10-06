@@ -14,12 +14,46 @@ import (
 	"github.com/vim-volt/volt/transaction"
 )
 
+type rmFlagsType struct {
+	helped bool
+}
+
+var rmFlags rmFlagsType
+
+func init() {
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
+	fs.Usage = func() {
+		fmt.Println(`
+Usage
+  volt rm [-help] {repository} [{repository2} ...]
+
+Quick example
+  $ volt rm tyru/caw.vim # Uninstall tyru/caw.vim plugin
+
+Description
+  Uninstall vim plugin of {repository} on every profile.
+
+  {repository} is treated as same format as "volt get" (see "volt get -help").
+`)
+		//fmt.Println("Options")
+		//fs.PrintDefaults()
+		fmt.Println()
+		rmFlags.helped = true
+	}
+
+	cmdFlagSet["rm"] = fs
+}
+
 type rmCmd struct{}
 
 func Rm(args []string) int {
 	cmd := rmCmd{}
 
 	reposPathList, err := cmd.parseArgs(args)
+	if err == ErrShowedHelp {
+		return 0
+	}
 	if err != nil {
 		logger.Error(err.Error())
 		return 10
@@ -42,26 +76,11 @@ func Rm(args []string) int {
 }
 
 func (*rmCmd) parseArgs(args []string) ([]string, error) {
-	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	fs.SetOutput(os.Stdout)
-	fs.Usage = func() {
-		fmt.Println(`
-Usage
-  volt rm [-help] {repository} [{repository2} ...]
-
-Quick example
-  $ volt rm tyru/caw.vim # Uninstall tyru/caw.vim plugin
-
-Description
-  Uninstall vim plugin of {repository} on every profile.
-
-  {repository} is treated as same format as "volt get" (see "volt get -help").
-
-Options`)
-		fs.PrintDefaults()
-		fmt.Println()
-	}
+	fs := cmdFlagSet["rm"]
 	fs.Parse(args)
+	if rmFlags.helped {
+		return nil, ErrShowedHelp
+	}
 
 	if len(fs.Args()) == 0 {
 		fs.Usage()
