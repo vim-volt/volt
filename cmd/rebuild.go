@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/vim-volt/volt/fileutil"
@@ -311,7 +310,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 			if !exists ||
 				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
 				cmd.hasChangedGitRepos(&reposList[i], buildRepos) {
-				go cmd.updateGitRepos(&reposList[i], startDir, copyDone)
+				go cmd.updateGitRepos(&reposList[i], copyDone)
 				copyCount++
 			}
 		} else if reposList[i].Type == lockjson.ReposStaticType {
@@ -319,7 +318,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 			if !exists ||
 				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
 				cmd.hasChangedStaticRepos(&reposList[i], buildRepos, startDir) {
-				go cmd.updateStaticRepos(&reposList[i], startDir, copyDone)
+				go cmd.updateStaticRepos(&reposList[i], copyDone)
 				copyCount++
 			}
 		} else {
@@ -532,9 +531,9 @@ func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *repos) 
 }
 
 // Remove ~/.vim/volt/start/{repos} and copy from ~/volt/repos/{repos}
-func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, startDir string, done chan actionReposResult) {
+func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
-	dst := filepath.Join(startDir, cmd.encodeReposPath(repos.Path))
+	dst := pathutil.PackReposPathOf(repos.Path)
 
 	// Remove ~/.vim/volt/start/{repos}
 	err := os.RemoveAll(dst)
@@ -602,10 +601,6 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, startDir string, do
 	done <- actionReposResult{nil, repos}
 }
 
-func (*rebuildCmd) encodeReposPath(reposPath string) string {
-	return strings.NewReplacer("_", "__", "/", "_").Replace(reposPath)
-}
-
 func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *repos, startDir string) bool {
 	src := pathutil.FullReposPathOf(repos.Path)
 
@@ -632,9 +627,9 @@ func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *
 }
 
 // Remove ~/.vim/volt/start/{repos} and copy from ~/volt/repos/{repos}
-func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, startDir string, done chan actionReposResult) {
+func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
-	dst := filepath.Join(startDir, cmd.encodeReposPath(repos.Path))
+	dst := pathutil.PackReposPathOf(repos.Path)
 
 	// Remove ~/.vim/volt/start/{repos}
 	err := os.RemoveAll(dst)
