@@ -93,7 +93,7 @@ func Rebuild(args []string) int {
 	return 0
 }
 
-const CurrentRebuildVersion = 1
+const currentRebuildVersion = 1
 
 type buildInfoType struct {
 	Repos   reposList `json:"repos"`
@@ -240,10 +240,10 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	}
 
 	// Do -full rebuild when build-info.json's version is different
-	if buildInfo.Version != CurrentRebuildVersion {
+	if buildInfo.Version != currentRebuildVersion {
 		full = true
 	}
-	buildInfo.Version = CurrentRebuildVersion
+	buildInfo.Version = currentRebuildVersion
 
 	// Put repos into map to be able to search with O(1).
 	// Use empty build-info.json map if the -full option was given
