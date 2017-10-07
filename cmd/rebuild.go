@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -412,6 +413,15 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	return nil
 }
 
+func (*rebuildCmd) makeVimArgs(reposPath string) []string {
+	return []string{
+		"-u", "NONE", "-N",
+		"-c", "cd " + pathutil.PackReposPathOf(reposPath),
+		"-c", "set rtp+=" + pathutil.PackReposPathOf(reposPath),
+		"-c", "helptags doc", "-c", "quit",
+	}
+}
+
 func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string, install bool) error {
 	// Return error if destination file has magic comment
 	if pathutil.Exists(dst) {
@@ -598,6 +608,16 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 		return
 	}
 
+	// Do ":helptags" to generate tags file
+	err = exec.Command("vim", cmd.makeVimArgs(repos.Path)...).Run()
+	if err != nil {
+		done <- actionReposResult{
+			errors.New("failed to make tags file: " + err.Error()),
+			repos,
+		}
+		return
+	}
+
 	done <- actionReposResult{nil, repos}
 }
 
@@ -646,6 +666,16 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	if err != nil {
 		done <- actionReposResult{
 			errors.New("failed to copy static directory: " + err.Error()),
+			repos,
+		}
+		return
+	}
+
+	// Do ":helptags" to generate tags file
+	err = exec.Command("vim", cmd.makeVimArgs(repos.Path)...).Run()
+	if err != nil {
+		done <- actionReposResult{
+			errors.New("failed to make tags file: " + err.Error()),
 			repos,
 		}
 		return
