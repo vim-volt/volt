@@ -600,12 +600,9 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 	}
 
 	// Do ":helptags" to generate tags file
-	err = exec.Command("vim", cmd.makeVimArgs(repos.Path)...).Run()
+	err = cmd.Helptags(repos.Path)
 	if err != nil {
-		done <- actionReposResult{
-			errors.New("failed to make tags file: " + err.Error()),
-			repos,
-		}
+		done <- actionReposResult{err, repos}
 		return
 	}
 
@@ -663,16 +660,27 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	}
 
 	// Do ":helptags" to generate tags file
-	err = exec.Command("vim", cmd.makeVimArgs(repos.Path)...).Run()
+	err = cmd.Helptags(repos.Path)
 	if err != nil {
-		done <- actionReposResult{
-			errors.New("failed to make tags file: " + err.Error()),
-			repos,
-		}
+		done <- actionReposResult{err, repos}
 		return
 	}
 
 	done <- actionReposResult{nil, repos}
+}
+
+func (cmd *rebuildCmd) Helptags(reposPath string) error {
+	// Do not invoke vim if not installed
+	_, err := exec.LookPath("vim")
+	if err != nil {
+		return errors.New("vim command is not in PATH: " + err.Error())
+	}
+	// Execute ":helptags doc" in reposPath
+	err = exec.Command("vim", cmd.makeVimArgs(reposPath)...).Run()
+	if err != nil {
+		return errors.New("failed to make tags file: " + err.Error())
+	}
+	return nil
 }
 
 func (*rebuildCmd) makeVimArgs(reposPath string) []string {
