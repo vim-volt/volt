@@ -670,6 +670,11 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 }
 
 func (cmd *rebuildCmd) Helptags(reposPath string) error {
+	// Do nothing if <reposPath>/doc directory doesn't exist
+	docdir := filepath.Join(pathutil.PackReposPathOf(reposPath), "doc")
+	if !pathutil.Exists(docdir) {
+		return nil
+	}
 	// Do not invoke vim if not installed
 	_, err := exec.LookPath("vim")
 	if err != nil {
