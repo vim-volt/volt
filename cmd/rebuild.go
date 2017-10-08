@@ -586,7 +586,7 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 
 		contents, err := file.Contents()
 		if err != nil {
-			return errors.New("failed get file contents: " + err.Error())
+			return errors.New("failed to get file contents: " + err.Error())
 		}
 
 		filename := filepath.Join(dst, file.Name)
