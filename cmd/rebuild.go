@@ -413,15 +413,6 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	return nil
 }
 
-func (*rebuildCmd) makeVimArgs(reposPath string) []string {
-	return []string{
-		"-u", "NONE", "-N",
-		"-c", "cd " + pathutil.PackReposPathOf(reposPath),
-		"-c", "set rtp+=" + pathutil.PackReposPathOf(reposPath),
-		"-c", "helptags doc", "-c", "quit",
-	}
-}
-
 func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string, install bool) error {
 	// Return error if destination file has magic comment
 	if pathutil.Exists(dst) {
@@ -682,4 +673,13 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	}
 
 	done <- actionReposResult{nil, repos}
+}
+
+func (*rebuildCmd) makeVimArgs(reposPath string) []string {
+	return []string{
+		"-u", "NONE", "-N",
+		"-c", "cd " + pathutil.PackReposPathOf(reposPath),
+		"-c", "set rtp+=" + pathutil.PackReposPathOf(reposPath),
+		"-c", "helptags doc", "-c", "quit",
+	}
 }
