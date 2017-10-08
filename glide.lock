@@ -1,6 +1,8 @@
-hash: 166f2a10604ade0fddb778824fb11db1871414552fa1e5d0d994292f1c12a7a6
-updated: 2017-09-19T06:01:53.5608013+09:00
+hash: ee5839a4ac93f9560aecdfbb3d5aecb4a767729e5e4888e64c3a60c12671c69c
+updated: 2017-10-08T14:10:17.1031135+09:00
 imports:
+- name: github.com/hashicorp/go-multierror
+  version: 83588e72410abfbe4df460eeb6f30841ae47d4c4
 - name: github.com/jbenet/go-context
   version: d14ea06fba99483203c19d92cfcd13ebe73135f4
   subpackages:

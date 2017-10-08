@@ -18,6 +18,7 @@ import (
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/transaction"
 
+	"github.com/hashicorp/go-multierror"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
@@ -303,106 +304,24 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	logger.Info("Installing all repositories files ...")
 
 	// Copy all repositories files to startDir
-	copyDone := make(chan actionReposResult, len(reposList))
-	copyCount := 0
-	for i := range reposList {
-		if reposList[i].Type == lockjson.ReposGitType {
-			buildRepos, exists := buildReposMap[reposList[i].Path]
-			if !exists ||
-				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
-				cmd.hasChangedGitRepos(&reposList[i], buildRepos) {
-				go cmd.updateGitRepos(&reposList[i], copyDone)
-				copyCount++
-			}
-		} else if reposList[i].Type == lockjson.ReposStaticType {
-			buildRepos, exists := buildReposMap[reposList[i].Path]
-			if !exists ||
-				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
-				cmd.hasChangedStaticRepos(&reposList[i], buildRepos, startDir) {
-				go cmd.updateStaticRepos(&reposList[i], copyDone)
-				copyCount++
-			}
-		} else {
-			copyDone <- actionReposResult{
-				errors.New("invalid repository type: " + string(reposList[i].Type)),
-				&reposList[i],
-			}
-		}
-	}
+	copyDone, copyCount := cmd.copyReposList(buildReposMap, reposList, startDir)
 
 	// Remove all repositories found in build-info.json, but not in lock.json
-	var removeList []repos
-	for i := range buildInfo.Repos {
-		if !lockJSON.Repos.Contains(buildInfo.Repos[i].Path) {
-			removeList = append(removeList, buildInfo.Repos[i])
-		}
-	}
-	removeDone := make(chan actionReposResult, len(removeList))
-	for i := range removeList {
-		go func(repos *repos) {
-			err := os.RemoveAll(pathutil.FullReposPathOf(repos.Path))
-			logger.Info("Removing " + string(repos.Type) + " repository " + repos.Path + " ... Done.")
-			removeDone <- actionReposResult{
-				err,
-				&lockjson.Repos{Path: repos.Path},
-			}
-		}(&removeList[i])
-	}
+	removeDone, removeCount := cmd.removeReposList(buildInfo.Repos, lockJSON.Repos)
 
 	// Wait copy. construct buildInfo from the results
-	modified := false
-	for i := 0; i < copyCount; i++ {
-		result := <-copyDone
-		if result.err != nil {
-			return errors.New("failed to copy repository '" + result.repos.Path + "': " + result.err.Error())
-		} else if result.repos.Type == lockjson.ReposGitType {
-			logger.Info("Installing git repository " + result.repos.Path + " ... Done.")
-			r := buildInfo.Repos.findByReposPath(result.repos.Path)
-			if r != nil {
-				r.Version = result.repos.Version
-			} else {
-				buildInfo.Repos = append(
-					buildInfo.Repos,
-					repos{
-						Type:    reposGitType,
-						Path:    result.repos.Path,
-						Version: result.repos.Version,
-					},
-				)
-			}
-			modified = true
-		} else if result.repos.Type == lockjson.ReposStaticType {
-			logger.Info("Installing static directory " + result.repos.Path + " ... Done.")
-			r := buildInfo.Repos.findByReposPath(result.repos.Path)
-			if r != nil {
-				r.Version = time.Now().Format(time.RFC3339)
-			} else {
-				buildInfo.Repos = append(
-					buildInfo.Repos,
-					repos{
-						Type:    reposStaticType,
-						Path:    result.repos.Path,
-						Version: time.Now().Format(time.RFC3339),
-					},
-				)
-			}
-			modified = true
-		}
-	}
+	copyModified, copyErr := cmd.waitCopyRepos(copyDone, copyCount, buildInfo)
 
 	// Wait remove
-	for i := 0; i < len(removeList); i++ {
-		result := <-removeDone
-		if result.err != nil {
-			logger.Error("Failed to remove " + result.repos.Path + ": " + result.err.Error())
-		} else {
-			buildInfo.Repos.removeAllByReposPath(result.repos.Path)
-			modified = true
-		}
+	removeModified, removeErr := cmd.waitRemoveRepos(removeDone, removeCount, buildInfo)
+
+	// Handle copy & remove errors
+	if copyErr != nil || removeErr != nil {
+		return multierror.Append(copyErr, removeErr).ErrorOrNil()
 	}
 
-	// Write to build-info.json if modified
-	if modified {
+	// Write to build-info.json if buildInfo was modified
+	if copyModified || removeModified {
 		err = buildInfo.write()
 		if err != nil {
 			return err
@@ -494,6 +413,123 @@ func (*rebuildCmd) copyFileWithMagicComment(src, dst string) error {
 type actionReposResult struct {
 	err   error
 	repos *lockjson.Repos
+}
+
+func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*repos, reposList []lockjson.Repos, startDir string) (chan actionReposResult, int) {
+	copyDone := make(chan actionReposResult, len(reposList))
+	copyCount := 0
+	for i := range reposList {
+		if reposList[i].Type == lockjson.ReposGitType {
+			buildRepos, exists := buildReposMap[reposList[i].Path]
+			if !exists ||
+				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
+				cmd.hasChangedGitRepos(&reposList[i], buildRepos) {
+				go cmd.updateGitRepos(&reposList[i], copyDone)
+				copyCount++
+			}
+		} else if reposList[i].Type == lockjson.ReposStaticType {
+			buildRepos, exists := buildReposMap[reposList[i].Path]
+			if !exists ||
+				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
+				cmd.hasChangedStaticRepos(&reposList[i], buildRepos, startDir) {
+				go cmd.updateStaticRepos(&reposList[i], copyDone)
+				copyCount++
+			}
+		} else {
+			copyDone <- actionReposResult{
+				errors.New("invalid repository type: " + string(reposList[i].Type)),
+				&reposList[i],
+			}
+		}
+	}
+	return copyDone, copyCount
+}
+
+func (cmd *rebuildCmd) removeReposList(buildInfoRepos reposList, lockReposList lockjson.ReposList) (chan actionReposResult, int) {
+	var removeList []repos
+	for i := range buildInfoRepos {
+		if !lockReposList.Contains(buildInfoRepos[i].Path) {
+			removeList = append(removeList, buildInfoRepos[i])
+		}
+	}
+	removeDone := make(chan actionReposResult, len(removeList))
+	for i := range removeList {
+		go func(repos *repos) {
+			err := os.RemoveAll(pathutil.FullReposPathOf(repos.Path))
+			logger.Info("Removing " + string(repos.Type) + " repository " + repos.Path + " ... Done.")
+			removeDone <- actionReposResult{
+				err,
+				&lockjson.Repos{Path: repos.Path},
+			}
+		}(&removeList[i])
+	}
+	return removeDone, len(removeList)
+}
+
+func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, buildInfo *buildInfoType) (bool, *multierror.Error) {
+	var modified bool
+	var merr *multierror.Error
+	for i := 0; i < copyCount; i++ {
+		result := <-copyDone
+		if result.err != nil {
+			merr = multierror.Append(
+				merr,
+				errors.New(
+					"failed to copy repository '"+result.repos.Path+
+						"': "+result.err.Error()))
+		} else if result.repos.Type == lockjson.ReposGitType {
+			logger.Info("Installing git repository " + result.repos.Path + " ... Done.")
+			r := buildInfo.Repos.findByReposPath(result.repos.Path)
+			if r != nil {
+				r.Version = result.repos.Version
+			} else {
+				buildInfo.Repos = append(
+					buildInfo.Repos,
+					repos{
+						Type:    reposGitType,
+						Path:    result.repos.Path,
+						Version: result.repos.Version,
+					},
+				)
+			}
+			modified = true
+		} else if result.repos.Type == lockjson.ReposStaticType {
+			logger.Info("Installing static directory " + result.repos.Path + " ... Done.")
+			r := buildInfo.Repos.findByReposPath(result.repos.Path)
+			if r != nil {
+				r.Version = time.Now().Format(time.RFC3339)
+			} else {
+				buildInfo.Repos = append(
+					buildInfo.Repos,
+					repos{
+						Type:    reposStaticType,
+						Path:    result.repos.Path,
+						Version: time.Now().Format(time.RFC3339),
+					},
+				)
+			}
+			modified = true
+		}
+	}
+	return modified, merr
+}
+
+func (*rebuildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCount int, buildInfo *buildInfoType) (bool, *multierror.Error) {
+	var modified bool
+	var merr *multierror.Error
+	for i := 0; i < removeCount; i++ {
+		result := <-removeDone
+		if result.err != nil {
+			merr = multierror.Append(
+				merr, errors.New(
+					"Failed to remove "+result.repos.Path+
+						": "+result.err.Error()))
+		} else {
+			buildInfo.Repos.removeAllByReposPath(result.repos.Path)
+			modified = true
+		}
+	}
+	return modified, merr
 }
 
 func (*rebuildCmd) getActiveProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {

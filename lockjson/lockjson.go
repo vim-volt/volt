@@ -11,15 +11,15 @@ import (
 	"github.com/vim-volt/volt/pathutil"
 )
 
-type repos []Repos
-type profiles []Profile
+type ReposList []Repos
+type ProfileList []Profile
 
 type LockJSON struct {
-	Version       int64    `json:"version"`
-	TrxID         int64    `json:"trx_id"`
-	ActiveProfile string   `json:"active_profile"`
-	Repos         repos    `json:"repos"`
-	Profiles      profiles `json:"profiles"`
+	Version       int64       `json:"version"`
+	TrxID         int64       `json:"trx_id"`
+	ActiveProfile string      `json:"active_profile"`
+	Repos         ReposList   `json:"repos"`
+	Profiles      ProfileList `json:"profiles"`
 }
 
 type ReposType string
@@ -266,7 +266,7 @@ func (lockJSON *LockJSON) Write() error {
 	return ioutil.WriteFile(pathutil.LockJSON(), bytes, 0644)
 }
 
-func (profs *profiles) FindByName(name string) (*Profile, error) {
+func (profs *ProfileList) FindByName(name string) (*Profile, error) {
 	for i := range *profs {
 		if (*profs)[i].Name == name {
 			return &(*profs)[i], nil
@@ -275,7 +275,7 @@ func (profs *profiles) FindByName(name string) (*Profile, error) {
 	return nil, errors.New("profile '" + name + "' does not exist")
 }
 
-func (profs *profiles) FindIndexByName(name string) int {
+func (profs *ProfileList) FindIndexByName(name string) int {
 	for i := range *profs {
 		if (*profs)[i].Name == name {
 			return i
@@ -284,7 +284,7 @@ func (profs *profiles) FindIndexByName(name string) int {
 	return -1
 }
 
-func (profs *profiles) RemoveAllReposPath(reposPath string) error {
+func (profs *ProfileList) RemoveAllReposPath(reposPath string) error {
 	for i := range *profs {
 		for j := range (*profs)[i].ReposPath {
 			if (*profs)[i].ReposPath[j] == reposPath {
@@ -299,12 +299,12 @@ func (profs *profiles) RemoveAllReposPath(reposPath string) error {
 	return errors.New("no matching profiles[]/repos_path[]: " + reposPath)
 }
 
-func (reposList *repos) Contains(reposPath string) bool {
+func (reposList *ReposList) Contains(reposPath string) bool {
 	_, err := reposList.FindByPath(reposPath)
 	return err == nil
 }
 
-func (reposList *repos) FindByPath(reposPath string) (*Repos, error) {
+func (reposList *ReposList) FindByPath(reposPath string) (*Repos, error) {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
 		if repos.Path == reposPath {
@@ -314,7 +314,7 @@ func (reposList *repos) FindByPath(reposPath string) (*Repos, error) {
 	return nil, errors.New("repos '" + reposPath + "' does not exist")
 }
 
-func (reposList *repos) RemoveAllByPath(reposPath string) error {
+func (reposList *ReposList) RemoveAllByPath(reposPath string) error {
 	for i := range *reposList {
 		if (*reposList)[i].Path == reposPath {
 			*reposList = append((*reposList)[:i], (*reposList)[i+1:]...)
