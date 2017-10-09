@@ -70,12 +70,24 @@ func CloneURLOf(repos string) string {
 	return "https://" + filepath.ToSlash(repos)
 }
 
-func SystemPlugConfOf(filename string) string {
-	filenameList := strings.Split(filepath.ToSlash(filename), "/")
+func UserPlugConfOf(reposPath string) string {
+	return plugConfOf(reposPath, false)
+}
+
+func SystemPlugConfOf(reposPath string) string {
+	return plugConfOf(reposPath, true)
+}
+
+func plugConfOf(reposPath string, system bool) string {
+	filenameList := strings.Split(filepath.ToSlash(reposPath+".vim"), "/")
 	paths := make([]string, 0, len(filenameList)+3)
 	paths = append(paths, VoltPath())
 	paths = append(paths, "plugconf")
-	paths = append(paths, "system")
+	if system {
+		paths = append(paths, "system")
+	} else {
+		paths = append(paths, "user")
+	}
 	paths = append(paths, filenameList...)
 	return filepath.Join(paths...)
 }

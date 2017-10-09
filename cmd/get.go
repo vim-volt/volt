@@ -262,7 +262,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 
 		// Install plugconf
 		logger.Info("Installing plugconf " + reposPath + " ...")
-		err = cmd.installPlugConf(reposPath + ".vim")
+		err = cmd.installPlugConf(reposPath)
 		if err != nil {
 			logger.Info("Installing plugconf " + reposPath + " ... not found")
 		} else {
@@ -343,7 +343,8 @@ func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 	return err
 }
 
-func (*getCmd) installPlugConf(filename string) error {
+func (*getCmd) installPlugConf(reposPath string) error {
+	filename := reposPath + ".vim"
 	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + filename
 
 	res, err := http.Get(url)
@@ -360,7 +361,7 @@ func (*getCmd) installPlugConf(filename string) error {
 		return err
 	}
 
-	fn := pathutil.SystemPlugConfOf(filename)
+	fn := pathutil.SystemPlugConfOf(reposPath)
 	os.MkdirAll(filepath.Dir(fn), 0755)
 
 	err = ioutil.WriteFile(fn, bytes, 0644)

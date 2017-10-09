@@ -128,7 +128,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string) error {
 func (cmd *rmCmd) removeRepos(reposPath string, lockJSON *lockjson.LockJSON) error {
 	// Remove system plugconf
 	logger.Info("Removing plugconf files ...")
-	plugConf := pathutil.SystemPlugConfOf(reposPath + ".vim")
+	plugConf := pathutil.SystemPlugConfOf(reposPath)
 	if pathutil.Exists(plugConf) {
 		err := os.Remove(plugConf)
 		if err != nil {
