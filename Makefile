@@ -18,8 +18,8 @@ $(BIN_DIR)/$(NAME): $(SRC)
 setup:
 	@which go >/dev/null 2>&1   || (echo '[Error] You need to install go,make commands'; exit 1)
 	@which make >/dev/null 2>&1 || (echo '[Error] You need to install go,make commands'; exit 1)
-	go get github.com/Masterminds/glide
-	glide install
+	go get github.com/golang/dep/cmd/dep
+	dep ensure
 	make precompile
 
 precompile:
