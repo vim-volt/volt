@@ -1,7 +1,7 @@
 go-volt
 -------
 
-Backend command for [vim-volt](https://github.com/vim-volt/vim-volt).
+A meta-level vim package manager.
 
 ## Build & Install
 
