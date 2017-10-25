@@ -199,7 +199,7 @@ func (reposList *reposList) findByReposPath(reposPath string) *repos {
 	return nil
 }
 
-func (reposList *reposList) removeAllByReposPath(reposPath string) {
+func (reposList *reposList) removeByReposPath(reposPath string) {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
 		if repos.Path == reposPath {
@@ -309,11 +309,21 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	// Remove all repositories found in build-info.json, but not in lock.json
 	removeDone, removeCount := cmd.removeReposList(buildInfo.Repos, lockJSON.Repos)
 
-	// Wait copy. construct buildInfo from the results
-	copyModified, copyErr := cmd.waitCopyRepos(copyDone, copyCount, buildInfo)
+	// Wait copy
+	var copyModified bool
+	copyErr := cmd.waitCopyRepos(copyDone, copyCount, func(result *actionReposResult) {
+		// Construct buildInfo from the result
+		cmd.constructBuildInfo(buildInfo, result)
+		copyModified = true
+	})
 
 	// Wait remove
-	removeModified, removeErr := cmd.waitRemoveRepos(removeDone, removeCount, buildInfo)
+	var removeModified bool
+	removeErr := cmd.waitRemoveRepos(removeDone, removeCount, func(result *actionReposResult) {
+		// Remove the repository from buildInfo
+		buildInfo.Repos.removeByReposPath(result.repos.Path)
+		removeModified = true
+	})
 
 	// Handle copy & remove errors
 	if copyErr != nil || removeErr != nil {
@@ -466,8 +476,7 @@ func (cmd *rebuildCmd) removeReposList(buildInfoRepos reposList, lockReposList l
 	return removeDone, len(removeList)
 }
 
-func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, buildInfo *buildInfoType) (bool, *multierror.Error) {
-	var modified bool
+func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, callback func(*actionReposResult)) *multierror.Error {
 	var merr *multierror.Error
 	for i := 0; i < copyCount; i++ {
 		result := <-copyDone
@@ -477,45 +486,49 @@ func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int,
 				errors.New(
 					"failed to copy repository '"+result.repos.Path+
 						"': "+result.err.Error()))
-		} else if result.repos.Type == lockjson.ReposGitType {
-			logger.Info("Installing git repository " + result.repos.Path + " ... Done.")
-			r := buildInfo.Repos.findByReposPath(result.repos.Path)
-			if r != nil {
-				r.Version = result.repos.Version
-			} else {
-				buildInfo.Repos = append(
-					buildInfo.Repos,
-					repos{
-						Type:    reposGitType,
-						Path:    result.repos.Path,
-						Version: result.repos.Version,
-					},
-				)
-			}
-			modified = true
-		} else if result.repos.Type == lockjson.ReposStaticType {
-			logger.Info("Installing static directory " + result.repos.Path + " ... Done.")
-			r := buildInfo.Repos.findByReposPath(result.repos.Path)
-			if r != nil {
-				r.Version = time.Now().Format(time.RFC3339)
-			} else {
-				buildInfo.Repos = append(
-					buildInfo.Repos,
-					repos{
-						Type:    reposStaticType,
-						Path:    result.repos.Path,
-						Version: time.Now().Format(time.RFC3339),
-					},
-				)
-			}
-			modified = true
+		} else {
+			logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
+			callback(&result)
 		}
 	}
-	return modified, merr
+	return merr
 }
 
-func (*rebuildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCount int, buildInfo *buildInfoType) (bool, *multierror.Error) {
-	var modified bool
+func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionReposResult) {
+	if result.repos.Type == lockjson.ReposGitType {
+		r := buildInfo.Repos.findByReposPath(result.repos.Path)
+		if r != nil {
+			r.Version = result.repos.Version
+		} else {
+			buildInfo.Repos = append(
+				buildInfo.Repos,
+				repos{
+					Type:    reposGitType,
+					Path:    result.repos.Path,
+					Version: result.repos.Version,
+				},
+			)
+		}
+	} else if result.repos.Type == lockjson.ReposStaticType {
+		r := buildInfo.Repos.findByReposPath(result.repos.Path)
+		if r != nil {
+			r.Version = time.Now().Format(time.RFC3339)
+		} else {
+			buildInfo.Repos = append(
+				buildInfo.Repos,
+				repos{
+					Type:    reposStaticType,
+					Path:    result.repos.Path,
+					Version: time.Now().Format(time.RFC3339),
+				},
+			)
+		}
+	} else {
+		logger.Error("Unknown repos type (" + string(result.repos.Type) + ")")
+	}
+}
+
+func (*rebuildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCount int, callback func(result *actionReposResult)) *multierror.Error {
 	var merr *multierror.Error
 	for i := 0; i < removeCount; i++ {
 		result := <-removeDone
@@ -525,11 +538,10 @@ func (*rebuildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCoun
 					"Failed to remove "+result.repos.Path+
 						": "+result.err.Error()))
 		} else {
-			buildInfo.Repos.removeAllByReposPath(result.repos.Path)
-			modified = true
+			callback(&result)
 		}
 	}
-	return modified, merr
+	return merr
 }
 
 func (*rebuildCmd) getActiveProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
