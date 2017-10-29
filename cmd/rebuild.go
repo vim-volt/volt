@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/vim-volt/volt/fileutil"
@@ -20,8 +19,6 @@ import (
 	"github.com/vim-volt/volt/transaction"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/haya14busa/go-vimlparser"
-	"github.com/haya14busa/go-vimlparser/ast"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
@@ -313,41 +310,21 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 
 	// Wait copy
 	var copyModified bool
-	copyErr := cmd.waitCopyRepos(copyDone, copyCount, func(result *actionReposResult) *multierror.Error {
+	copyErr := cmd.waitCopyRepos(copyDone, copyCount, func(result *actionReposResult) error {
 		// Construct buildInfo from the result
 		cmd.constructBuildInfo(buildInfo, result)
 		copyModified = true
 
-		// Parse plugconfs and make parsed plugconf info
-		var merr *multierror.Error
-		var parsedList []ParsedPlugConf
-		var funcCap int
-		for _, repos := range reposList {
-			var parsed *ParsedPlugConf
-			var err error
-			user := pathutil.UserPlugConfOf(repos.Path)
-			system := pathutil.SystemPlugConfOf(repos.Path)
-			if pathutil.Exists(user) {
-				parsed, err = cmd.parsePlugConf(user, parsedList)
-			} else if pathutil.Exists(system) {
-				parsed, err = cmd.parsePlugConf(system, parsedList)
-			}
-			if err != nil {
-				merr = multierror.Append(merr, err)
-			} else {
-				parsedList = append(parsedList, *parsed)
-				funcCap += len(parsed.functions) + 1 /* +1 for s:config() */
-			}
+		// Generate bundle plugconf content
+		plugconf := plugconfCmd{}
+		content, merr := plugconf.generateBundlePlugconf(reposList)
+		for _, err := range merr.Errors {
+			// Show vim script parse errors
+			logger.Warn(err.Error())
 		}
 
 		// Write parsed plugconf info to bundled plugconf file
-		content := cmd.makeBundledPlugConf(parsedList, funcCap)
-		err := ioutil.WriteFile(pathutil.BundledPlugConf(), content, 0644)
-		if err != nil {
-			merr = multierror.Append(merr, err)
-		}
-
-		return merr
+		return ioutil.WriteFile(pathutil.BundledPlugConf(), content, 0644)
 	})
 
 	// Wait remove
@@ -373,137 +350,6 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	}
 
 	return nil
-}
-
-type loadOnType string
-
-const (
-	loadOnStart    loadOnType = "VimEnter"
-	loadOnFileType            = "FileType"
-	loadOnExcmd               = "CmdUndefined"
-)
-
-type ParsedPlugConf struct {
-	number     int
-	configFunc string
-	functions  []string
-	loadOn     loadOnType
-}
-
-func (cmd *rebuildCmd) parsePlugConf(plugConf string, parsedList []ParsedPlugConf) (*ParsedPlugConf, error) {
-	bytes, err := ioutil.ReadFile(plugConf)
-	if err != nil {
-		return nil, err
-	}
-	src := string(bytes)
-
-	file, err := vimlparser.ParseFile(strings.NewReader(src), plugConf, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var loadOn loadOnType
-	var configFunc string
-	var functions []string
-	var parseErr error
-
-	// Inspect nodes and get above values from plugconf script
-	ast.Inspect(file, func(node ast.Node) bool {
-		// Cast to function node (return if it's not a function node)
-		var fn *ast.Function
-		if f, ok := node.(*ast.Function); !ok {
-			return true
-		} else {
-			fn = f
-		}
-
-		// Get function name
-		var name string
-		if ident, ok := fn.Name.(*ast.Ident); !ok {
-			return true
-		} else {
-			name = ident.Name
-		}
-
-		switch name {
-		case "s:start_on":
-			var err error
-			loadOn, err = cmd.inspectReturnValue(fn)
-			if err != nil {
-				parseErr = err
-			}
-		case "s:config":
-			configFunc = cmd.extractBody(fn, src)
-		default:
-			functions = append(functions, cmd.extractBody(fn, src))
-		}
-
-		return true
-	})
-
-	if configFunc == "" {
-		return nil, errors.New("no s:config() function in plugconf: " + plugConf)
-	}
-
-	return &ParsedPlugConf{
-		number:     len(parsedList) + 1,
-		configFunc: configFunc,
-		functions:  functions,
-		loadOn:     loadOn,
-	}, nil
-}
-
-// Inspect return value of s:start_on() function in plugconf
-func (cmd *rebuildCmd) inspectReturnValue(fn *ast.Function) (loadOnType, error) {
-	var loadOn loadOnType
-	ast.Inspect(fn, func(node ast.Node) bool {
-		// Cast to return node (return if it's not a return node)
-		var ret *ast.Return
-		if r, ok := node.(*ast.Return); !ok {
-			return true
-		} else {
-			ret = r
-		}
-
-		// TODO: Parse the argument of :return
-
-		return true
-	})
-	if string(loadOn) == "" {
-		return "", errors.New("can't detect return value of s:")
-	}
-	return loadOn, nil
-}
-
-func (cmd *rebuildCmd) extractBody(fn *ast.Function, src string) string {
-	pos := fn.Pos()
-
-	// TODO: Handle line break
-	endpos := fn.EndFunction.Pos()
-	endfunc := fn.EndFunction.ExArg
-	cmdlen := endfunc.Argpos.Offset - endfunc.Cmdpos.Offset
-	endpos.Offset += cmdlen
-	endpos.Column += cmdlen
-
-	return src[pos.Offset:endpos.Offset]
-}
-
-func (cmd *rebuildCmd) makeBundledPlugConf(parsedList []ParsedPlugConf, funcCap int) []byte {
-	functions := make([]string, 0, funcCap)
-	autocommands := make([]string, 0, len(parsedList))
-	for _, p := range parsedList {
-		// TODO: replace only function name node
-		functions = append(functions, strings.Replace(p.configFunc, "s:config", fmt.Sprintf("s:config_%d", p.number), -1))
-		functions = append(functions, p.functions...)
-		autocommands = append(autocommands, fmt.Sprintf("  autocmd %s * call s:config_%d()", string(p.loadOn), p.number))
-	}
-	return []byte(fmt.Sprintf(`%s
-
-augroup volt-bundled-plugconf
-  autocmd!
-  %s
-augroup END
-`, strings.Join(functions, "\n\n"), strings.Join(autocommands, "\n")))
 }
 
 func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string, install bool) error {
@@ -640,7 +486,7 @@ func (cmd *rebuildCmd) removeReposList(buildInfoRepos reposList, lockReposList l
 	return removeDone, len(removeList)
 }
 
-func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, callback func(*actionReposResult) *multierror.Error) *multierror.Error {
+func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, callback func(*actionReposResult) error) *multierror.Error {
 	var merr *multierror.Error
 	for i := 0; i < copyCount; i++ {
 		result := <-copyDone
@@ -652,11 +498,9 @@ func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int,
 						"': "+result.err.Error()))
 		} else {
 			logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
-			merr2 := callback(&result)
-			if merr2 != nil {
-				for _, err := range merr2.Errors {
-					merr = multierror.Append(merr, err)
-				}
+			err := callback(&result)
+			if err != nil {
+				merr = multierror.Append(merr, err)
 			}
 		}
 	}
