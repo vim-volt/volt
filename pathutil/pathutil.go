@@ -11,7 +11,7 @@ import (
 // Normalize the following forms into "github.com/user/name":
 // 1. user/name[.git]
 // 2. github.com/user/name[.git]
-// 3. [http|https]://github.com/user/name[.git]
+// 3. [git|http|https]://github.com/user/name[.git]
 func NormalizeRepos(rawReposPath string) (string, error) {
 	rawReposPath = filepath.ToSlash(rawReposPath)
 	paths := strings.Split(rawReposPath, "/")
@@ -21,7 +21,7 @@ func NormalizeRepos(rawReposPath string) (string, error) {
 	if len(paths) == 2 {
 		return strings.TrimSuffix("github.com/"+rawReposPath, ".git"), nil
 	}
-	if paths[0] == "https:" || paths[0] == "http:" {
+	if paths[0] == "https:" || paths[0] == "http:" || paths[0] == "git:" {
 		reposPath := strings.Join(paths[len(paths)-3:], "/")
 		return strings.TrimSuffix(reposPath, ".git"), nil
 	}
