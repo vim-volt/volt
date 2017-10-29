@@ -8,21 +8,22 @@ import (
 	"strings"
 )
 
-// user/name -> github.com/user/name
-// github.com/user/name -> github.com/user/name
-// https://github.com/user/name -> github.com/user/name
-// localhost/local/name -> localhost/local/name
+// Normalize the following forms into "github.com/user/name":
+// 1. user/name[.git]
+// 2. github.com/user/name[.git]
+// 3. [http|https]://github.com/user/name[.git]
 func NormalizeRepos(rawReposPath string) (string, error) {
 	rawReposPath = filepath.ToSlash(rawReposPath)
 	paths := strings.Split(rawReposPath, "/")
 	if len(paths) == 3 {
-		return rawReposPath, nil
+		return strings.TrimSuffix(rawReposPath, ".git"), nil
 	}
 	if len(paths) == 2 {
-		return "github.com/" + rawReposPath, nil
+		return strings.TrimSuffix("github.com/"+rawReposPath, ".git"), nil
 	}
 	if paths[0] == "https:" || paths[0] == "http:" {
-		return strings.Join(paths[len(paths)-3:], "/"), nil
+		reposPath := strings.Join(paths[len(paths)-3:], "/")
+		return strings.TrimSuffix(reposPath, ".git"), nil
 	}
 	return "", errors.New("invalid format of repository: " + rawReposPath)
 }
