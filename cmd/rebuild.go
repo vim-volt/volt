@@ -317,7 +317,8 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 
 		// Generate bundle plugconf content
 		plugconf := plugconfCmd{}
-		content, merr := plugconf.generateBundlePlugconf(reposList)
+		isSystem := true
+		content, merr := plugconf.generateBundlePlugconf(isSystem, reposList)
 		for _, err := range merr.Errors {
 			// Show vim script parse errors
 			logger.Warn(err.Error())

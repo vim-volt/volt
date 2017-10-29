@@ -42,7 +42,7 @@ Usage
   plugconf list [-a]
     List all user plugconfs. If -a option was given, list also system plugconfs.
 
-  plugconf bundle
+  plugconf bundle [-system]
     Outputs bundled plugconf to stdout.
 
   plugconf unbundle
@@ -78,6 +78,28 @@ Quick example
   function s:config_2()
     " no config
   endfunction
+
+  $ volt plugconf bundle -system
+
+  " github.com/tyru/open-browser.vim.vim
+  function s:config_1()
+    let g:netrw_nogx = 1
+    nmap gx <Plug>(openbrowser-smart-search)
+    xmap gx <Plug>(openbrowser-smart-search)
+
+    command! OpenBrowserCurrent execute 'OpenBrowser' 'file://' . expand('%:p:gs?\\?/?')
+  endfunction
+
+  " github.com/tpope/vim-markdown.vim
+  function s:config_2()
+    " no config
+  endfunction
+
+  augroup volt-bundled-plugconf
+    autocmd!
+    autocmd VimEnter * call s:config_1()
+    autocmd FileType markdown call s:config_2()
+  augroup END
 
   $ volt plugconf bundle >bundle-plugconf.vim
   $ vim bundle-plugconf.vim  # edit config
@@ -161,7 +183,9 @@ func (*plugconfCmd) doList(args []string) error {
 }
 
 // Output bundle plugconf content
-func (cmd *plugconfCmd) doBundle(_ []string) error {
+func (cmd *plugconfCmd) doBundle(args []string) error {
+	isSystem := len(args) != 0 && args[0] == "-system"
+
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -183,7 +207,7 @@ func (cmd *plugconfCmd) doBundle(_ []string) error {
 	}
 
 	// Output bundle plugconf content
-	output, merr := cmd.generateBundlePlugconf(reposList)
+	output, merr := cmd.generateBundlePlugconf(isSystem, reposList)
 	for _, err := range merr.Errors {
 		// Show vim script parse errors
 		logger.Warn(err.Error())
@@ -192,7 +216,7 @@ func (cmd *plugconfCmd) doBundle(_ []string) error {
 	return nil
 }
 
-func (cmd *plugconfCmd) generateBundlePlugconf(reposList []lockjson.Repos) ([]byte, *multierror.Error) {
+func (cmd *plugconfCmd) generateBundlePlugconf(isSystem bool, reposList []lockjson.Repos) ([]byte, *multierror.Error) {
 	// Parse plugconfs and make parsed plugconf info
 	var merr *multierror.Error
 	var parsedList []parsedPlugconf
@@ -214,7 +238,7 @@ func (cmd *plugconfCmd) generateBundlePlugconf(reposList []lockjson.Repos) ([]by
 			funcCap += len(parsed.functions) + 1 /* +1 for s:config() */
 		}
 	}
-	return cmd.makeBundledPlugConf(parsedList, funcCap), merr
+	return cmd.makeBundledPlugConf(isSystem, parsedList, funcCap), merr
 }
 
 type loadOnType string
@@ -227,6 +251,7 @@ const (
 
 type parsedPlugconf struct {
 	number     int
+	loadOnFunc string
 	configFunc string
 	functions  []string
 	loadOn     loadOnType
@@ -245,6 +270,7 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugco
 	}
 
 	var loadOn loadOnType
+	var loadOnFunc string
 	var configFunc string
 	var functions []string
 	var parseErr error
@@ -269,6 +295,7 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugco
 
 		switch name {
 		case "s:load_on":
+			loadOnFunc = cmd.extractBody(fn, src)
 			var err error
 			loadOn, err = cmd.inspectReturnValue(fn)
 			if err != nil {
@@ -330,10 +357,13 @@ func (cmd *plugconfCmd) extractBody(fn *ast.Function, src string) string {
 	return src[pos.Offset:endpos.Offset]
 }
 
-func (cmd *plugconfCmd) makeBundledPlugConf(parsedList []parsedPlugconf, funcCap int) []byte {
+func (cmd *plugconfCmd) makeBundledPlugConf(isSystem bool, parsedList []parsedPlugconf, funcCap int) []byte {
 	functions := make([]string, 0, funcCap)
 	autocommands := make([]string, 0, len(parsedList))
 	for _, p := range parsedList {
+		if isSystem && p.loadOnFunc != "" {
+			functions = append(functions, p.loadOnFunc)
+		}
 		// TODO: replace only function name node
 		functions = append(functions, strings.Replace(p.configFunc, "s:config", fmt.Sprintf("s:config_%d", p.number), -1))
 		functions = append(functions, p.functions...)
