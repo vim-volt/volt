@@ -20,7 +20,6 @@ setup:
 	@which make >/dev/null 2>&1 || (echo '[Error] You need to install go,make commands'; exit 1)
 	go get github.com/golang/dep/cmd/dep
 	dep ensure
-	make precompile
 
 precompile:
 	go build -a -i -o $(BIN_DIR)/$(NAME)
