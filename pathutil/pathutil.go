@@ -140,6 +140,10 @@ func BuildInfoJSON() string {
 	return filepath.Join(VimVoltDir(), "build-info.json")
 }
 
+func BundledPlugConf() string {
+	return filepath.Join(VimVoltStartDir(), "system", "plugin", "bundled_plugconf.vim")
+}
+
 func LookUpVimrcOrGvimrc() []string {
 	return append(LookUpVimrc(), LookUpGvimrc()...)
 }
