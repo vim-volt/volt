@@ -268,7 +268,7 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugco
 		}
 
 		switch name {
-		case "s:start_on":
+		case "s:load_on":
 			var err error
 			loadOn, err = cmd.inspectReturnValue(fn)
 			if err != nil {
@@ -295,7 +295,7 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugco
 	}, nil
 }
 
-// Inspect return value of s:start_on() function in plugconf
+// Inspect return value of s:load_on() function in plugconf
 func (cmd *plugconfCmd) inspectReturnValue(fn *ast.Function) (loadOnType, error) {
 	var loadOn loadOnType
 	ast.Inspect(fn, func(node ast.Node) bool {
