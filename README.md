@@ -3,13 +3,19 @@ go-volt
 
 A meta-level vim package manager.
 
-## Build & Install
+## Install
 
-NOTE: Normal user does not require this step to use volt command.
-Because this command was normally invoked by vim-volt,
-and vim-volt automatically installs volt binary from [GitHub releases](https://github.com/vim-volt/go-volt/releases).
+```
+$ go get github.com/vim-volt/volt
+```
 
-To build release binaries:
+## Build environment
+
+Go 1.9.1, or Go 1.9.0 with [a patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ([#1](https://github.com/vim-volt/go-volt/issues/1))
+
+## Want to join development of volt?
+
+If you want to join developing volt, to build release binaries:
 
 ```
 $ make setup
@@ -23,7 +29,7 @@ volt-v0.0.1-alpha-windows-amd64.exe
 volt-v0.0.1-alpha-windows-386.exe
 ```
 
-To develop:
+To build develop binary:
 
 ```
 $ make setup
@@ -36,7 +42,3 @@ and edit sources, and
 $ make
 $ bin/volt ... # run volt command
 ```
-
-## Build environment
-
-Go 1.9 with [a patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ([#1](https://github.com/vim-volt/go-volt/issues/1))
