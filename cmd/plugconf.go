@@ -15,6 +15,7 @@ import (
 
 	"github.com/haya14busa/go-vimlparser"
 	"github.com/haya14busa/go-vimlparser/ast"
+	"github.com/haya14busa/go-vimlparser/token"
 )
 
 type plugconfFlagsType struct {
@@ -208,9 +209,11 @@ func (cmd *plugconfCmd) doBundle(args []string) error {
 
 	// Output bundle plugconf content
 	output, merr := cmd.generateBundlePlugconf(isSystem, reposList)
-	for _, err := range merr.Errors {
-		// Show vim script parse errors
-		logger.Warn(err.Error())
+	if merr != nil {
+		for _, err := range merr.Errors {
+			// Show vim script parse errors
+			logger.Warn(err.Error())
+		}
 	}
 	os.Stdout.Write(output)
 	return nil
@@ -227,9 +230,11 @@ func (cmd *plugconfCmd) generateBundlePlugconf(isSystem bool, reposList []lockjs
 		user := pathutil.UserPlugConfOf(repos.Path)
 		system := pathutil.SystemPlugConfOf(repos.Path)
 		if pathutil.Exists(user) {
-			parsed, err = cmd.parsePlugConf(user, parsedList)
+			parsed, err = cmd.parsePlugConf(user, parsedList, repos.Path)
 		} else if pathutil.Exists(system) {
-			parsed, err = cmd.parsePlugConf(system, parsedList)
+			parsed, err = cmd.parsePlugConf(system, parsedList, repos.Path)
+		} else {
+			continue
 		}
 		if err != nil {
 			merr = multierror.Append(merr, err)
@@ -251,13 +256,15 @@ const (
 
 type parsedPlugconf struct {
 	number     int
+	reposPath  string
 	loadOnFunc string
 	configFunc string
 	functions  []string
 	loadOn     loadOnType
+	loadOnArg  string
 }
 
-func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugconf) (*parsedPlugconf, error) {
+func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugconf, reposPath string) (*parsedPlugconf, error) {
 	bytes, err := ioutil.ReadFile(plugConf)
 	if err != nil {
 		return nil, err
@@ -269,7 +276,8 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugco
 		return nil, err
 	}
 
-	var loadOn loadOnType
+	var loadOn loadOnType = loadOnStart
+	var loadOnArg string
 	var loadOnFunc string
 	var configFunc string
 	var functions []string
@@ -297,7 +305,7 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugco
 		case "s:load_on":
 			loadOnFunc = cmd.extractBody(fn, src)
 			var err error
-			loadOn, err = cmd.inspectReturnValue(fn)
+			loadOn, loadOnArg, err = cmd.inspectReturnValue(fn)
 			if err != nil {
 				parseErr = err
 			}
@@ -316,15 +324,19 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugco
 
 	return &parsedPlugconf{
 		number:     len(parsedList) + 1,
+		reposPath:  reposPath,
 		configFunc: configFunc,
 		functions:  functions,
 		loadOn:     loadOn,
+		loadOnArg:  loadOnArg,
 	}, nil
 }
 
 // Inspect return value of s:load_on() function in plugconf
-func (cmd *plugconfCmd) inspectReturnValue(fn *ast.Function) (loadOnType, error) {
+func (cmd *plugconfCmd) inspectReturnValue(fn *ast.Function) (loadOnType, string, error) {
 	var loadOn loadOnType
+	var loadOnArg string
+	var err error
 	ast.Inspect(fn, func(node ast.Node) bool {
 		// Cast to return node (return if it's not a return node)
 		var ret *ast.Return
@@ -334,14 +346,29 @@ func (cmd *plugconfCmd) inspectReturnValue(fn *ast.Function) (loadOnType, error)
 			ret = r
 		}
 
-		// TODO: Parse the argument of :return
+		// Parse the argument of :return
+		rhs, ok := ret.Result.(*ast.BasicLit)
+		if ok && rhs.Kind == token.STRING {
+			value := rhs.Value[1 : len(rhs.Value)-1]
+			if value == "start" {
+				loadOn = loadOnStart
+			} else if strings.HasPrefix(value, "filetype=") {
+				loadOn = loadOnFileType
+				loadOnArg = strings.TrimPrefix(value, "filetype=")
+			} else if strings.HasPrefix(value, "excmd=") {
+				loadOn = loadOnExcmd
+				loadOnArg = strings.TrimPrefix(value, "excmd=")
+			} else {
+				err = errors.New("Invalid rhs of ':return': " + rhs.Value)
+			}
+		}
 
 		return true
 	})
 	if string(loadOn) == "" {
-		return "", errors.New("can't detect return value of s:")
+		return "", "", errors.New("can't detect return value of s:load_on()")
 	}
-	return loadOn, nil
+	return loadOn, loadOnArg, err
 }
 
 func (cmd *plugconfCmd) extractBody(fn *ast.Function, src string) string {
@@ -352,7 +379,6 @@ func (cmd *plugconfCmd) extractBody(fn *ast.Function, src string) string {
 	endfunc := fn.EndFunction.ExArg
 	cmdlen := endfunc.Argpos.Offset - endfunc.Cmdpos.Offset
 	endpos.Offset += cmdlen
-	endpos.Column += cmdlen
 
 	return src[pos.Offset:endpos.Offset]
 }
@@ -365,15 +391,24 @@ func (cmd *plugconfCmd) makeBundledPlugConf(isSystem bool, parsedList []parsedPl
 			functions = append(functions, p.loadOnFunc)
 		}
 		// TODO: replace only function name node
-		functions = append(functions, strings.Replace(p.configFunc, "s:config", fmt.Sprintf("s:config_%d", p.number), -1))
+		configFunc := p.configFunc
+		configFunc = strings.Replace(configFunc, "s:config", fmt.Sprintf("s:config_%d", p.number), -1)
+		configFunc = fmt.Sprintf("\" %s\n", p.reposPath) + configFunc
+		functions = append(functions, configFunc)
 		functions = append(functions, p.functions...)
 		autocommands = append(autocommands, fmt.Sprintf("  autocmd %s * call s:config_%d()", string(p.loadOn), p.number))
 	}
-	return []byte(fmt.Sprintf(`%s
+	return []byte(fmt.Sprintf(`
+if exists('g:loaded_volt_system_bundled_plugconf')
+  finish
+endif
+let g:loaded_volt_system_bundled_plugconf = 1
+
+%s
 
 augroup volt-bundled-plugconf
   autocmd!
-  %s
+%s
 augroup END
 `, strings.Join(functions, "\n\n"), strings.Join(autocommands, "\n")))
 }
