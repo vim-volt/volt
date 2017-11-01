@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -257,9 +258,9 @@ const (
 type parsedPlugconf struct {
 	number     int
 	reposPath  string
-	loadOnFunc string
-	configFunc string
 	functions  []string
+	configFunc string
+	loadOnFunc string
 	loadOn     loadOnType
 	loadOnArg  string
 }
@@ -325,8 +326,9 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugco
 	return &parsedPlugconf{
 		number:     len(parsedList) + 1,
 		reposPath:  reposPath,
-		configFunc: configFunc,
 		functions:  functions,
+		configFunc: configFunc,
+		loadOnFunc: loadOnFunc,
 		loadOn:     loadOn,
 		loadOnArg:  loadOnArg,
 	}, nil
@@ -388,15 +390,17 @@ func (cmd *plugconfCmd) makeBundledPlugConf(isSystem bool, parsedList []parsedPl
 	autocommands := make([]string, 0, len(parsedList))
 	for _, p := range parsedList {
 		if isSystem && p.loadOnFunc != "" {
-			functions = append(functions, p.loadOnFunc)
+			functions = append(functions, cmd.convertToDecodableFunc(p.loadOnFunc, p.reposPath, p.number))
 		}
-		// TODO: replace only function name node
-		configFunc := p.configFunc
-		configFunc = strings.Replace(configFunc, "s:config", fmt.Sprintf("s:config_%d", p.number), -1)
-		configFunc = fmt.Sprintf("\" %s\n", p.reposPath) + configFunc
-		functions = append(functions, configFunc)
+		functions = append(functions, cmd.convertToDecodableFunc(p.configFunc, p.reposPath, p.number))
 		functions = append(functions, p.functions...)
-		autocommands = append(autocommands, fmt.Sprintf("  autocmd %s * call s:config_%d()", string(p.loadOn), p.number))
+		var pattern string
+		if p.loadOn == loadOnStart || p.loadOnArg == "" {
+			pattern = "*"
+		} else {
+			pattern = p.loadOnArg
+		}
+		autocommands = append(autocommands, fmt.Sprintf("  autocmd %s %s call s:config_%d()", string(p.loadOn), pattern, p.number))
 	}
 	return []byte(fmt.Sprintf(`
 if exists('g:loaded_volt_system_bundled_plugconf')
@@ -411,6 +415,16 @@ augroup volt-bundled-plugconf
 %s
 augroup END
 `, strings.Join(functions, "\n\n"), strings.Join(autocommands, "\n")))
+}
+
+var rxFuncName = regexp.MustCompile(`^(fu\w+!?\s+s:\w+)`)
+
+func (cmd *plugconfCmd) convertToDecodableFunc(funcBody string, reposPath string, reposID int) string {
+	// Change function name (e.g. s:load_on() -> s:load_on_1())
+	funcBody = rxFuncName.ReplaceAllString(funcBody, fmt.Sprintf("${1}_%d", reposID))
+	// Add repos path as comment
+	funcBody = "\" " + reposPath + "\n" + funcBody
+	return funcBody
 }
 
 func (*plugconfCmd) doUnbundle(_ []string) error {
