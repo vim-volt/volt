@@ -1,9 +1,8 @@
 
 NAME := volt
 SRC := $(wildcard *.go */*.go)
-VERSION := $(shell bin/volt version | sed -E 's/^volt version: (\S+).*/\1/')
-DEVEL_LDFLAGS := -X github.com/vim-volt/go-volt/cmd.revision=$(git rev-parse --short HEAD)
-RELEASE_LDFLAGS := $(DEVEL_LDFLAGS) -extldflags '-static'
+VERSION := $(shell sed -n -E 's/var version string = "([^"]+)"/\1/p' cmd/version.go)
+RELEASE_LDFLAGS := -extldflags '-static'
 RELEASE_OS := linux windows darwin
 RELEASE_ARCH := amd64 386
 
@@ -13,7 +12,7 @@ BIN_DIR := bin
 all: $(BIN_DIR)/$(NAME)
 
 $(BIN_DIR)/$(NAME): $(SRC)
-	go build -ldflags "$(DEVEL_LDFLAGS)" -o $(BIN_DIR)/$(NAME)
+	go build -o $(BIN_DIR)/$(NAME)
 
 setup:
 	@which go >/dev/null 2>&1   || (echo '[Error] You need to install go,make commands'; exit 1)
