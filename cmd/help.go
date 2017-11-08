@@ -54,6 +54,10 @@ Command
     This is shortcut of:
     volt profile add {current profile} {repository} [{repository2} ...]
 
+  list
+    This is shortcut of:
+    volt profile show {current profile}
+
   disable {repository} [{repository2} ...]
     This is shortcut of:
     volt profile rm {current profile} {repository} [{repository2} ...]

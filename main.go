@@ -28,6 +28,8 @@ func Main() int {
 		return cmd.Enable(os.Args[2:])
 	case "disable":
 		return cmd.Disable(os.Args[2:])
+	case "list":
+		return cmd.List(os.Args[2:])
 	case "profile":
 		return cmd.Profile(os.Args[2:])
 	case "plugconf":
