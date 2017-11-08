@@ -234,7 +234,11 @@ func (cmd *profileCmd) doShow(args []string) error {
 	fmt.Println("use gvimrc:", profile.UseGvimrc)
 	fmt.Println("repos path:")
 	for _, reposPath := range profile.ReposPath {
-		fmt.Println("  " + reposPath)
+		hash, err := getRemoteHEAD(reposPath)
+		if err != nil {
+			hash = "?"
+		}
+		fmt.Printf("  %s (%s)\n", reposPath, hash)
 	}
 
 	return nil
