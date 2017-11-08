@@ -1,8 +1,8 @@
 
 NAME := volt
 SRC := $(wildcard *.go */*.go)
-VERSION := $(shell git describe --tags)
-DEVEL_LDFLAGS := -X github.com/vim-volt/go-volt/cmd.version=$(VERSION)
+VERSION := $(shell bin/volt version | sed -E 's/^volt version: (\S+).*/\1/')
+DEVEL_LDFLAGS := -X github.com/vim-volt/go-volt/cmd.revision=$(git rev-parse --short HEAD)
 RELEASE_LDFLAGS := $(DEVEL_LDFLAGS) -extldflags '-static'
 RELEASE_OS := linux windows darwin
 RELEASE_ARCH := amd64 386
@@ -26,7 +26,7 @@ precompile:
 	rm $(BIN_DIR)/$(NAME)
 
 # Make static-linked binaries and tarballs
-release: $(SRC)
+release: $(BIN_DIR)/$(NAME)
 	rm -fr $(DIST_DIR)
 	@for os in $(RELEASE_OS); do \
 		for arch in $(RELEASE_ARCH); do \
