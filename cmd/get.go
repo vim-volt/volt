@@ -224,6 +224,7 @@ type getParallelResult struct {
 	hash      string
 }
 
+// This function is executed in goroutine of each plugin
 func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
 	var status string
 	upgraded := false
@@ -307,10 +308,26 @@ func (cmd *getCmd) upgradePlugin(reposPath string, flags *getFlagsType) error {
 		return err
 	}
 
-	return repos.Fetch(&git.FetchOptions{
-		RemoteName: "origin",
-		Progress:   progress,
-	})
+	cfg, err := repos.Config()
+	if err != nil {
+		return err
+	}
+
+	if cfg.Core.IsBare {
+		return repos.Fetch(&git.FetchOptions{
+			RemoteName: "origin",
+			Progress:   progress,
+		})
+	} else {
+		wt, err := repos.Worktree()
+		if err != nil {
+			return err
+		}
+		return wt.Pull(&git.PullOptions{
+			RemoteName: "origin",
+			Progress:   progress,
+		})
+	}
 }
 
 func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
