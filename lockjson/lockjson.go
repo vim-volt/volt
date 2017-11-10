@@ -160,18 +160,6 @@ func validate(lockJSON *LockJSON) error {
 		}
 	}
 
-	// Validate if repos[]/path exists on filesystem
-	// and is a directory
-	for i := range lockJSON.Repos {
-		repos := &lockJSON.Repos[i]
-		fullpath := pathutil.FullReposPathOf(repos.Path)
-		if file, err := os.Stat(fullpath); os.IsNotExist(err) {
-			return errors.New("'" + fullpath + "' (repos[" + strconv.Itoa(i) + "].path) doesn't exist on filesystem")
-		} else if !file.IsDir() {
-			return errors.New("'" + fullpath + "' (repos[" + strconv.Itoa(i) + "].path) is not a directory")
-		}
-	}
-
 	// Validate if trx_id is equal or greater than repos[]/trx_id
 	index := -1
 	var max int64
