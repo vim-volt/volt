@@ -333,7 +333,7 @@ func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 	}
 
 	// Clone repository to $VOLTPATH/repos/{site}/{user}/{name}
-	isBare := true
+	isBare := false
 	_, err = git.PlainClone(fullpath, isBare, &git.CloneOptions{
 		URL:      pathutil.CloneURLOf(reposPath),
 		Progress: progress,
