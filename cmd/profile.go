@@ -38,7 +38,7 @@ func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
-		fmt.Println(`
+		fmt.Print(`
 Usage
   profile [get]
     Get current profile name.
@@ -89,8 +89,7 @@ Quick example
   $ volt disable tyru/open-browser.vim # if profile name is current active profile, you can also use "volt disable" command instead
   $ volt profile add foo tyru/caw.vim # will enable loading tyru/caw.vim plugin on profile "foo"
   $ volt enable tyru/open-browser.vim
-  $ volt profile destroy foo # will delete profile "foo"
-`)
+  $ volt profile destroy foo # will delete profile "foo"` + "\n\n")
 		profileFlags.helped = true
 	}
 

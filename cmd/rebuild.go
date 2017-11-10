@@ -35,7 +35,7 @@ func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
-		fmt.Println(`
+		fmt.Print(`
 Usage
   volt rebuild [-help] [-full]
 
@@ -53,8 +53,7 @@ Description
   ~/.vim/pack/volt/build-info.json is a file which holds the information that what vim plugins are installed in ~/.vim/pack/volt/ and its type (git repository, static repository, or system repository), its version. A user normally doesn't need to know the contents of build-info.json .
 
   If -full option was given, remove all directories in ~/.vim/pack/volt/start/ and ~/.vim/pack/volt/opt/ , and copy repositories' files into above vim directories.
-  Otherwise, it will perform smart rebuild: copy / remove only changed repositories' files.
-`)
+  Otherwise, it will perform smart rebuild: copy / remove only changed repositories' files.` + "\n\n")
 		fmt.Println("Options")
 		fs.PrintDefaults()
 		fmt.Println()
