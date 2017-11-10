@@ -31,7 +31,7 @@ func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
-		fmt.Println(`
+		fmt.Print(`
 Usage
   plugconf list [-a]
     List all user plugconfs. If -a option was given, list also system plugconfs.
@@ -75,8 +75,7 @@ Quick example
 
   $ volt plugconf bundle >bundle-plugconf.vim
   $ vim bundle-plugconf.vim  # edit config
-  $ volt plugconf unbundle <bundle-plugconf.vim
-`)
+  $ volt plugconf unbundle <bundle-plugconf.vim` + "\n\n")
 		fs.PrintDefaults()
 		fmt.Println()
 		plugconfFlags.helped = true

@@ -24,7 +24,7 @@ func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
-		fmt.Println(`
+		fmt.Print(`
 Usage
   volt rm [-help] {repository} [{repository2} ...]
 
@@ -34,8 +34,7 @@ Quick example
 Description
   Uninstall vim plugin of {repository} on every profile.
 
-  {repository} is treated as same format as "volt get" (see "volt get -help").
-`)
+  {repository} is treated as same format as "volt get" (see "volt get -help").` + "\n\n")
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()

@@ -24,7 +24,7 @@ func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
-		fmt.Println(`
+		fmt.Print(`
 Usage
   volt query [-help] [-j] [-l] [{repository} ...]
 
@@ -36,8 +36,7 @@ Quick example
 Description
   Output queried vim plugins info ("version" and "trx_id"). "version" is vim plugin's locked version. "trx_id" is transaction ID (transaction is volt's internal operation unit). The ID is incremented when plugins are installed or uninstalled by "volt add", "volt get", "volt rm".
 
-  {repository} is treated as same format as "volt get" (see "volt get -help").
-`)
+  {repository} is treated as same format as "volt get" (see "volt get -help").` + "\n\n")
 		fmt.Println("Options")
 		fs.PrintDefaults()
 		fmt.Println()

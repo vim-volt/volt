@@ -32,7 +32,7 @@ func Help(args []string) int {
 }
 
 func showHelp() {
-	fmt.Println(`
+	fmt.Print(`
 Usage
   volt COMMAND ARGS
 
@@ -103,6 +103,5 @@ Command
     Rebuild ~/.vim/pack/volt/ directory
 
   version
-    Show volt command version
-`)
+    Show volt command version` + "\n\n")
 }

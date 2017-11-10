@@ -20,7 +20,7 @@ func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
-		fmt.Println(`
+		fmt.Print(`
 Usage
   volt enable {repository} [{repository2} ...]
 
@@ -29,8 +29,7 @@ Quick example
 
 Description
   This is shortcut of:
-  volt profile add {current profile} {repository} [{repository2} ...]
-`)
+  volt profile add {current profile} {repository} [{repository2} ...]` + "\n\n")
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()

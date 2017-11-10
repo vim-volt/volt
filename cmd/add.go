@@ -24,7 +24,7 @@ func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
-		fmt.Println(`
+		fmt.Print(`
 Usage
   volt add {from} {local repository}
 
@@ -39,8 +39,7 @@ Description
     If {local repository} does not contain "/", it is treated as
     "localhost/local/{local repository}" repository.
     If {local repository} contains "/", it is treated as
-    same format as "volt get" (see "volt get -help").
-`)
+    same format as "volt get" (see "volt get -help").` + "\n\n")
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()
