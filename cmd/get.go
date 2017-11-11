@@ -237,7 +237,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    "! " + reposPath + " : upgrade failed",
+				status:    "! " + reposPath + " : upgrade failed : " + err.Error(),
 			}
 			return
 		}
@@ -270,7 +270,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	}
 
 	// Get HEAD hash string
-	hash, err := getRemoteHEAD(reposPath)
+	hash, err := getReposHEAD(reposPath)
 	if err != nil {
 		logger.Error("Failed to get HEAD commit hash: " + err.Error())
 		done <- getParallelResult{
