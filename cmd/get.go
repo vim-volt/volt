@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -184,11 +185,10 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 	var updatedLockJSON bool
 	for i := 0; i < getCount; i++ {
 		r := <-done
-		if r.status != "" {
-			statusList = append(statusList, r.status)
-		}
+		statusList = append(statusList, r.status)
 		// Update repos[]/trx_id, repos[]/version
-		if r.reposPath != "" && r.hash != "" {
+		if strings.HasPrefix(r.status, statusPrefixInstalled) ||
+			strings.HasPrefix(r.status, statusPrefixUpgraded) {
 			cmd.updateReposVersion(lockJSON, r.reposPath, r.hash, profile)
 			updatedLockJSON = true
 		}
@@ -224,6 +224,14 @@ type getParallelResult struct {
 	hash      string
 }
 
+const (
+	statusPrefixFailed    = "!"
+	statusPrefixNoChange  = "#"
+	statusPrefixInstalled = "+"
+	statusPrefixUpgraded  = "*"
+)
+
+// This function is executed in goroutine of each plugin
 func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
 	var status string
 	upgraded := false
@@ -236,12 +244,12 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    "! " + reposPath + " : upgrade failed",
+				status:    fmt.Sprintf("%s %s : upgrade failed : %s", statusPrefixFailed, reposPath, err.Error()),
 			}
 			return
 		}
 		if err == git.NoErrAlreadyUpToDate {
-			status = "# " + reposPath + " : no change"
+			status = fmt.Sprintf("%s %s : no change", statusPrefixNoChange, reposPath)
 		} else {
 			upgraded = true
 		}
@@ -252,11 +260,11 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 			logger.Warn("Failed to install plugin: " + err.Error())
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    "! " + reposPath + " : install failed",
+				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
 			}
 			return
 		}
-		status = "+ " + reposPath + " : installed"
+		status = fmt.Sprintf("%s %s : installed", statusPrefixInstalled, reposPath)
 
 		// Install plugconf
 		logger.Info("Installing plugconf " + reposPath + " ...")
@@ -274,7 +282,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 		logger.Error("Failed to get HEAD commit hash: " + err.Error())
 		done <- getParallelResult{
 			reposPath: reposPath,
-			status:    "! " + reposPath + " : install failed",
+			status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
 		}
 		return
 	}
@@ -282,7 +290,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	// Show old and new revisions: "upgraded ({from}..{to})".
 	// Normally, when upgraded is true, repos is also non-nil.
 	if upgraded && repos != nil {
-		status = fmt.Sprintf("* %s : upgraded (%s..%s)", reposPath, repos.Version, hash)
+		status = fmt.Sprintf("%s %s : upgraded (%s..%s)", statusPrefixUpgraded, reposPath, repos.Version, hash)
 	}
 
 	done <- getParallelResult{
