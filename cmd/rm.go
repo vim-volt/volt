@@ -127,16 +127,16 @@ func (cmd *rmCmd) doRemove(reposPathList []string) error {
 func (cmd *rmCmd) removeRepos(reposPath string, lockJSON *lockjson.LockJSON) error {
 	// Remove system plugconf
 	logger.Info("Removing plugconf files ...")
-	plugConf := pathutil.SystemPlugConfOf(reposPath)
-	if pathutil.Exists(plugConf) {
-		err := os.Remove(plugConf)
+	plugconf := pathutil.SystemPlugconfOf(reposPath)
+	if pathutil.Exists(plugconf) {
+		err := os.Remove(plugconf)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Remove parent directories of system plugconf
-	err := cmd.removeDirs(filepath.Dir(pathutil.SystemPlugConfOf(reposPath)))
+	err := cmd.removeDirs(filepath.Dir(pathutil.SystemPlugconfOf(reposPath)))
 
 	// Remove existing repository
 	fullpath := pathutil.FullReposPathOf(reposPath)

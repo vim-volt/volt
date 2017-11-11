@@ -141,8 +141,8 @@ func (*plugconfCmd) doList(args []string) error {
 
 	for i := range lockJSON.Repos {
 		repos := &lockJSON.Repos[i]
-		user := pathutil.UserPlugConfOf(repos.Path)
-		system := pathutil.SystemPlugConfOf(repos.Path)
+		user := pathutil.UserPlugconfOf(repos.Path)
+		system := pathutil.SystemPlugconfOf(repos.Path)
 		if pathutil.Exists(user) {
 			fmt.Println(user)
 		}
