@@ -233,6 +233,17 @@ const (
 
 // This function is executed in goroutine of each plugin
 func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
+	// Get HEAD hash string
+	fromHash, err := getRemoteHEAD(reposPath)
+	if err != nil {
+		logger.Error("Failed to get HEAD commit hash: " + err.Error())
+		done <- getParallelResult{
+			reposPath: reposPath,
+			status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+		}
+		return
+	}
+
 	var status string
 	upgraded := false
 
@@ -277,7 +288,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	}
 
 	// Get HEAD hash string
-	hash, err := getRemoteHEAD(reposPath)
+	toHash, err := getRemoteHEAD(reposPath)
 	if err != nil {
 		logger.Error("Failed to get HEAD commit hash: " + err.Error())
 		done <- getParallelResult{
@@ -290,13 +301,13 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	// Show old and new revisions: "upgraded ({from}..{to})".
 	// Normally, when upgraded is true, repos is also non-nil.
 	if upgraded && repos != nil {
-		status = fmt.Sprintf("%s %s : upgraded (%s..%s)", statusPrefixUpgraded, reposPath, repos.Version, hash)
+		status = fmt.Sprintf("%s %s : upgraded (%s..%s)", statusPrefixUpgraded, reposPath, fromHash, toHash)
 	}
 
 	done <- getParallelResult{
 		reposPath: reposPath,
 		status:    status,
-		hash:      hash,
+		hash:      toHash,
 	}
 }
 
