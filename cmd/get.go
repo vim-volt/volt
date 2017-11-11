@@ -394,7 +394,7 @@ func (*getCmd) installPlugConf(reposPath string) error {
 		return err
 	}
 
-	fn := pathutil.SystemPlugConfOf(reposPath)
+	fn := pathutil.SystemPlugconfOf(reposPath)
 	os.MkdirAll(filepath.Dir(fn), 0755)
 
 	err = ioutil.WriteFile(fn, bytes, 0644)
