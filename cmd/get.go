@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -184,28 +185,27 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 	var updatedLockJSON bool
 	for i := 0; i < getCount; i++ {
 		r := <-done
-		if r.status != "" {
-			statusList = append(statusList, r.status)
-		}
+		statusList = append(statusList, r.status)
 		// Update repos[]/trx_id, repos[]/version
-		if r.reposPath != "" && r.hash != "" {
+		if strings.HasPrefix(r.status, statusPrefixInstalled) ||
+			strings.HasPrefix(r.status, statusPrefixUpgraded) {
 			cmd.updateReposVersion(lockJSON, r.reposPath, r.hash, profile)
 			updatedLockJSON = true
 		}
 	}
 
-	// Write to lock.json
 	if updatedLockJSON {
+		// Write to lock.json
 		err = lockJSON.Write()
 		if err != nil {
 			return errors.New("could not write to lock.json: " + err.Error())
 		}
-	}
 
-	// Rebuild start dir
-	err = (&rebuildCmd{}).doRebuild(false)
-	if err != nil {
-		return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+		// Rebuild start dir
+		err = (&rebuildCmd{}).doRebuild(false)
+		if err != nil {
+			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+		}
 	}
 
 	// Show results
@@ -224,8 +224,26 @@ type getParallelResult struct {
 	hash      string
 }
 
+const (
+	statusPrefixFailed    = "!"
+	statusPrefixNoChange  = "#"
+	statusPrefixInstalled = "+"
+	statusPrefixUpgraded  = "*"
+)
+
 // This function is executed in goroutine of each plugin
 func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
+	// Get HEAD hash string
+	fromHash, err := getReposHEAD(reposPath)
+	if err != nil {
+		logger.Error("Failed to get HEAD commit hash: " + err.Error())
+		done <- getParallelResult{
+			reposPath: reposPath,
+			status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+		}
+		return
+	}
+
 	var status string
 	upgraded := false
 
@@ -237,12 +255,12 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    "! " + reposPath + " : upgrade failed : " + err.Error(),
+				status:    fmt.Sprintf("%s %s : upgrade failed : %s", statusPrefixFailed, reposPath, err.Error()),
 			}
 			return
 		}
 		if err == git.NoErrAlreadyUpToDate {
-			status = "# " + reposPath + " : no change"
+			status = fmt.Sprintf("%s %s : no change", statusPrefixNoChange, reposPath)
 		} else {
 			upgraded = true
 		}
@@ -253,11 +271,11 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 			logger.Warn("Failed to install plugin: " + err.Error())
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    "! " + reposPath + " : install failed",
+				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
 			}
 			return
 		}
-		status = "+ " + reposPath + " : installed"
+		status = fmt.Sprintf("%s %s : installed", statusPrefixInstalled, reposPath)
 
 		// Install plugconf
 		logger.Info("Installing plugconf " + reposPath + " ...")
@@ -270,12 +288,12 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	}
 
 	// Get HEAD hash string
-	hash, err := getReposHEAD(reposPath)
+	toHash, err := getReposHEAD(reposPath)
 	if err != nil {
 		logger.Error("Failed to get HEAD commit hash: " + err.Error())
 		done <- getParallelResult{
 			reposPath: reposPath,
-			status:    "! " + reposPath + " : install failed",
+			status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
 		}
 		return
 	}
@@ -283,13 +301,13 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	// Show old and new revisions: "upgraded ({from}..{to})".
 	// Normally, when upgraded is true, repos is also non-nil.
 	if upgraded && repos != nil {
-		status = fmt.Sprintf("* %s : upgraded (%s..%s)", reposPath, repos.Version, hash)
+		status = fmt.Sprintf("%s %s : upgraded (%s..%s)", statusPrefixUpgraded, reposPath, fromHash, toHash)
 	}
 
 	done <- getParallelResult{
 		reposPath: reposPath,
 		status:    status,
-		hash:      hash,
+		hash:      toHash,
 	}
 }
 
