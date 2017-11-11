@@ -194,18 +194,18 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 		}
 	}
 
-	// Write to lock.json
 	if updatedLockJSON {
+		// Write to lock.json
 		err = lockJSON.Write()
 		if err != nil {
 			return errors.New("could not write to lock.json: " + err.Error())
 		}
-	}
 
-	// Rebuild start dir
-	err = (&rebuildCmd{}).doRebuild(false)
-	if err != nil {
-		return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+		// Rebuild start dir
+		err = (&rebuildCmd{}).doRebuild(false)
+		if err != nil {
+			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+		}
 	}
 
 	// Show results
