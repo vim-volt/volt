@@ -315,7 +315,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		cmd.constructBuildInfo(buildInfo, result)
 		copyModified = true
 
-		// Generate bundle plugconf content
+		// Generate bundled plugconf content
 		plugconf := plugconfCmd{}
 		isSystem := true
 		content, merr := plugconf.generateBundlePlugconf(isSystem, reposList)

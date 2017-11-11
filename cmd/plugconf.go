@@ -184,7 +184,7 @@ func (*plugconfCmd) doList(args []string) error {
 	return nil
 }
 
-// Output bundle plugconf content
+// Output bundled plugconf content
 func (cmd *plugconfCmd) doBundle(args []string) error {
 	isSystem := len(args) != 0 && args[0] == "-system"
 
@@ -208,7 +208,7 @@ func (cmd *plugconfCmd) doBundle(args []string) error {
 		return err
 	}
 
-	// Output bundle plugconf content
+	// Output bundled plugconf content
 	output, merr := cmd.generateBundlePlugconf(isSystem, reposList)
 	if merr != nil {
 		for _, err := range merr.Errors {
