@@ -228,8 +228,8 @@ func (cmd *plugconfCmd) generateBundlePlugconf(isSystem bool, reposList []lockjs
 	for _, repos := range reposList {
 		var parsed *parsedPlugconf
 		var err error
-		user := pathutil.UserPlugConfOf(repos.Path)
-		system := pathutil.SystemPlugConfOf(repos.Path)
+		user := pathutil.UserPlugconfOf(repos.Path)
+		system := pathutil.SystemPlugconfOf(repos.Path)
 		if pathutil.Exists(user) {
 			parsed, err = cmd.parsePlugConf(user, parsedList, repos.Path)
 		} else if pathutil.Exists(system) {
