@@ -603,6 +603,23 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 		return
 	}
 
+	cfg, err := r.Config()
+	if err != nil {
+		done <- actionReposResult{
+			errors.New("failed to get repository config: " + err.Error()),
+			repos,
+		}
+		return
+	}
+
+	if cfg.Core.IsBare {
+		cmd.updateBareGitRepos(r, src, dst, repos, done)
+	} else {
+		cmd.updateNonBareGitRepos(r, src, dst, repos, done)
+	}
+}
+
+func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
 	// Get locked commit hash
 	commit := plumbing.NewHash(repos.Version)
 	commitObj, err := r.CommitObject(commit)
@@ -651,6 +668,36 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 	if err != nil {
 		done <- actionReposResult{err, repos}
 		return
+	}
+
+	done <- actionReposResult{nil, repos}
+}
+
+func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
+	files, err := ioutil.ReadDir(src)
+	if err != nil {
+		done <- actionReposResult{err, repos}
+		return
+	}
+
+	// Copy files/directories except ".git", ".gitignore"
+	for _, file := range files {
+		if file.Name() == ".git" || file.Name() == ".gitignore" {
+			continue
+		}
+		from := filepath.Join(src, file.Name())
+		to := filepath.Join(dst, file.Name())
+		os.MkdirAll(filepath.Dir(to), 0755)
+		var err error
+		if file.IsDir() {
+			err = fileutil.CopyDir(from, to)
+		} else {
+			err = fileutil.CopyFile(from, to)
+		}
+		if err != nil {
+			done <- actionReposResult{err, repos}
+			return
+		}
 	}
 
 	done <- actionReposResult{nil, repos}

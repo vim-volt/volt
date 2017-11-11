@@ -234,7 +234,7 @@ const (
 // This function is executed in goroutine of each plugin
 func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
 	// Get HEAD hash string
-	fromHash, err := getRemoteHEAD(reposPath)
+	fromHash, err := getReposHEAD(reposPath)
 	if err != nil {
 		logger.Error("Failed to get HEAD commit hash: " + err.Error())
 		done <- getParallelResult{
@@ -288,7 +288,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	}
 
 	// Get HEAD hash string
-	toHash, err := getRemoteHEAD(reposPath)
+	toHash, err := getReposHEAD(reposPath)
 	if err != nil {
 		logger.Error("Failed to get HEAD commit hash: " + err.Error())
 		done <- getParallelResult{
@@ -326,10 +326,26 @@ func (cmd *getCmd) upgradePlugin(reposPath string, flags *getFlagsType) error {
 		return err
 	}
 
-	return repos.Fetch(&git.FetchOptions{
-		RemoteName: "origin",
-		Progress:   progress,
-	})
+	cfg, err := repos.Config()
+	if err != nil {
+		return err
+	}
+
+	if cfg.Core.IsBare {
+		return repos.Fetch(&git.FetchOptions{
+			RemoteName: "origin",
+			Progress:   progress,
+		})
+	} else {
+		wt, err := repos.Worktree()
+		if err != nil {
+			return err
+		}
+		return wt.Pull(&git.PullOptions{
+			RemoteName: "origin",
+			Progress:   progress,
+		})
+	}
 }
 
 func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
@@ -352,7 +368,7 @@ func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 	}
 
 	// Clone repository to $VOLTPATH/repos/{site}/{user}/{name}
-	isBare := true
+	isBare := false
 	_, err = git.PlainClone(fullpath, isBare, &git.CloneOptions{
 		URL:      pathutil.CloneURLOf(reposPath),
 		Progress: progress,
