@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-
-	"github.com/vim-volt/volt/logger"
 )
 
 type listFlagsType struct {
@@ -41,17 +39,11 @@ type listCmd struct{}
 
 func List(args []string) int {
 	profCmd := profileCmd{}
-	currentProfile, err := profCmd.getCurrentProfile()
-	if err != nil {
-		logger.Error(err.Error())
-		return 10
-	}
-
-	err = profCmd.doShow(append(
-		[]string{currentProfile},
+	err := profCmd.doShow(append(
+		[]string{"-current"},
 	))
 	if err != nil {
-		return 11
+		return 10
 	}
 
 	return 0

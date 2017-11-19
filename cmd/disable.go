@@ -54,18 +54,12 @@ func Disable(args []string) int {
 	}
 
 	profCmd := profileCmd{}
-	currentProfile, err := profCmd.getCurrentProfile()
-	if err != nil {
-		logger.Error(err.Error())
-		return 11
-	}
-
 	err = profCmd.doRm(append(
-		[]string{currentProfile},
+		[]string{"-current"},
 		reposPathList...,
 	))
 	if err != nil {
-		return 12
+		return 11
 	}
 
 	return 0
