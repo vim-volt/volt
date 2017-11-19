@@ -361,13 +361,16 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 }
 
 func (cmd *profileCmd) doAdd(args []string) error {
-	// Parse args
-	profileName, reposPathList, err := cmd.parseAddArgs("add", args)
-
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
 		return errors.New("failed to read lock.json: " + err.Error())
+	}
+
+	// Parse args
+	profileName, reposPathList, err := cmd.parseAddArgs(lockJSON, "add", args)
+	if err != nil {
+		return errors.New("failed to parse args: " + err.Error())
 	}
 
 	if profileName == "-current" {
@@ -405,13 +408,16 @@ func (cmd *profileCmd) doAdd(args []string) error {
 }
 
 func (cmd *profileCmd) doRm(args []string) error {
-	// Parse args
-	profileName, reposPathList, err := cmd.parseAddArgs("rm", args)
-
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
 		return errors.New("failed to read lock.json: " + err.Error())
+	}
+
+	// Parse args
+	profileName, reposPathList, err := cmd.parseAddArgs(lockJSON, "rm", args)
+	if err != nil {
+		return errors.New("failed to parse args: " + err.Error())
 	}
 
 	if profileName == "-current" {
@@ -450,7 +456,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) parseAddArgs(subCmd string, args []string) (string, []string, error) {
+func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, args []string) (string, []string, error) {
 	if len(args) == 0 {
 		cmdFlagSet["profile"].Usage()
 		logger.Errorf("'volt profile %s' receives profile name and one or more repositories.", subCmd)
@@ -466,6 +472,15 @@ func (cmd *profileCmd) parseAddArgs(subCmd string, args []string) (string, []str
 		}
 		reposPathList = append(reposPathList, reposPath)
 	}
+
+	// Validate if all repositories exist in repos[]
+	for i := range reposPathList {
+		_, err := lockJSON.Repos.FindByPath(reposPathList[i])
+		if err != nil {
+			return "", nil, err
+		}
+	}
+
 	return profileName, reposPathList, nil
 }
 

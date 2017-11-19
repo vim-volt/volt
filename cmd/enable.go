@@ -59,6 +59,7 @@ func Enable(args []string) int {
 		reposPathList...,
 	))
 	if err != nil {
+		logger.Error(err.Error())
 		return 11
 	}
 

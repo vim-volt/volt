@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/vim-volt/volt/logger"
 )
 
 type listFlagsType struct {
@@ -43,6 +45,7 @@ func List(args []string) int {
 		[]string{"-current"},
 	))
 	if err != nil {
+		logger.Error(err.Error())
 		return 10
 	}
 
