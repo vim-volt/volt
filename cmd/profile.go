@@ -214,12 +214,18 @@ func (cmd *profileCmd) doShow(args []string) error {
 		logger.Error("'volt profile show' receives profile name.")
 		return nil
 	}
-	profileName := args[0]
 
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
 		return errors.New("failed to read lock.json: " + err.Error())
+	}
+
+	var profileName string
+	if args[0] == "-current" {
+		profileName = lockJSON.ActiveProfile
+	} else {
+		profileName = args[0]
 	}
 
 	// Return error if profiles[]/name does not match profileName
@@ -358,15 +364,28 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs("add", args)
 
+	// Read lock.json
+	lockJSON, err := lockjson.Read()
+	if err != nil {
+		return errors.New("failed to read lock.json: " + err.Error())
+	}
+
+	if profileName == "-current" {
+		profileName = lockJSON.ActiveProfile
+	}
+
+	var enabled []string
+
 	// Read modified profile and write to lock.json
-	lockJSON, err := cmd.transactProfile(profileName, func(profile *lockjson.Profile) {
+	lockJSON, err = cmd.transactProfile(lockJSON, profileName, func(profile *lockjson.Profile) {
 		// Add repositories to profile if the repository does not exist
 		for _, reposPath := range reposPathList {
 			if profile.ReposPath.Contains(reposPath) {
-				logger.Warn("repository '" + reposPath + "' already exists")
+				logger.Warn("repository '" + reposPath + "' is already enabled")
 			} else {
 				profile.ReposPath = append(profile.ReposPath, reposPath)
-				logger.Info("Activate '" + reposPath + "' on profile '" + profileName + "'")
+				enabled = append(enabled, reposPath)
+				logger.Info("Enabled '" + reposPath + "' on profile '" + profileName + "'")
 			}
 		}
 	})
@@ -374,7 +393,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 		return err
 	}
 
-	if lockJSON.ActiveProfile == profileName {
+	if len(enabled) > 0 {
 		// Rebuild start dir
 		err = (&rebuildCmd{}).doRebuild(false)
 		if err != nil {
@@ -389,17 +408,30 @@ func (cmd *profileCmd) doRm(args []string) error {
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs("rm", args)
 
+	// Read lock.json
+	lockJSON, err := lockjson.Read()
+	if err != nil {
+		return errors.New("failed to read lock.json: " + err.Error())
+	}
+
+	if profileName == "-current" {
+		profileName = lockJSON.ActiveProfile
+	}
+
+	var disabled []string
+
 	// Read modified profile and write to lock.json
-	lockJSON, err := cmd.transactProfile(profileName, func(profile *lockjson.Profile) {
+	lockJSON, err = cmd.transactProfile(lockJSON, profileName, func(profile *lockjson.Profile) {
 		// Remove repositories from profile if the repository does not exist
 		for _, reposPath := range reposPathList {
 			index := profile.ReposPath.IndexOf(reposPath)
 			if index >= 0 {
 				// Remove profile.ReposPath[index]
 				profile.ReposPath = append(profile.ReposPath[:index], profile.ReposPath[index+1:]...)
-				logger.Info("Deactivate '" + reposPath + "' from profile '" + profileName + "'")
+				disabled = append(disabled, reposPath)
+				logger.Info("Disabled '" + reposPath + "' from profile '" + profileName + "'")
 			} else {
-				logger.Warn("repository '" + reposPath + "' does not exist")
+				logger.Warn("repository '" + reposPath + "' is already disabled")
 			}
 		}
 	})
@@ -407,7 +439,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 		return err
 	}
 
-	if lockJSON.ActiveProfile == profileName {
+	if len(disabled) > 0 {
 		// Rebuild start dir
 		err = (&rebuildCmd{}).doRebuild(false)
 		if err != nil {
@@ -437,13 +469,8 @@ func (cmd *profileCmd) parseAddArgs(subCmd string, args []string) (string, []str
 	return profileName, reposPathList, nil
 }
 
-func (*profileCmd) transactProfile(profileName string, modifyProfile func(*lockjson.Profile)) (*lockjson.LockJSON, error) {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return nil, errors.New("failed to read lock.json: " + err.Error())
-	}
-
+// Run modifyProfile and write modified structure to lock.json
+func (*profileCmd) transactProfile(lockJSON *lockjson.LockJSON, profileName string, modifyProfile func(*lockjson.Profile)) (*lockjson.LockJSON, error) {
 	// Return error if profiles[]/name does not match profileName
 	profile, err := lockJSON.Profiles.FindByName(profileName)
 	if err != nil {
