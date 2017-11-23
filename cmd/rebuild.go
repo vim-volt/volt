@@ -314,18 +314,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		// Construct buildInfo from the result
 		cmd.constructBuildInfo(buildInfo, result)
 		copyModified = true
-
-		// Generate bundled plugconf content
-		plugconf := plugconfCmd{}
-		isSystem := true
-		content, merr := plugconf.generateBundlePlugconf(isSystem, reposList)
-		for _, err := range merr.Errors {
-			// Show vim script parse errors
-			logger.Warn(err.Error())
-		}
-
-		// Write parsed plugconf info to bundled plugconf file
-		return ioutil.WriteFile(pathutil.BundledPlugConf(), content, 0644)
+		return nil
 	})
 
 	// Wait remove
@@ -339,6 +328,20 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	// Handle copy & remove errors
 	if copyErr != nil || removeErr != nil {
 		return multierror.Append(copyErr, removeErr).ErrorOrNil()
+	}
+
+	// Write bundled plugconf file
+	plugconf := plugconfCmd{}
+	exportAll := false
+	content, merr := plugconf.generateBundlePlugconf(exportAll, reposList)
+	if merr.ErrorOrNil() != nil {
+		// Return vim script parse errors
+		return merr
+	}
+	os.MkdirAll(filepath.Dir(pathutil.BundledPlugConf()), 0755)
+	err = ioutil.WriteFile(pathutil.BundledPlugConf(), content, 0644)
+	if err != nil {
+		return err
 	}
 
 	// Write to build-info.json if buildInfo was modified

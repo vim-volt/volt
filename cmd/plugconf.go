@@ -33,8 +33,8 @@ var plugconfSubCmd = make(map[string]func([]string) error)
 func init() {
 	cmd := plugconfCmd{}
 	plugconfSubCmd["list"] = cmd.doList
-	plugconfSubCmd["bundle"] = cmd.doBundle
-	plugconfSubCmd["unbundle"] = cmd.doUnbundle
+	plugconfSubCmd["export"] = cmd.doExport
+	plugconfSubCmd["import"] = cmd.doImport
 
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
@@ -44,44 +44,22 @@ Usage
   plugconf list [-a]
     List all user plugconfs. If -a option was given, list also system plugconfs.
 
-  plugconf bundle [-system]
+  plugconf export
     Outputs bundled plugconf to stdout.
+    Note that the output differs a bit from the file written by "volt rebuild"
+    (~/.vim/pack/volt/start/system/plugin/bundled_plugconf.vim).
+    Some functions are removed in the file because it is unnecessary for Vim.
+    But this command shows them because this command must export all in plugconfs.
 
-  plugconf unbundle
-    Input bundled plugconf (volt plugconf bundle) from stdin, unbundle the plugconf, and put files to each plugin's plugconf.
+  plugconf import
+    Input bundled plugconf (volt plugconf export) from stdin, import the plugconf, and put files to each plugin's plugconf.
 
 Quick example
   $ volt plugconf list
   github.com/tyru/open-browser.vim.vim
   github.com/tpope/vim-markdown.vim
 
-  $ volt plugconf bundle
-
-  " github.com/tyru/open-browser.vim.vim
-  function s:load_on_1()
-    return 'load'
-  endfunction
-
-  " github.com/tyru/open-browser.vim.vim
-  function s:config_1()
-    let g:netrw_nogx = 1
-    nmap gx <Plug>(openbrowser-smart-search)
-    xmap gx <Plug>(openbrowser-smart-search)
-
-    command! OpenBrowserCurrent execute 'OpenBrowser' 'file://' . expand('%:p:gs?\\?/?')
-  endfunction
-
-  " github.com/tpope/vim-markdown.vim
-  function s:load_on_2()
-    return 'filetype=markdown'
-  endfunction
-
-  " github.com/tpope/vim-markdown.vim
-  function s:config_2()
-    " no config
-  endfunction
-
-  $ volt plugconf bundle -system
+  $ volt plugconf export
 
   " github.com/tyru/open-browser.vim.vim
   function s:config_1()
@@ -103,9 +81,9 @@ Quick example
     autocmd FileType markdown call s:config_2()
   augroup END
 
-  $ volt plugconf bundle >bundle-plugconf.vim
-  $ vim bundle-plugconf.vim  # edit config
-  $ volt plugconf unbundle <bundle-plugconf.vim` + "\n\n")
+  $ volt plugconf export >exported.vim
+  $ vim exported.vim  # edit config
+  $ volt plugconf import <exported.vim` + "\n\n")
 		fs.PrintDefaults()
 		fmt.Println()
 		plugconfFlags.helped = true
@@ -185,9 +163,7 @@ func (*plugconfCmd) doList(args []string) error {
 }
 
 // Output bundled plugconf content
-func (cmd *plugconfCmd) doBundle(args []string) error {
-	isSystem := len(args) != 0 && args[0] == "-system"
-
+func (cmd *plugconfCmd) doExport(args []string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -209,8 +185,9 @@ func (cmd *plugconfCmd) doBundle(args []string) error {
 	}
 
 	// Output bundled plugconf content
-	output, merr := cmd.generateBundlePlugconf(isSystem, reposList)
-	if merr != nil {
+	exportAll := true
+	output, merr := cmd.generateBundlePlugconf(exportAll, reposList)
+	if merr.ErrorOrNil() != nil {
 		for _, err := range merr.Errors {
 			// Show vim script parse errors
 			logger.Warn(err.Error())
@@ -220,7 +197,7 @@ func (cmd *plugconfCmd) doBundle(args []string) error {
 	return nil
 }
 
-func (cmd *plugconfCmd) generateBundlePlugconf(isSystem bool, reposList []lockjson.Repos) ([]byte, *multierror.Error) {
+func (cmd *plugconfCmd) generateBundlePlugconf(exportAll bool, reposList []lockjson.Repos) ([]byte, *multierror.Error) {
 	// Parse plugconfs and make parsed plugconf info
 	var merr *multierror.Error
 	var parsedList []parsedPlugconf
@@ -244,7 +221,7 @@ func (cmd *plugconfCmd) generateBundlePlugconf(isSystem bool, reposList []lockjs
 			funcCap += len(parsed.functions) + 1 /* +1 for s:config() */
 		}
 	}
-	return cmd.makeBundledPlugConf(isSystem, parsedList, funcCap), merr
+	return cmd.makeBundledPlugConf(exportAll, parsedList, funcCap), merr
 }
 
 type loadOnType string
@@ -319,6 +296,10 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugco
 		return true
 	})
 
+	if parseErr != nil {
+		return nil, parseErr
+	}
+
 	if configFunc == "" {
 		return nil, errors.New("no s:config() function in plugconf: " + plugConf)
 	}
@@ -376,7 +357,6 @@ func (cmd *plugconfCmd) inspectReturnValue(fn *ast.Function) (loadOnType, string
 func (cmd *plugconfCmd) extractBody(fn *ast.Function, src string) string {
 	pos := fn.Pos()
 
-	// TODO: Handle line break
 	endpos := fn.EndFunction.Pos()
 	endfunc := fn.EndFunction.ExArg
 	cmdlen := endfunc.Argpos.Offset - endfunc.Cmdpos.Offset
@@ -385,11 +365,11 @@ func (cmd *plugconfCmd) extractBody(fn *ast.Function, src string) string {
 	return src[pos.Offset:endpos.Offset]
 }
 
-func (cmd *plugconfCmd) makeBundledPlugConf(isSystem bool, parsedList []parsedPlugconf, funcCap int) []byte {
+func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, parsedList []parsedPlugconf, funcCap int) []byte {
 	functions := make([]string, 0, funcCap)
 	autocommands := make([]string, 0, len(parsedList))
 	for _, p := range parsedList {
-		if isSystem && p.loadOnFunc != "" {
+		if exportAll && p.loadOnFunc != "" {
 			functions = append(functions, cmd.convertToDecodableFunc(p.loadOnFunc, p.reposPath, p.number))
 		}
 		functions = append(functions, cmd.convertToDecodableFunc(p.configFunc, p.reposPath, p.number))
@@ -402,8 +382,7 @@ func (cmd *plugconfCmd) makeBundledPlugConf(isSystem bool, parsedList []parsedPl
 		}
 		autocommands = append(autocommands, fmt.Sprintf("  autocmd %s %s call s:config_%d()", string(p.loadOn), pattern, p.number))
 	}
-	return []byte(fmt.Sprintf(`
-if exists('g:loaded_volt_system_bundled_plugconf')
+	return []byte(fmt.Sprintf(`if exists('g:loaded_volt_system_bundled_plugconf')
   finish
 endif
 let g:loaded_volt_system_bundled_plugconf = 1
@@ -427,9 +406,10 @@ func (cmd *plugconfCmd) convertToDecodableFunc(funcBody string, reposPath string
 	return funcBody
 }
 
-func (*plugconfCmd) doUnbundle(_ []string) error {
+func (*plugconfCmd) doImport(_ []string) error {
 
 	// TODO
+	logger.Error("Sorry, currently this feature is not implemented")
 
 	return nil
 }

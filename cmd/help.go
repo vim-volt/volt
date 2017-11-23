@@ -93,11 +93,11 @@ Command
   plugconf list [-a]
     List all user plugconfs. If -a option was given, list also system plugconfs.
 
-  plugconf bundle
+  plugconf export
     Outputs bundled plugconf to stdout.
 
-  plugconf unbundle
-    Input bundled plugconf (volt plugconf bundle) from stdin, unbundle the plugconf, and put files to each plugin's plugconf.
+  plugconf import
+    Input bundled plugconf (volt plugconf export) from stdin, import the plugconf, and put files to each plugin's plugconf.
 
   rebuild [-full]
     Rebuild ~/.vim/pack/volt/ directory
