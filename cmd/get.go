@@ -201,7 +201,7 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 			return errors.New("could not write to lock.json: " + err.Error())
 		}
 
-		// Rebuild start dir
+		// Rebuild ~/.vim/pack/volt dir
 		err = (&rebuildCmd{}).doRebuild(false)
 		if err != nil {
 			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())

@@ -199,7 +199,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 
 	logger.Info("Set active profile to '" + profileName + "'")
 
-	// Rebuild start dir
+	// Rebuild ~/.vim/pack/volt dir
 	err = (&rebuildCmd{}).doRebuild(false)
 	if err != nil {
 		return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
@@ -397,7 +397,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	}
 
 	if len(enabled) > 0 {
-		// Rebuild start dir
+		// Rebuild ~/.vim/pack/volt dir
 		err = (&rebuildCmd{}).doRebuild(false)
 		if err != nil {
 			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
@@ -446,7 +446,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	}
 
 	if len(disabled) > 0 {
-		// Rebuild start dir
+		// Rebuild ~/.vim/pack/volt dir
 		err = (&rebuildCmd{}).doRebuild(false)
 		if err != nil {
 			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
@@ -589,7 +589,7 @@ func (cmd *profileCmd) doUse(args []string) error {
 			return err
 		}
 
-		// Rebuild start dir
+		// Rebuild ~/.vim/pack/volt dir
 		err = (&rebuildCmd{}).doRebuild(false)
 		if err != nil {
 			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())

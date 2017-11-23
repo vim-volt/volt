@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -47,7 +48,7 @@ Usage
   plugconf export
     Outputs bundled plugconf to stdout.
     Note that the output differs a bit from the file written by "volt rebuild"
-    (~/.vim/pack/volt/start/system/plugin/bundled_plugconf.vim).
+    (~/.vim/pack/volt/opt/system/plugin/bundled_plugconf.vim).
     Some functions are removed in the file because it is unnecessary for Vim.
     But this command shows them because this command must export all in plugconfs.
 
@@ -368,6 +369,7 @@ func (cmd *plugconfCmd) extractBody(fn *ast.Function, src string) string {
 func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, parsedList []parsedPlugconf, funcCap int) []byte {
 	functions := make([]string, 0, funcCap)
 	autocommands := make([]string, 0, len(parsedList))
+	packadds := make([]string, 0, len(parsedList))
 	for _, p := range parsedList {
 		if exportAll && p.loadOnFunc != "" {
 			functions = append(functions, cmd.convertToDecodableFunc(p.loadOnFunc, p.reposPath, p.number))
@@ -381,6 +383,8 @@ func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, parsedList []parsedP
 			pattern = p.loadOnArg
 		}
 		autocommands = append(autocommands, fmt.Sprintf("  autocmd %s %s call s:config_%d()", string(p.loadOn), pattern, p.number))
+		optName := filepath.Base(pathutil.PackReposPathOf(p.reposPath))
+		packadds = append(packadds, fmt.Sprintf("packadd %s", optName))
 	}
 	return []byte(fmt.Sprintf(`if exists('g:loaded_volt_system_bundled_plugconf')
   finish
@@ -393,7 +397,12 @@ augroup volt-bundled-plugconf
   autocmd!
 %s
 augroup END
-`, strings.Join(functions, "\n\n"), strings.Join(autocommands, "\n")))
+
+%s
+`, strings.Join(functions, "\n\n"),
+		strings.Join(autocommands, "\n"),
+		strings.Join(packadds, "\n"),
+	))
 }
 
 var rxFuncName = regexp.MustCompile(`^(fu\w+!?\s+s:\w+)`)

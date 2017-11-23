@@ -105,7 +105,7 @@ func RCFileOf(profileName, filename string) string {
 
 func PackReposPathOf(reposPath string) string {
 	path := strings.NewReplacer("_", "__", "/", "_").Replace(reposPath)
-	return filepath.Join(VimVoltStartDir(), path)
+	return filepath.Join(VimVoltOptDir(), path)
 }
 
 func LockJSON() string {
@@ -130,6 +130,10 @@ func VimDir() string {
 
 func VimVoltDir() string {
 	return filepath.Join(VimDir(), "pack", "volt")
+}
+
+func VimVoltOptDir() string {
+	return filepath.Join(VimDir(), "pack", "volt", "opt")
 }
 
 func VimVoltStartDir() string {
