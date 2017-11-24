@@ -303,10 +303,6 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, reposID int, reposPath st
 		return nil, parseErr
 	}
 
-	if configFunc == "" {
-		return nil, errors.New("no s:config() function in plugconf: " + plugConf)
-	}
-
 	return &parsedPlugconf{
 		reposID:    reposID,
 		reposPath:  reposPath,
@@ -379,7 +375,9 @@ func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, reposList []lockjson
 			if exportAll && p.loadOnFunc != "" {
 				functions = append(functions, cmd.convertToDecodableFunc(p.loadOnFunc, p.reposPath, p.reposID))
 			}
-			functions = append(functions, cmd.convertToDecodableFunc(p.configFunc, p.reposPath, p.reposID))
+			if p.configFunc != "" {
+				functions = append(functions, cmd.convertToDecodableFunc(p.configFunc, p.reposPath, p.reposID))
+			}
 			functions = append(functions, p.functions...)
 			var pattern string
 			if p.loadOn == loadOnStart || p.loadOnArg == "" {
