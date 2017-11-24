@@ -191,8 +191,9 @@ func (cmd *plugconfCmd) doExport(args []string) error {
 	if merr.ErrorOrNil() != nil {
 		for _, err := range merr.Errors {
 			// Show vim script parse errors
-			logger.Warn(err.Error())
+			logger.Error(err.Error())
 		}
+		return nil
 	}
 	os.Stdout.Write(output)
 	return nil
