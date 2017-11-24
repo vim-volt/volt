@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -224,7 +225,104 @@ func (cmd *plugconfCmd) generateBundlePlugconf(exportAll bool, reposList []lockj
 			funcCap += len(parsed.functions) + 1 /* +1 for s:config() */
 		}
 	}
+	cmd.sortByDepends(reposList, plugconf)
 	return cmd.makeBundledPlugConf(exportAll, reposList, plugconf, funcCap), merr
+}
+
+// Move the plugins which was depended to previous plugin which depends to them.
+// reposList is sorted in-place.
+func (cmd *plugconfCmd) sortByDepends(reposList []lockjson.Repos, plugconf map[string]*parsedPlugconf) {
+	reposMap := make(map[string]*lockjson.Repos, len(reposList))
+	depsMap := make(map[string][]string, len(reposList))
+	rdepsMap := make(map[string][]string, len(reposList))
+	rank := make(map[string]int, len(reposList))
+	for i := range reposList {
+		reposPath := reposList[i].Path
+		reposMap[reposPath] = &reposList[i]
+		if p, exists := plugconf[reposPath]; exists {
+			depsMap[reposPath] = p.depends
+			for _, dep := range p.depends {
+				rdepsMap[dep] = append(rdepsMap[dep], reposPath)
+			}
+		}
+	}
+	for i := range reposList {
+		if _, exists := rank[reposList[i].Path]; !exists {
+			tree := cmd.makeDepTree(reposList[i].Path, reposMap, depsMap, rdepsMap)
+			for i := range tree.leaves {
+				cmd.makeRank(rank, &tree.leaves[i], 0)
+			}
+		}
+	}
+	sort.Slice(reposList, func(i, j int) bool {
+		return rank[reposList[i].Path] < rank[reposList[j].Path]
+	})
+}
+
+func (cmd *plugconfCmd) makeDepTree(reposPath string, reposMap map[string]*lockjson.Repos, depsMap map[string][]string, rdepsMap map[string][]string) *reposDepTree {
+	visited := make(map[string]*reposDepNode, len(reposMap))
+	node := cmd.makeNodes(visited, reposPath, reposMap, depsMap, rdepsMap)
+	leaves := make([]reposDepNode, 0, 10)
+	cmd.visitNode(node, func(n *reposDepNode) {
+		if len(n.dependTo) == 0 {
+			leaves = append(leaves, *n)
+		}
+	})
+	return &reposDepTree{leaves: leaves}
+}
+
+func (cmd *plugconfCmd) makeNodes(visited map[string]*reposDepNode, reposPath string, reposMap map[string]*lockjson.Repos, depsMap map[string][]string, rdepsMap map[string][]string) *reposDepNode {
+	if node, exists := visited[reposPath]; exists {
+		return node
+	}
+	node := &reposDepNode{repos: reposMap[reposPath]}
+	visited[reposPath] = node
+	for i := range depsMap[reposPath] {
+		dep := cmd.makeNodes(visited, depsMap[reposPath][i], reposMap, depsMap, rdepsMap)
+		node.dependTo = append(node.dependTo, *dep)
+	}
+	for i := range rdepsMap[reposPath] {
+		rdep := cmd.makeNodes(visited, rdepsMap[reposPath][i], reposMap, depsMap, rdepsMap)
+		node.dependedBy = append(node.dependedBy, *rdep)
+	}
+	return node
+}
+
+func (cmd *plugconfCmd) visitNode(node *reposDepNode, callback func(*reposDepNode)) {
+	visited := make(map[string]bool, 10)
+	cmd.doVisitNode(visited, node, callback)
+}
+
+func (cmd *plugconfCmd) doVisitNode(visited map[string]bool, node *reposDepNode, callback func(*reposDepNode)) {
+	if visited[node.repos.Path] {
+		return
+	}
+	visited[node.repos.Path] = true
+	callback(node)
+	for i := range node.dependTo {
+		cmd.doVisitNode(visited, &node.dependTo[i], callback)
+	}
+	for i := range node.dependedBy {
+		cmd.doVisitNode(visited, &node.dependedBy[i], callback)
+	}
+}
+
+func (cmd *plugconfCmd) makeRank(rank map[string]int, node *reposDepNode, value int) {
+	rank[node.repos.Path] = value
+	for i := range node.dependedBy {
+		cmd.makeRank(rank, &node.dependedBy[i], value+1)
+	}
+}
+
+type reposDepTree struct {
+	// The nodes' dependTo are nil. These repos's ranks are always 0.
+	leaves []reposDepNode
+}
+
+type reposDepNode struct {
+	repos      *lockjson.Repos
+	dependTo   []reposDepNode
+	dependedBy []reposDepNode
 }
 
 type loadOnType string
@@ -243,6 +341,7 @@ type parsedPlugconf struct {
 	loadOnFunc string
 	loadOn     loadOnType
 	loadOnArg  string
+	depends    []string
 }
 
 func (cmd *plugconfCmd) parsePlugConf(plugConf string, reposID int, reposPath string) (*parsedPlugconf, error) {
@@ -262,6 +361,7 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, reposID int, reposPath st
 	var loadOnFunc string
 	var configFunc string
 	var functions []string
+	var depends []string
 	var parseErr error
 
 	// Inspect nodes and get above values from plugconf script
@@ -292,6 +392,8 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, reposID int, reposPath st
 			}
 		case "s:config":
 			configFunc = cmd.extractBody(fn, src)
+		case "s:depends":
+			depends = cmd.getDependencies(fn, src)
 		default:
 			functions = append(functions, cmd.extractBody(fn, src))
 		}
@@ -311,6 +413,7 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, reposID int, reposPath st
 		loadOnFunc: loadOnFunc,
 		loadOn:     loadOn,
 		loadOnArg:  loadOnArg,
+		depends:    depends,
 	}, nil
 }
 
@@ -362,6 +465,35 @@ func (cmd *plugconfCmd) extractBody(fn *ast.Function, src string) string {
 	endpos.Offset += cmdlen
 
 	return src[pos.Offset:endpos.Offset]
+}
+
+func (cmd *plugconfCmd) getDependencies(fn *ast.Function, src string) []string {
+	var deps []string
+
+	ast.Inspect(fn, func(node ast.Node) bool {
+		// Cast to return node (return if it's not a return node)
+		var ret *ast.Return
+		if r, ok := node.(*ast.Return); !ok {
+			return true
+		} else {
+			ret = r
+		}
+		if list, ok := ret.Result.(*ast.List); ok {
+			for i := range list.Values {
+				if str, ok := list.Values[i].(*ast.BasicLit); ok {
+					if deps == nil {
+						deps = make([]string, 0, len(list.Values))
+					}
+					if str.Kind == token.STRING {
+						deps = append(deps, str.Value[1:len(str.Value)-1])
+					}
+				}
+			}
+		}
+		return true
+	})
+
+	return deps
 }
 
 func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, reposList []lockjson.Repos, plugconf map[string]*parsedPlugconf, funcCap int) []byte {
