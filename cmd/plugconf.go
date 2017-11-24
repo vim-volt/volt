@@ -223,6 +223,7 @@ func (cmd *plugconfCmd) generateBundlePlugconf(exportAll bool, reposList []lockj
 		} else {
 			plugconf[repos.Path] = parsed
 			funcCap += len(parsed.functions) + 1 /* +1 for s:config() */
+			reposID += 1
 		}
 	}
 	cmd.sortByDepends(reposList, plugconf)
@@ -509,15 +510,15 @@ func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, reposList []lockjson
 			}
 			if p.configFunc != "" {
 				functions = append(functions, cmd.convertToDecodableFunc(p.configFunc, p.reposPath, p.reposID))
+				var pattern string
+				if p.loadOn == loadOnStart || p.loadOnArg == "" {
+					pattern = "*"
+				} else {
+					pattern = p.loadOnArg
+				}
+				autocommands = append(autocommands, fmt.Sprintf("  autocmd %s %s call s:config_%d()", string(p.loadOn), pattern, p.reposID))
 			}
 			functions = append(functions, p.functions...)
-			var pattern string
-			if p.loadOn == loadOnStart || p.loadOnArg == "" {
-				pattern = "*"
-			} else {
-				pattern = p.loadOnArg
-			}
-			autocommands = append(autocommands, fmt.Sprintf("  autocmd %s %s call s:config_%d()", string(p.loadOn), pattern, p.reposID))
 		}
 	}
 	return []byte(fmt.Sprintf(`if exists('g:loaded_volt_system_bundled_plugconf')
