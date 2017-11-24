@@ -201,28 +201,29 @@ func (cmd *plugconfCmd) doExport(args []string) error {
 func (cmd *plugconfCmd) generateBundlePlugconf(exportAll bool, reposList []lockjson.Repos) ([]byte, *multierror.Error) {
 	// Parse plugconfs and make parsed plugconf info
 	var merr *multierror.Error
-	var parsedList []parsedPlugconf
-	var funcCap int
+	plugconf := make(map[string]*parsedPlugconf, len(reposList))
+	funcCap := 0
+	reposID := 1
 	for _, repos := range reposList {
 		var parsed *parsedPlugconf
 		var err error
 		user := pathutil.UserPlugconfOf(repos.Path)
 		system := pathutil.SystemPlugconfOf(repos.Path)
 		if pathutil.Exists(user) {
-			parsed, err = cmd.parsePlugConf(user, parsedList, repos.Path)
+			parsed, err = cmd.parsePlugConf(user, reposID, repos.Path)
 		} else if pathutil.Exists(system) {
-			parsed, err = cmd.parsePlugConf(system, parsedList, repos.Path)
+			parsed, err = cmd.parsePlugConf(system, reposID, repos.Path)
 		} else {
 			continue
 		}
 		if err != nil {
 			merr = multierror.Append(merr, err)
 		} else {
-			parsedList = append(parsedList, *parsed)
+			plugconf[repos.Path] = parsed
 			funcCap += len(parsed.functions) + 1 /* +1 for s:config() */
 		}
 	}
-	return cmd.makeBundledPlugConf(exportAll, parsedList, funcCap), merr
+	return cmd.makeBundledPlugConf(exportAll, reposList, plugconf, funcCap), merr
 }
 
 type loadOnType string
@@ -234,7 +235,7 @@ const (
 )
 
 type parsedPlugconf struct {
-	number     int
+	reposID    int
 	reposPath  string
 	functions  []string
 	configFunc string
@@ -243,7 +244,7 @@ type parsedPlugconf struct {
 	loadOnArg  string
 }
 
-func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugconf, reposPath string) (*parsedPlugconf, error) {
+func (cmd *plugconfCmd) parsePlugConf(plugConf string, reposID int, reposPath string) (*parsedPlugconf, error) {
 	bytes, err := ioutil.ReadFile(plugConf)
 	if err != nil {
 		return nil, err
@@ -306,7 +307,7 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, parsedList []parsedPlugco
 	}
 
 	return &parsedPlugconf{
-		number:     len(parsedList) + 1,
+		reposID:    reposID,
 		reposPath:  reposPath,
 		functions:  functions,
 		configFunc: configFunc,
@@ -366,25 +367,27 @@ func (cmd *plugconfCmd) extractBody(fn *ast.Function, src string) string {
 	return src[pos.Offset:endpos.Offset]
 }
 
-func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, parsedList []parsedPlugconf, funcCap int) []byte {
+func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, reposList []lockjson.Repos, plugconf map[string]*parsedPlugconf, funcCap int) []byte {
 	functions := make([]string, 0, funcCap)
-	autocommands := make([]string, 0, len(parsedList))
-	packadds := make([]string, 0, len(parsedList))
-	for _, p := range parsedList {
-		if exportAll && p.loadOnFunc != "" {
-			functions = append(functions, cmd.convertToDecodableFunc(p.loadOnFunc, p.reposPath, p.number))
-		}
-		functions = append(functions, cmd.convertToDecodableFunc(p.configFunc, p.reposPath, p.number))
-		functions = append(functions, p.functions...)
-		var pattern string
-		if p.loadOn == loadOnStart || p.loadOnArg == "" {
-			pattern = "*"
-		} else {
-			pattern = p.loadOnArg
-		}
-		autocommands = append(autocommands, fmt.Sprintf("  autocmd %s %s call s:config_%d()", string(p.loadOn), pattern, p.number))
-		optName := filepath.Base(pathutil.PackReposPathOf(p.reposPath))
+	autocommands := make([]string, 0, len(reposList))
+	packadds := make([]string, 0, len(reposList))
+	for _, repos := range reposList {
+		optName := filepath.Base(pathutil.PackReposPathOf(repos.Path))
 		packadds = append(packadds, fmt.Sprintf("packadd %s", optName))
+		if p, exists := plugconf[repos.Path]; exists {
+			if exportAll && p.loadOnFunc != "" {
+				functions = append(functions, cmd.convertToDecodableFunc(p.loadOnFunc, p.reposPath, p.reposID))
+			}
+			functions = append(functions, cmd.convertToDecodableFunc(p.configFunc, p.reposPath, p.reposID))
+			functions = append(functions, p.functions...)
+			var pattern string
+			if p.loadOn == loadOnStart || p.loadOnArg == "" {
+				pattern = "*"
+			} else {
+				pattern = p.loadOnArg
+			}
+			autocommands = append(autocommands, fmt.Sprintf("  autocmd %s %s call s:config_%d()", string(p.loadOn), pattern, p.reposID))
+		}
 	}
 	return []byte(fmt.Sprintf(`if exists('g:loaded_volt_system_bundled_plugconf')
   finish
