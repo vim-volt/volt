@@ -148,7 +148,7 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 		return errors.New("could not write to lock.json: " + err.Error())
 	}
 
-	// Rebuild start dir
+	// Rebuild ~/.vim/pack/volt dir
 	err = (&rebuildCmd{}).doRebuild(false)
 	if err != nil {
 		return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())

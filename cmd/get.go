@@ -201,7 +201,7 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 			return errors.New("could not write to lock.json: " + err.Error())
 		}
 
-		// Rebuild start dir
+		// Rebuild ~/.vim/pack/volt dir
 		err = (&rebuildCmd{}).doRebuild(false)
 		if err != nil {
 			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
@@ -233,15 +233,20 @@ const (
 
 // This function is executed in goroutine of each plugin
 func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
-	// Get HEAD hash string
-	fromHash, err := getReposHEAD(reposPath)
-	if err != nil {
-		logger.Error("Failed to get HEAD commit hash: " + err.Error())
-		done <- getParallelResult{
-			reposPath: reposPath,
-			status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+	// Normally, when upgraded is true, repos is also non-nil.
+	var fromHash string
+	if flags.upgrade && pathutil.Exists(pathutil.FullReposPathOf(reposPath)) {
+		// Get HEAD hash string
+		var err error
+		fromHash, err = getReposHEAD(reposPath)
+		if err != nil {
+			logger.Error("Failed to get HEAD commit hash: " + err.Error())
+			done <- getParallelResult{
+				reposPath: reposPath,
+				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+			}
+			return
 		}
-		return
 	}
 
 	var status string
@@ -299,7 +304,6 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	}
 
 	// Show old and new revisions: "upgraded ({from}..{to})".
-	// Normally, when upgraded is true, repos is also non-nil.
 	if upgraded && repos != nil {
 		status = fmt.Sprintf("%s %s : upgraded (%s..%s)", statusPrefixUpgraded, reposPath, fromHash, toHash)
 	}

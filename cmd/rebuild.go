@@ -44,15 +44,15 @@ Quick example
   $ volt rebuild -full  # full rebuild (remove ~/.vim/pack/volt, and re-create all)
 
 Description
-  Rebuild ~/.vim/pack/volt/start/ and ~/.vim/pack/volt/opt/ directory:
-    1. Copy repositories' files into ~/.vim/pack/volt/start/ and ~/.vim/pack/volt/opt/
+  Rebuild ~/.vim/pack/volt/opt/ directory:
+    1. Copy repositories' files into ~/.vim/pack/volt/opt/
       * If the repository is git repository, extract files from locked revision of tree object and copy them into above vim directories
       * If the repository is static repository (imported non-git directory by "volt add" command), copy files into above vim directories
     2. Remove directories from above vim directories, which exist in ~/.vim/pack/volt/build-info.json but not in $VOLTPATH/lock.json
 
   ~/.vim/pack/volt/build-info.json is a file which holds the information that what vim plugins are installed in ~/.vim/pack/volt/ and its type (git repository, static repository, or system repository), its version. A user normally doesn't need to know the contents of build-info.json .
 
-  If -full option was given, remove all directories in ~/.vim/pack/volt/start/ and ~/.vim/pack/volt/opt/ , and copy repositories' files into above vim directories.
+  If -full option was given, remove all directories in ~/.vim/pack/volt/opt/ , and copy repositories' files into above vim directories.
   Otherwise, it will perform smart rebuild: copy / remove only changed repositories' files.` + "\n\n")
 		fmt.Println("Options")
 		fs.PrintDefaults()
@@ -210,7 +210,7 @@ func (reposList *reposList) removeByReposPath(reposPath string) {
 
 func (cmd *rebuildCmd) doRebuild(full bool) error {
 	vimDir := pathutil.VimDir()
-	startDir := pathutil.VimVoltStartDir()
+	optDir := pathutil.VimVoltOptDir()
 
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
@@ -233,7 +233,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		}
 	}
 
-	// Read ~/.vim/pack/volt/start/build-info.json
+	// Read ~/.vim/pack/volt/opt/build-info.json
 	buildInfo, err := cmd.readBuildInfo()
 	if err != nil {
 		return err
@@ -251,14 +251,14 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	var buildReposMap map[string]*repos
 	if full {
 		buildReposMap = make(map[string]*repos)
-		logger.Info("Full rebuilding " + startDir + " directory ...")
+		logger.Info("Full rebuilding " + optDir + " directory ...")
 	} else {
 		buildReposMap = make(map[string]*repos, len(buildInfo.Repos))
 		for i := range buildInfo.Repos {
 			repos := &buildInfo.Repos[i]
 			buildReposMap[repos.Path] = repos
 		}
-		logger.Info("Rebuilding " + startDir + " directory ...")
+		logger.Info("Rebuilding " + optDir + " directory ...")
 	}
 
 	// Remove ~/.vim/pack/volt/ if -full option was given
@@ -294,26 +294,27 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		return err
 	}
 
-	// Mkdir start dir
-	os.MkdirAll(startDir, 0755)
-	if !pathutil.Exists(startDir) {
-		return errors.New("could not create " + startDir)
+	// Mkdir opt dir
+	os.MkdirAll(optDir, 0755)
+	if !pathutil.Exists(optDir) {
+		return errors.New("could not create " + optDir)
 	}
 
 	logger.Info("Installing all repositories files ...")
 
-	// Copy all repositories files to startDir
-	copyDone, copyCount := cmd.copyReposList(buildReposMap, reposList, startDir)
+	// Copy all repositories files to optDir
+	copyDone, copyCount := cmd.copyReposList(buildReposMap, reposList, optDir)
 
 	// Remove all repositories found in build-info.json, but not in lock.json
 	removeDone, removeCount := cmd.removeReposList(buildInfo.Repos, lockJSON.Repos)
 
 	// Wait copy
 	var copyModified bool
-	copyErr := cmd.waitCopyRepos(copyDone, copyCount, func(result *actionReposResult) {
+	copyErr := cmd.waitCopyRepos(copyDone, copyCount, func(result *actionReposResult) error {
 		// Construct buildInfo from the result
 		cmd.constructBuildInfo(buildInfo, result)
 		copyModified = true
+		return nil
 	})
 
 	// Wait remove
@@ -327,6 +328,20 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	// Handle copy & remove errors
 	if copyErr != nil || removeErr != nil {
 		return multierror.Append(copyErr, removeErr).ErrorOrNil()
+	}
+
+	// Write bundled plugconf file
+	plugconf := plugconfCmd{}
+	exportAll := false
+	content, merr := plugconf.generateBundlePlugconf(exportAll, reposList)
+	if merr.ErrorOrNil() != nil {
+		// Return vim script parse errors
+		return merr
+	}
+	os.MkdirAll(filepath.Dir(pathutil.BundledPlugConf()), 0755)
+	err = ioutil.WriteFile(pathutil.BundledPlugConf(), content, 0644)
+	if err != nil {
+		return err
 	}
 
 	// Write to build-info.json if buildInfo was modified
@@ -424,7 +439,7 @@ type actionReposResult struct {
 	repos *lockjson.Repos
 }
 
-func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*repos, reposList []lockjson.Repos, startDir string) (chan actionReposResult, int) {
+func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*repos, reposList []lockjson.Repos, optDir string) (chan actionReposResult, int) {
 	copyDone := make(chan actionReposResult, len(reposList))
 	copyCount := 0
 	for i := range reposList {
@@ -440,7 +455,7 @@ func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*repos, reposList 
 			buildRepos, exists := buildReposMap[reposList[i].Path]
 			if !exists ||
 				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
-				cmd.hasChangedStaticRepos(&reposList[i], buildRepos, startDir) {
+				cmd.hasChangedStaticRepos(&reposList[i], buildRepos, optDir) {
 				go cmd.updateStaticRepos(&reposList[i], copyDone)
 				copyCount++
 			}
@@ -475,7 +490,7 @@ func (cmd *rebuildCmd) removeReposList(buildInfoRepos reposList, lockReposList l
 	return removeDone, len(removeList)
 }
 
-func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, callback func(*actionReposResult)) *multierror.Error {
+func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, callback func(*actionReposResult) error) *multierror.Error {
 	var merr *multierror.Error
 	for i := 0; i < copyCount; i++ {
 		result := <-copyDone
@@ -487,7 +502,10 @@ func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int,
 						"': "+result.err.Error()))
 		} else {
 			logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
-			callback(&result)
+			err := callback(&result)
+			if err != nil {
+				merr = multierror.Append(merr, err)
+			}
 		}
 	}
 	return merr
@@ -578,12 +596,12 @@ func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *repos) 
 	return false
 }
 
-// Remove ~/.vim/volt/start/{repos} and copy from ~/volt/repos/{repos}
+// Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
 func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
 
-	// Remove ~/.vim/volt/start/{repos}
+	// Remove ~/.vim/volt/opt/{repos}
 	err := os.RemoveAll(dst)
 	if err != nil {
 		done <- actionReposResult{
@@ -703,7 +721,7 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 	done <- actionReposResult{nil, repos}
 }
 
-func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *repos, startDir string) bool {
+func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *repos, optDir string) bool {
 	src := pathutil.FullReposPathOf(repos.Path)
 
 	// Get latest mtime of src
@@ -728,12 +746,12 @@ func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *
 	return dstModTime.Before(srcModTime)
 }
 
-// Remove ~/.vim/volt/start/{repos} and copy from ~/volt/repos/{repos}
+// Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
 func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
 
-	// Remove ~/.vim/volt/start/{repos}
+	// Remove ~/.vim/volt/opt/{repos}
 	err := os.RemoveAll(dst)
 	if err != nil {
 		done <- actionReposResult{
@@ -743,7 +761,7 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 		return
 	}
 
-	// Copy ~/volt/repos/{repos} to ~/.vim/volt/start/{repos}
+	// Copy ~/volt/repos/{repos} to ~/.vim/volt/opt/{repos}
 	err = fileutil.CopyDir(src, dst)
 	if err != nil {
 		done <- actionReposResult{
