@@ -1,4 +1,4 @@
-Volt
+:zap: Volt
 ----
 
 A meta-level vim package manager.
@@ -80,6 +80,38 @@ To uninstall `tyru/caw.vim` like:
 $ volt rm tyru/caw.vim   # (sob)
 ```
 
+### Easy setup on another PC
+
+If you want to install set of plugins which you have installed by `volt get`, you can use `volt get -l`.
+
+```
+$ volt get -l   # install plugins listed in $VOLTPATH/lock.json
+```
+
+First, you have to manage the following files under `$VOLTPATH`.
+
+```
+$VOLTPATH/
+├ ─ ─  lock.json
+├ ─ ─  plugconf (optional)
+└ ─ ─  rc (optional)
+```
+
+**NOTE: DO NOT RECOMMEND SHARING VOLT DIRECTORY ON DROPBOX** (see [related issues](https://github.com/vim-volt/volt/issues?utf8=%E2%9C%93&q=is%3Aissue+dropbox)).
+
+For example, my actual setup is:
+
+```
+$ tree -L 1 ~/volt/
+/home/tyru/volt/
+├ ─ ─  lock.json -> /home/tyru/git/dotfiles/dotfiles/volt/lock.json
+├ ─ ─  plugconf -> /home/tyru/git/dotfiles/dotfiles/volt/plugconf
+├ ─ ─  rc -> /home/tyru/git/dotfiles/dotfiles/volt/rc
+└ ─ ─  repos
+```
+
+See [volt directory](https://github.com/tyru/dotfiles/tree/75a37b4a640a5cffecf34d2a52406d0f53ee6f09/dotfiles/volt) in [tyru/dotfiles](https://github.com/tyru/dotfiles/) repository for example.
+
 ### Switch set of plugins ("Profile" feature)
 
 You can think this is similar feature of **branch** of `git`.
@@ -144,7 +176,7 @@ $ volt profile use default gvimrc true   # Enable installing gvimrc on profile d
 See `volt help profile` for more detailed information.
 
 
-## Want to join development of volt?
+## :tada: Join development
 
 If you want to join developing volt, you can setup like:
 
