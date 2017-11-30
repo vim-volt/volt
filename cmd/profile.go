@@ -70,26 +70,29 @@ Usage
     Set vimrc / gvimrc flag to true or false.
 
 Quick example
-  $ volt profile list
+  $ volt profile list   # default profile is "default"
   * default
-  $ volt profile new foo # will create profile "foo"
+  $ volt profile new foo   # will create profile "foo"
   $ volt profile list
   * default
     foo
-  $ volt profile set foo # will switch profile to "foo"
+  $ volt profile set foo   # will switch profile to "foo"
   $ volt profile list
     default
   * foo
 
-  $ volt profile use -current vimrc false # Disable installing vimrc on current active profile on "volt rebuild"
-  $ volt profile use default gvimrc true  # Enable installing gvimrc on profile default on "volt rebuild"
+  $ volt profile set default   # on profile "default"
 
-  $ volt profile set default # will switch profile to "default"
-  $ volt profile rm foo tyru/caw.vim # will disable loading tyru/caw.vim plugin on profile "foo"
-  $ volt disable tyru/open-browser.vim # if profile name is current active profile, you can also use "volt disable" command instead
-  $ volt profile add foo tyru/caw.vim # will enable loading tyru/caw.vim plugin on profile "foo"
-  $ volt enable tyru/open-browser.vim
-  $ volt profile destroy foo # will delete profile "foo"` + "\n\n")
+  $ volt enable tyru/caw.vim    # enable loading tyru/caw.vim on current profile
+  $ volt profile add foo tyru/caw.vim    # enable loading tyru/caw.vim on "foo" profile
+
+  $ volt disable tyru/caw.vim   # disable loading tyru/caw.vim on current profile
+  $ volt profile rm foo tyru/caw.vim    # disable loading tyru/caw.vim on "foo" profile
+
+  $ volt profile destroy foo   # will delete profile "foo"
+
+  $ volt profile use -current vimrc false   # Disable installing vimrc on current active profile on "volt rebuild"
+  $ volt profile use default gvimrc true   # Enable installing gvimrc on profile default on "volt rebuild"` + "\n\n")
 		profileFlags.helped = true
 	}
 
