@@ -500,24 +500,41 @@ func (cmd *plugconfCmd) getDependencies(fn *ast.Function, src string) []string {
 func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, reposList []lockjson.Repos, plugconf map[string]*parsedPlugconf, funcCap int) []byte {
 	functions := make([]string, 0, funcCap)
 	autocommands := make([]string, 0, len(reposList))
-	packadds := make([]string, 0, len(reposList))
 	for _, repos := range reposList {
+		p, exists := plugconf[repos.Path]
+		// s:load_on()
+		if exportAll && exists && p.loadOnFunc != "" {
+			functions = append(functions, cmd.convertToDecodableFunc(p.loadOnFunc, p.reposPath, p.reposID))
+		}
+		// :packadd <repos>
 		optName := filepath.Base(pathutil.PackReposPathOf(repos.Path))
-		packadds = append(packadds, fmt.Sprintf("packadd %s", optName))
-		if p, exists := plugconf[repos.Path]; exists {
-			if exportAll && p.loadOnFunc != "" {
-				functions = append(functions, cmd.convertToDecodableFunc(p.loadOnFunc, p.reposPath, p.reposID))
-			}
-			if p.configFunc != "" {
-				functions = append(functions, cmd.convertToDecodableFunc(p.configFunc, p.reposPath, p.reposID))
-				var pattern string
-				if p.loadOn == loadOnStart || p.loadOnArg == "" {
-					pattern = "*"
-				} else {
-					pattern = p.loadOnArg
-				}
-				autocommands = append(autocommands, fmt.Sprintf("  autocmd %s %s call s:config_%d()", string(p.loadOn), pattern, p.reposID))
-			}
+		packadd := fmt.Sprintf("packadd %s", optName)
+		// autocommand event & patterns
+		var loadOn string
+		var patterns []string
+		if !exists {
+			loadOn = string(loadOnStart)
+			patterns = []string{"*"}
+		} else if p.loadOnArg == "" {
+			loadOn = string(p.loadOn)
+			patterns = []string{"*"}
+		} else {
+			loadOn = string(p.loadOn)
+			patterns = strings.Split(p.loadOnArg, ",")
+		}
+		// s:config() and invoked command
+		var invokedCmd string
+		if exists && p.configFunc != "" {
+			functions = append(functions, cmd.convertToDecodableFunc(p.configFunc, p.reposPath, p.reposID))
+			invokedCmd = fmt.Sprintf("call s:config_%d() | %s", p.reposID, packadd)
+		} else {
+			invokedCmd = packadd
+		}
+		for i := range patterns {
+			autocmd := fmt.Sprintf("  autocmd %s %s %s", loadOn, patterns[i], invokedCmd)
+			autocommands = append(autocommands, autocmd)
+		}
+		if exists {
 			functions = append(functions, p.functions...)
 		}
 	}
@@ -532,11 +549,8 @@ augroup volt-bundled-plugconf
   autocmd!
 %s
 augroup END
-
-%s
 `, strings.Join(functions, "\n\n"),
 		strings.Join(autocommands, "\n"),
-		strings.Join(packadds, "\n"),
 	))
 }
 
