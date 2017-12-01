@@ -43,10 +43,10 @@ Quick example
   $ volt get -v tyru/caw.vim # will output verbose git-clone(1) output
 
 Description
-  Install vim plugin from {repository}, or upgrade vim plugin of {repository} list on current active profile. And fetch system plugconf files from:
+  Install vim plugin from {repository}, or upgrade vim plugin of {repository} list on current active profile. And fetch skeleton plugconf from:
     https://github.com/vim-volt/plugconf-templates
   and install it to:
-    $VOLTPATH/plugconf/system/{repository}.vim
+    $VOLTPATH/plugconf/{repository}.vim
 
   {repository}'s format is one of the followings:
 
@@ -398,7 +398,7 @@ func (*getCmd) installPlugConf(reposPath string) error {
 		return err
 	}
 
-	fn := pathutil.SystemPlugconfOf(reposPath)
+	fn := pathutil.PlugconfOf(reposPath)
 	os.MkdirAll(filepath.Dir(fn), 0755)
 
 	err = ioutil.WriteFile(fn, bytes, 0644)

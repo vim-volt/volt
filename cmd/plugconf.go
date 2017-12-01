@@ -43,13 +43,13 @@ func init() {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  plugconf list [-a]
-    List all user plugconfs. If -a option was given, list also system plugconfs.
+  plugconf list
+    List all plugconfs.
 
   plugconf export
     Outputs bundled plugconf to stdout.
     Note that the output differs a bit from the file written by "volt rebuild"
-    (~/.vim/pack/volt/opt/system/plugin/bundled_plugconf.vim).
+    (~/.vim/pack/volt/start/system/plugin/bundled_plugconf.vim).
     Some functions are removed in the file because it is unnecessary for Vim.
     But this command shows them because this command must export all in plugconfs.
 
@@ -138,11 +138,6 @@ func (cmd *plugconfCmd) parseArgs(args []string) ([]string, error) {
 }
 
 func (*plugconfCmd) doList(args []string) error {
-	var showSystem bool
-	if len(args) > 0 && args[0] == "-a" {
-		showSystem = true
-	}
-
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -151,13 +146,9 @@ func (*plugconfCmd) doList(args []string) error {
 
 	for i := range lockJSON.Repos {
 		repos := &lockJSON.Repos[i]
-		user := pathutil.UserPlugconfOf(repos.Path)
-		system := pathutil.SystemPlugconfOf(repos.Path)
-		if pathutil.Exists(user) {
-			fmt.Println(user)
-		}
-		if showSystem && pathutil.Exists(system) {
-			fmt.Println(system)
+		path := pathutil.PlugconfOf(repos.Path)
+		if pathutil.Exists(path) {
+			fmt.Println(path)
 		}
 	}
 
@@ -209,12 +200,9 @@ func (cmd *plugconfCmd) generateBundlePlugconf(exportAll bool, reposList []lockj
 	for _, repos := range reposList {
 		var parsed *parsedPlugconf
 		var err error
-		user := pathutil.UserPlugconfOf(repos.Path)
-		system := pathutil.SystemPlugconfOf(repos.Path)
-		if pathutil.Exists(user) {
-			parsed, err = cmd.parsePlugConf(user, reposID, repos.Path)
-		} else if pathutil.Exists(system) {
-			parsed, err = cmd.parsePlugConf(system, reposID, repos.Path)
+		path := pathutil.PlugconfOf(repos.Path)
+		if pathutil.Exists(path) {
+			parsed, err = cmd.parsePlugConf(path, reposID, repos.Path)
 		} else {
 			continue
 		}

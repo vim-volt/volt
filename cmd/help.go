@@ -38,11 +38,11 @@ Usage
 
 Command
   get [-l] [-u] [-v] [{repository} ...]
-    Install / Upgrade vim plugin, and system plugconf files from
+    Install / Upgrade vim plugin, and fetch plugconf from
     https://github.com/vim-volt/plugconf-templates
 
   rm {repository} [{repository2} ...]
-    Uninstall vim plugin and system plugconf files
+    Uninstall vim plugin and plugconf files
 
   add {from} {repository}
     Add local {from} repository as {repository} to lock.json
@@ -90,8 +90,8 @@ Command
   profile use [-current | {name}] gvimrc [true | false]
     Set vimrc / gvimrc flag to true or false.
 
-  plugconf list [-a]
-    List all user plugconfs. If -a option was given, list also system plugconfs.
+  plugconf list
+    List all user plugconfs.
 
   plugconf export
     Outputs bundled plugconf to stdout.

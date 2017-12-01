@@ -138,14 +138,14 @@ $ tree -L 1 ~/volt/
 └ ─ ─  repos
 ```
 
-See [volt directory](https://github.com/tyru/dotfiles/tree/75a37b4a640a5cffecf34d2a52406d0f53ee6f09/dotfiles/volt) in [tyru/dotfiles](https://github.com/tyru/dotfiles/) repository for example.
+See [volt directory](https://github.com/tyru/dotfiles/tree/36456c73e66898c8a725e2043ff0ffcba941ebf4/dotfiles/volt) in [tyru/dotfiles](https://github.com/tyru/dotfiles/) repository for example.
 
 ### Configuration per plugin ("Plugconf" feature)
 
 You can write plugin configuration in "plugconf" file.
 The files are placed at:
 
-* `$VOLTPATH/plugconf/user/<repository>.vim`
+* `$VOLTPATH/plugconf/<repository>.vim`
 
 For example, [tyru/open-browser-github.vim](https://github.com/tyru/open-browser-github.vim) configuration is `$VOLTPATH/plugconf/user/github.com/tyru/open-browser.vim.vim` because "github.com/tyru/open-browser-github.vim" is the repository URL.
 
@@ -164,7 +164,7 @@ Some special functions can be defined in plugconf file:
     * The specified plugins by this function are loaded before the plugin of plugconf
     * e.g.: `["github.com/tyru/open-browser.vim"]`
 
-However, you can also define global functions in plugconf (see [tyru/nextfile.vim example](https://github.com/tyru/dotfiles/blob/master/dotfiles/volt/plugconf/user/github.com/tyru/nextfile.vim.vim)).
+However, you can also define global functions in plugconf (see [tyru/nextfile.vim example](https://github.com/tyru/dotfiles/blob/36456c73e66898c8a725e2043ff0ffcba941ebf4/dotfiles/volt/plugconf/github.com/tyru/nextfile.vim.vim)).
 
 An example config of [tyru/open-browser-github.vim](https://github.com/tyru/open-browser-github.vim):
 
