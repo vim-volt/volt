@@ -24,7 +24,7 @@ func Create() error {
 
 	// Return error if the file exists
 	if pathutil.Exists(trxLockFile) {
-		return errors.New("failed to begin transaction: " + pathutil.TrxLock() + " exists: if no other volt process is currentl y running, this probably means a volt process crashed earlier. Make sure no other volt process is running and remove the file manually to continue")
+		return errors.New("failed to begin transaction: " + pathutil.TrxLock() + " exists: if no other volt process is currently running, this probably means a volt process crashed earlier. Make sure no other volt process is running and remove the file manually to continue")
 	}
 
 	// Write pid to trx.lock file
