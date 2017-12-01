@@ -512,9 +512,8 @@ func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, reposList []lockjson
 		// autocommand event & patterns
 		var loadOn string
 		var patterns []string
-		if !exists {
+		if !exists || p.loadOn == loadOnStart {
 			loadOn = string(loadOnStart)
-			patterns = []string{"*"}
 		} else if p.loadOnArg == "" {
 			loadOn = string(p.loadOn)
 			patterns = []string{"*"}
@@ -530,9 +529,13 @@ func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, reposList []lockjson
 		} else {
 			invokedCmd = packadd
 		}
-		for i := range patterns {
-			autocmd := fmt.Sprintf("  autocmd %s %s %s", loadOn, patterns[i], invokedCmd)
-			autocommands = append(autocommands, autocmd)
+		if loadOn == string(loadOnStart) {
+			autocommands = append(autocommands, "  "+invokedCmd)
+		} else {
+			for i := range patterns {
+				autocmd := fmt.Sprintf("  autocmd %s %s %s", loadOn, patterns[i], invokedCmd)
+				autocommands = append(autocommands, autocmd)
+			}
 		}
 		if exists {
 			functions = append(functions, p.functions...)
