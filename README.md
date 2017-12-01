@@ -1,13 +1,41 @@
 :zap: Volt
 ----
 
-A meta-level vim package manager.
+```
+ .----------------.  .----------------.  .----------------.  .----------------. 
+| .--------------. || .--------------. || .--------------. || .--------------. |
+| | ____   ____  | || |     ____     | || |   _____      | || |  _________   | |
+| ||_  _| |_  _| | || |   .'    `.   | || |  |_   _|     | || | |  _   _  |  | |
+| |  \ \   / /   | || |  /  .--.  \  | || |    | |       | || | |_/ | | \_|  | |
+| |   \ \ / /    | || |  | |    | |  | || |    | |   _   | || |     | |      | |
+| |    \ ' /     | || |  \  `--'  /  | || |   _| |__/ |  | || |    _| |_     | |
+| |     \_/      | || |   `.____.'   | || |  |________|  | || |   |_____|    | |
+| |              | || |              | || |              | || |              | |
+| '--------------' || '--------------' || '--------------' || '--------------' |
+ '----------------'  '----------------'  '----------------'  '----------------' 
+ ```
+
+## What is Volt
+
+* Multi-platform CLI tool managing Vim plugin life
+* Based on Vim 8 [packages feature](http://vimhelp.appspot.com/repeat.txt.html#packages)
+    * All plugins are installed under `~/.vim/pack/volt` directory
+* Zero overhead & optimizations
+    * Volt does not slow down your startup
+    * We plan to support transpilation of Vim script (Uglification, Transpiler to LuaJIT, ...)
+* Provides version locking & [easy setup](#easy-setup)
+* Managing plugin configuration by [plugconf](#configuration-per-plugin-plugconf-feature) files
+    * This separates plugin configuration from vimrc, so you can easily disable/remove plugins in a second
+* [Profile feature](#switch-set-of-plugins-profile-feature) saves set of plugins, vimrc, and gvimrc
+    * You can switch those combinations with one command
 
 ## Install
 
 ```
 $ go get github.com/vim-volt/volt
 ```
+
+Or download binaries from [GitHub releases](https://github.com/vim-volt/volt/releases).
 
 ## Build environment
 
@@ -80,7 +108,7 @@ To uninstall `tyru/caw.vim` like:
 $ volt rm tyru/caw.vim   # (sob)
 ```
 
-### Easy setup on another PC
+### Easy setup
 
 If you want to install set of plugins which you have installed by `volt get`, you can use `volt get -l`.
 
