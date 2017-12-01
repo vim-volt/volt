@@ -112,6 +112,73 @@ $ tree -L 1 ~/volt/
 
 See [volt directory](https://github.com/tyru/dotfiles/tree/75a37b4a640a5cffecf34d2a52406d0f53ee6f09/dotfiles/volt) in [tyru/dotfiles](https://github.com/tyru/dotfiles/) repository for example.
 
+### Configuration per plugin ("Plugconf" feature)
+
+You can write plugin configuration in "plugconf" file.
+The files are placed at:
+
+* `$VOLTPATH/plugconf/user/<repository>.vim`
+
+For example, [tyru/open-browser-github.vim](https://github.com/tyru/open-browser-github.vim) configuration is `$VOLTPATH/plugconf/user/github.com/tyru/open-browser.vim.vim` because "github.com/tyru/open-browser-github.vim" is the repository URL.
+
+Some special functions can be defined in plugconf file:
+
+* `s:config()`
+    * Plugin configuration
+* `s:load_on()` (optional)
+    * Return value: String (when to load a plugin by `:packadd`)
+    * This function specifies when to load a plugin by `:packadd`
+    * e.g.: `return "start"` (default, load on `VimEnter` autocommand)
+    * e.g.: `return "filetype=<filetype>"` (load on `FileType` autocommand)
+    * e.g.: `return "excmd=<excmd>"` (load on `CmdUndefined` autocommand)
+* `s:depends()` (optional)
+    * Return value: List (repository name)
+    * The specified plugins by this function are loaded before the plugin of plugconf
+    * e.g.: `["github.com/tyru/open-browser.vim"]`
+
+However, you can also define global functions in plugconf (see [tyru/nextfile.vim example](https://github.com/tyru/dotfiles/blob/master/dotfiles/volt/plugconf/user/github.com/tyru/nextfile.vim.vim)).
+
+An example config of [tyru/open-browser-github.vim](https://github.com/tyru/open-browser-github.vim):
+
+```vim
+function! s:config()
+  let g:openbrowser_github_always_use_commit_hash = 1
+endfunction
+
+function! s:depends()
+  return ['github.com/tyru/open-browser.vim']
+endfunction
+```
+
+NOTE:
+
+* Plugconf file is parsed by [go-vimlparser](https://github.com/haya14busa/go-vimlparser)
+* The rhs of `:return` must be literal
+* Breaking newline by backslash (`\`) in `s:load_on()` and `s:depends()` is safe, but the following code can not be recognized (currently not supported at least)
+
+```vim
+" Wrong
+function! s:load_on()
+  let when = 'filetype=vim'
+  return when
+endfunction
+
+" Wrong
+function! s:depends()
+  let list =  ['github.com/tyru/open-browser.vim']
+  return list
+endfunction
+
+" OK
+function! s:depends()
+  return [
+  \  'github.com/tyru/open-browser.vim'
+  \]
+endfunction
+```
+
+See [plugconf directory](https://github.com/tyru/dotfiles/tree/75a37b4a640a5cffecf34d2a52406d0f53ee6f09/dotfiles/volt/plugconf) in [tyru/dotfiles](https://github.com/tyru/dotfiles/) repository for example.
+
 ### Switch set of plugins ("Profile" feature)
 
 You can think this is similar feature of **branch** of `git`.
