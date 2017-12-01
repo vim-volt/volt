@@ -479,15 +479,25 @@ func (cmd *rebuildCmd) removeReposList(buildInfoRepos reposList, lockReposList l
 	removeDone := make(chan actionReposResult, len(removeList))
 	for i := range removeList {
 		go func(repos *repos) {
-			err := os.RemoveAll(pathutil.FullReposPathOf(repos.Path))
-			logger.Info("Removing " + string(repos.Type) + " repository " + repos.Path + " ... Done.")
+			// Remove directory under $VOLTPATH
+			path := pathutil.FullReposPathOf(repos.Path)
+			err := os.RemoveAll(path)
+			logger.Info("Removing " + string(repos.Type) + " repository " + path + " ... Done.")
+			removeDone <- actionReposResult{
+				err,
+				&lockjson.Repos{Path: repos.Path},
+			}
+			// Remove directory under vim dir
+			path = pathutil.PackReposPathOf(repos.Path)
+			err = os.RemoveAll(path)
+			logger.Info("Removing " + path + " ... Done.")
 			removeDone <- actionReposResult{
 				err,
 				&lockjson.Repos{Path: repos.Path},
 			}
 		}(&removeList[i])
 	}
-	return removeDone, len(removeList)
+	return removeDone, len(removeList) * 2
 }
 
 func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, callback func(*actionReposResult) error) *multierror.Error {
