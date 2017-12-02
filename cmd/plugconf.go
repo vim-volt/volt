@@ -202,7 +202,7 @@ func (cmd *plugconfCmd) generateBundlePlugconf(exportAll bool, reposList []lockj
 		var err error
 		path := pathutil.PlugconfOf(repos.Path)
 		if pathutil.Exists(path) {
-			parsed, err = cmd.parsePlugConf(path, reposID, repos.Path)
+			parsed, err = cmd.parsePlugconfFile(path, reposID, repos.Path)
 		} else {
 			continue
 		}
@@ -215,7 +215,7 @@ func (cmd *plugconfCmd) generateBundlePlugconf(exportAll bool, reposList []lockj
 		}
 	}
 	cmd.sortByDepends(reposList, plugconf)
-	return cmd.makeBundledPlugConf(exportAll, reposList, plugconf, funcCap), merr
+	return cmd.makeBundledPlugconf(exportAll, reposList, plugconf, funcCap), merr
 }
 
 // Move the plugins which was depended to previous plugin which depends to them.
@@ -323,33 +323,43 @@ const (
 )
 
 type parsedPlugconf struct {
-	reposID    int
-	reposPath  string
-	functions  []string
-	configFunc string
-	loadOnFunc string
-	loadOn     loadOnType
-	loadOnArg  string
-	depends    []string
+	reposID     int
+	reposPath   string
+	functions   []string
+	configFunc  string
+	loadOnFunc  string
+	loadOn      loadOnType
+	loadOnArg   string
+	dependsFunc string
+	depends     []string
 }
 
-func (cmd *plugconfCmd) parsePlugConf(plugConf string, reposID int, reposPath string) (*parsedPlugconf, error) {
-	bytes, err := ioutil.ReadFile(plugConf)
+func (cmd *plugconfCmd) parsePlugconfFile(plugConf string, reposID int, reposPath string) (*parsedPlugconf, error) {
+	content, err := ioutil.ReadFile(plugConf)
 	if err != nil {
 		return nil, err
 	}
-	src := string(bytes)
-
+	src := string(content)
 	file, err := vimlparser.ParseFile(strings.NewReader(src), plugConf, nil)
 	if err != nil {
 		return nil, err
 	}
+	parsed, err := cmd.parsePlugconf(file, src)
+	if err != nil {
+		return nil, err
+	}
+	parsed.reposID = reposID
+	parsed.reposPath = reposPath
+	return parsed, nil
+}
 
+func (cmd *plugconfCmd) parsePlugconf(file *ast.File, src string) (*parsedPlugconf, error) {
 	var loadOn loadOnType = loadOnStart
 	var loadOnArg string
 	var loadOnFunc string
 	var configFunc string
 	var functions []string
+	var dependsFunc string
 	var depends []string
 	var parseErr error
 
@@ -382,6 +392,7 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, reposID int, reposPath st
 		case "s:config":
 			configFunc = cmd.extractBody(fn, src)
 		case "s:depends":
+			dependsFunc = cmd.extractBody(fn, src)
 			depends = cmd.getDependencies(fn, src)
 		default:
 			functions = append(functions, cmd.extractBody(fn, src))
@@ -395,14 +406,13 @@ func (cmd *plugconfCmd) parsePlugConf(plugConf string, reposID int, reposPath st
 	}
 
 	return &parsedPlugconf{
-		reposID:    reposID,
-		reposPath:  reposPath,
-		functions:  functions,
-		configFunc: configFunc,
-		loadOnFunc: loadOnFunc,
-		loadOn:     loadOn,
-		loadOnArg:  loadOnArg,
-		depends:    depends,
+		functions:   functions,
+		configFunc:  configFunc,
+		loadOnFunc:  loadOnFunc,
+		loadOn:      loadOn,
+		loadOnArg:   loadOnArg,
+		dependsFunc: dependsFunc,
+		depends:     depends,
 	}, nil
 }
 
@@ -485,7 +495,7 @@ func (cmd *plugconfCmd) getDependencies(fn *ast.Function, src string) []string {
 	return deps
 }
 
-func (cmd *plugconfCmd) makeBundledPlugConf(exportAll bool, reposList []lockjson.Repos, plugconf map[string]*parsedPlugconf, funcCap int) []byte {
+func (cmd *plugconfCmd) makeBundledPlugconf(exportAll bool, reposList []lockjson.Repos, plugconf map[string]*parsedPlugconf, funcCap int) []byte {
 	functions := make([]string, 0, funcCap)
 	autocommands := make([]string, 0, len(reposList))
 	for _, repos := range reposList {
