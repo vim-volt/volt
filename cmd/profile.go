@@ -46,7 +46,7 @@ Usage
   profile set {name}
     Set profile name to {name}.
 
-  profile show {name}
+  profile show [-current | {name}]
     Show profile info of {name}.
 
   profile list
@@ -59,10 +59,10 @@ Usage
     Delete profile of {name}.
     NOTE: Cannot delete current active profile.
 
-  profile add {name} {repository} [{repository2} ...]
+  profile add [-current | {name}] {repository} [{repository2} ...]
     Add one or more repositories to profile {name}.
 
-  profile rm {name} {repository} [{repository2} ...]
+  profile rm [-current | {name}] {repository} [{repository2} ...]
     Remove one or more repositories from profile {name}.
 
   profile use [-current | {name}] vimrc [true | false]
