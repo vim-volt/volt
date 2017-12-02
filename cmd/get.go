@@ -388,7 +388,7 @@ func (*getCmd) installPlugConf(reposPath string) error {
 	if err != nil {
 		return err
 	}
-	if res.StatusCode%100 != 2 { // Not 2xx status code
+	if res.StatusCode/100 != 2 { // Not 2xx status code
 		return errors.New("Returned non-successful status: " + res.Status)
 	}
 	defer res.Body.Close()
