@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // CopyDir recursively copies a directory tree, attempting to preserve permissions.
@@ -108,4 +109,16 @@ func CopyFile(src, dst string) (err error) {
 	}
 
 	return
+}
+
+// Always returns non-nil error which is the last error of os.Remove(dir)
+func RemoveDirs(dir string) error {
+	// Remove trailing slashes
+	dir = strings.TrimRight(dir, "/")
+
+	if err := os.Remove(dir); err != nil {
+		return err
+	} else {
+		return RemoveDirs(filepath.Dir(dir))
+	}
 }

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -151,7 +151,7 @@ func (cmd *rmCmd) removeRepos(reposPath string) error {
 		if err != nil {
 			return err
 		}
-		cmd.removeDirs(filepath.Dir(fullpath))
+		fileutil.RemoveDirs(filepath.Dir(fullpath))
 	} else {
 		return errors.New("no repository was installed: " + fullpath)
 	}
@@ -170,18 +170,6 @@ func (cmd *rmCmd) removePlugconf(reposPath string) error {
 		}
 	}
 	// Remove parent directories of plugconf
-	cmd.removeDirs(filepath.Dir(plugconf))
+	fileutil.RemoveDirs(filepath.Dir(plugconf))
 	return nil
-}
-
-// Always returns non-nil error which is the last error of os.Remove(dir)
-func (cmd *rmCmd) removeDirs(dir string) error {
-	// Remove trailing slashes
-	dir = strings.TrimRight(dir, "/")
-
-	if err := os.Remove(dir); err != nil {
-		return err
-	} else {
-		return cmd.removeDirs(filepath.Dir(dir))
-	}
 }
