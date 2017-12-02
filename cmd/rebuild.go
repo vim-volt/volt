@@ -331,9 +331,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	}
 
 	// Write bundled plugconf file
-	plugconf := plugconfCmd{}
-	exportAll := false
-	content, merr := plugconf.generateBundlePlugconf(exportAll, reposList)
+	content, merr := GenerateBundlePlugconf(reposList)
 	if merr.ErrorOrNil() != nil {
 		// Return vim script parse errors
 		return merr

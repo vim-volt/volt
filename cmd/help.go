@@ -102,15 +102,6 @@ Command
   profile use [-current | {name}] gvimrc [true | false]
     Set vimrc / gvimrc flag to true or false.
 
-  plugconf list
-    List all user plugconfs.
-
-  plugconf export
-    Outputs bundled plugconf to stdout.
-
-  plugconf import
-    Input bundled plugconf (volt plugconf export) from stdin, import the plugconf, and put files to each plugin's plugconf.
-
   rebuild [-full]
     Rebuild ~/.vim/pack/volt/ directory
 

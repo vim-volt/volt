@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -284,7 +283,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 
 		// Install plugconf
 		logger.Info("Installing plugconf " + reposPath + " ...")
-		err = cmd.installPlugConf(reposPath)
+		err = cmd.installPlugconf(reposPath)
 		if err != nil {
 			logger.Info("Installing plugconf " + reposPath + " ... not found")
 		} else {
@@ -380,28 +379,17 @@ func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 	return err
 }
 
-func (*getCmd) installPlugConf(reposPath string) error {
-	filename := reposPath + ".vim"
-	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + filename
-
-	res, err := http.Get(url)
+func (cmd *getCmd) installPlugconf(reposPath string) error {
+	// If non-nil error returned from FetchPlugconf(),
+	// create skeleton plugconf file
+	tmpl, _ := FetchPlugconf(reposPath)
+	filename := pathutil.PlugconfOf(reposPath)
+	content, err := GenPlugconfByTemplate(tmpl, filename)
 	if err != nil {
 		return err
 	}
-	if res.StatusCode/100 != 2 { // Not 2xx status code
-		return errors.New("Returned non-successful status: " + res.Status)
-	}
-	defer res.Body.Close()
-
-	bytes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-
-	fn := pathutil.PlugconfOf(reposPath)
-	os.MkdirAll(filepath.Dir(fn), 0755)
-
-	err = ioutil.WriteFile(fn, bytes, 0644)
+	os.MkdirAll(filepath.Dir(filename), 0755)
+	err = ioutil.WriteFile(filename, content, 0644)
 	if err != nil {
 		return err
 	}
