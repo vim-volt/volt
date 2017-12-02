@@ -1,17 +1,14 @@
 package cmd
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
-	vimlparser "github.com/haya14busa/go-vimlparser"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -383,11 +380,11 @@ func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 }
 
 func (cmd *getCmd) installPlugconf(reposPath string) error {
-	// If non-nil error returned from fetchPlugconf(),
+	// If non-nil error returned from FetchPlugconf(),
 	// create skeleton plugconf file
-	tmpl, _ := cmd.fetchPlugconf(reposPath)
+	tmpl, _ := FetchPlugconf(reposPath)
 	filename := pathutil.PlugconfOf(reposPath)
-	content, err := cmd.generatePlugconf(string(tmpl), filename)
+	content, err := GenPlugconfByTemplate(tmpl, filename)
 	if err != nil {
 		return err
 	}
@@ -397,106 +394,6 @@ func (cmd *getCmd) installPlugconf(reposPath string) error {
 		return err
 	}
 	return nil
-}
-
-// TODO: Move to plugconf.go
-func (*getCmd) fetchPlugconf(reposPath string) ([]byte, error) {
-	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + reposPath + ".vim"
-
-	res, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	if res.StatusCode/100 != 2 { // Not 2xx status code
-		return nil, errors.New("Returned non-successful status: " + res.Status)
-	}
-	defer res.Body.Close()
-
-	return ioutil.ReadAll(res.Body)
-}
-
-const skeletonPlugconfConfig = `function! s:config()
-  " Plugin configuration like the code written in vimrc.
-endfunction`
-
-const skeletonPlugconfLoadOn = `function! s:load_on()
-  " This function determines when a plugin is loaded.
-  "
-  " Possible values are:
-  " * 'start' (a plugin will be loaded at VimEnter event)
-  " * 'filetype=<filetypes>' (a plugin will be loaded at FileType event)
-  " * 'excmd=<excmds>' (a plugin will be loaded at CmdUndefined event)
-  " <filetypes> and <excmds> can be multiple values separated by comma.
-  "
-  " This function must contain 'return "<str>"' code.
-  " (the argument of :return must be string literal)
-
-  return 'start'
-endfunction`
-
-const skeletonPlugconfDepends = `function! s:depends()
-  " Dependencies of this plugin.
-  " The specified dependencies are loaded after this plugin is loaded.
-  "
-  " This function must contain 'return [<repos>, ...]' code.
-  " (the argument of :return must be list literal, and the elements are string)
-  " e.g. return ['github.com/tyru/open-browser.vim']
-
-  return []
-endfunction`
-
-// TODO: Move to plugconf.go
-func (cmd *getCmd) generatePlugconf(tmplPlugconf string, filename string) ([]byte, error) {
-	// Parse fetched plugconf
-	tmpl, err := vimlparser.ParseFile(strings.NewReader(tmplPlugconf), filename, nil)
-	if err != nil {
-		return nil, err
-	}
-	pCmd := plugconfCmd{}
-	parsed, err := pCmd.parsePlugconf(tmpl, tmplPlugconf)
-	if err != nil {
-		return nil, err
-	}
-
-	// Merge result and return it
-	var buf bytes.Buffer
-	// s:config()
-	if parsed.configFunc != "" {
-		_, err = buf.WriteString(parsed.configFunc)
-	} else {
-		_, err = buf.WriteString(skeletonPlugconfConfig)
-	}
-	if err != nil {
-		return nil, err
-	}
-	_, err = buf.WriteString("\n\n")
-	if err != nil {
-		return nil, err
-	}
-	// s:load_on()
-	if parsed.loadOnFunc != "" {
-		_, err = buf.WriteString(parsed.loadOnFunc)
-	} else {
-		_, err = buf.WriteString(skeletonPlugconfLoadOn)
-	}
-	if err != nil {
-		return nil, err
-	}
-	_, err = buf.WriteString("\n\n")
-	if err != nil {
-		return nil, err
-	}
-	// s:depends()
-	if parsed.dependsFunc != "" {
-		_, err = buf.WriteString(parsed.dependsFunc)
-	} else {
-		_, err = buf.WriteString(skeletonPlugconfDepends)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
 }
 
 func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) {
