@@ -204,7 +204,8 @@ func getDependencies(fn *ast.Function, src string) []string {
 // s:load_on() function is not included
 func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[string]*Plugconf, funcCap int) []byte {
 	functions := make([]string, 0, funcCap)
-	autocommands := make([]string, 0, len(reposList))
+	loadCmds := make([]string, 0, len(reposList))
+
 	for _, repos := range reposList {
 		p, exists := plugconf[repos.Path]
 		// :packadd <repos>
@@ -231,31 +232,37 @@ func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[string]*Plugco
 			invokedCmd = packadd
 		}
 		if loadOn == string(loadOnStart) {
-			autocommands = append(autocommands, "  "+invokedCmd)
+			loadCmds = append(loadCmds, "  "+invokedCmd)
 		} else {
 			for i := range patterns {
 				autocmd := fmt.Sprintf("  autocmd %s %s %s", loadOn, patterns[i], invokedCmd)
-				autocommands = append(autocommands, autocmd)
+				loadCmds = append(loadCmds, autocmd)
 			}
 		}
 		if exists {
 			functions = append(functions, p.functions...)
 		}
 	}
-	return []byte(fmt.Sprintf(`if exists('g:loaded_volt_system_bundled_plugconf')
+
+	var buf bytes.Buffer
+	buf.WriteString(`if exists('g:loaded_volt_system_bundled_plugconf')
   finish
 endif
-let g:loaded_volt_system_bundled_plugconf = 1
-
-%s
-
-augroup volt-bundled-plugconf
+let g:loaded_volt_system_bundled_plugconf = 1`)
+	if len(functions) > 0 {
+		buf.WriteString("\n\n")
+		buf.WriteString(strings.Join(functions, "\n\n"))
+	}
+	if len(loadCmds) > 0 {
+		buf.WriteString("\n\n")
+		buf.WriteString(`augroup volt-bundled-plugconf
   autocmd!
-%s
-augroup END
-`, strings.Join(functions, "\n\n"),
-		strings.Join(autocommands, "\n"),
-	))
+`)
+		buf.WriteString(strings.Join(loadCmds, "\n"))
+		buf.WriteString("\naugroup END")
+	}
+
+	return buf.Bytes()
 }
 
 var rxFuncName = regexp.MustCompile(`^(fu\w+!?\s+s:\w+)`)
