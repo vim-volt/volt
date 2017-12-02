@@ -125,7 +125,7 @@ $VOLTPATH/
 └ ─ ─  rc (optional)
 ```
 
-**NOTE: DO NOT RECOMMEND SHARING VOLT DIRECTORY ON DROPBOX** (see [related issues](https://github.com/vim-volt/volt/issues?utf8=%E2%9C%93&q=is%3Aissue+dropbox)).
+**NOTE: DO NOT RECOMMEND SHARING VOLT DIRECTORY ITSELF ON DROPBOX** (see [related issues](https://github.com/vim-volt/volt/issues?utf8=%E2%9C%93&q=is%3Aissue+dropbox)).
 
 For example, my actual setup is:
 
@@ -271,9 +271,9 @@ $ volt profile use default gvimrc true   # Enable installing gvimrc on profile d
 See `volt help profile` for more detailed information.
 
 
-## :tada: Join development
+## :tada: Contribution
 
-If you want to join developing volt, you can setup like:
+If you want to contribute to volt, you can setup like:
 
 ```
 $ make setup
