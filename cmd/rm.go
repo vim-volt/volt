@@ -12,6 +12,7 @@ import (
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
+	"github.com/vim-volt/volt/plugconf"
 	"github.com/vim-volt/volt/transaction"
 )
 
@@ -119,7 +120,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 
 	// Check if specified plugins are depended by some plugins
 	for _, reposPath := range reposPathList {
-		rdeps, err := RdepsOf(reposPath, lockJSON.Repos)
+		rdeps, err := plugconf.RdepsOf(reposPath, lockJSON.Repos)
 		if err != nil {
 			return err
 		}
@@ -175,14 +176,14 @@ func (cmd *rmCmd) removeRepos(reposPath string) error {
 // Remove plugconf file
 func (cmd *rmCmd) removePlugconf(reposPath string) error {
 	logger.Info("Removing plugconf files ...")
-	plugconf := pathutil.PlugconfOf(reposPath)
-	if pathutil.Exists(plugconf) {
-		err := os.Remove(plugconf)
+	plugconfPath := pathutil.PlugconfOf(reposPath)
+	if pathutil.Exists(plugconfPath) {
+		err := os.Remove(plugconfPath)
 		if err != nil {
 			return err
 		}
 	}
 	// Remove parent directories of plugconf
-	fileutil.RemoveDirs(filepath.Dir(plugconf))
+	fileutil.RemoveDirs(filepath.Dir(plugconfPath))
 	return nil
 }

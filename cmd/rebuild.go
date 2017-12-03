@@ -16,6 +16,7 @@ import (
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
+	"github.com/vim-volt/volt/plugconf"
 	"github.com/vim-volt/volt/transaction"
 
 	"github.com/hashicorp/go-multierror"
@@ -331,7 +332,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	}
 
 	// Write bundled plugconf file
-	content, merr := GenerateBundlePlugconf(reposList)
+	content, merr := plugconf.GenerateBundlePlugconf(reposList)
 	if merr.ErrorOrNil() != nil {
 		// Return vim script parse errors
 		return merr
