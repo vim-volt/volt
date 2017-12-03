@@ -12,6 +12,9 @@ func main() {
 }
 
 func Main() int {
+	if os.Getenv("VOLT_DEBUG") != "" {
+		logger.SetLevel(logger.DebugLevel)
+	}
 	if len(os.Args) <= 1 {
 		os.Args = append(os.Args, "help")
 	}
