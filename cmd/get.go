@@ -285,9 +285,12 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 		logger.Info("Installing plugconf " + reposPath + " ...")
 		err = cmd.installPlugconf(reposPath)
 		if err != nil {
-			logger.Info("Installing plugconf " + reposPath + " ... not found")
-		} else {
-			logger.Info("Installing plugconf " + reposPath + " ... found")
+			logger.Warn("Failed to install plugconf: " + err.Error())
+			done <- getParallelResult{
+				reposPath: reposPath,
+				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+			}
+			return
 		}
 	}
 
@@ -382,7 +385,10 @@ func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 func (cmd *getCmd) installPlugconf(reposPath string) error {
 	// If non-nil error returned from FetchPlugconf(),
 	// create skeleton plugconf file
-	tmpl, _ := FetchPlugconf(reposPath)
+	tmpl, err := FetchPlugconf(reposPath)
+	if err != nil {
+		logger.Debug(err.Error())
+	}
 	filename := pathutil.PlugconfOf(reposPath)
 	content, err := GenPlugconfByTemplate(tmpl, filename)
 	if err != nil {
