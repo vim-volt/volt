@@ -59,9 +59,6 @@ Command
   add {from} {repository}
     Add local {from} repository as {repository} to lock.json
 
-  query [-j] [-l] [{repository} ...]
-    Output queried vim plugin info
-
   enable {repository} [{repository2} ...]
     This is shortcut of:
     volt profile add {current profile} {repository} [{repository2} ...]
