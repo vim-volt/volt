@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
@@ -115,6 +116,18 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 	}
 	defer transaction.Remove()
 	lockJSON.TrxID++
+
+	// Check if specified plugins are depended by some plugins
+	for _, reposPath := range reposPathList {
+		rdeps, err := RdepsOf(reposPath, lockJSON.Repos)
+		if err != nil {
+			return err
+		}
+		if len(rdeps) > 0 {
+			return fmt.Errorf("cannot remove '%s' because it's depended by '%s'",
+				reposPath, strings.Join(rdeps, "', '"))
+		}
+	}
 
 	// Remove each repository
 	for _, reposPath := range reposPathList {
