@@ -202,8 +202,8 @@ func getDependencies(fn *ast.Function, src string) []string {
 }
 
 // s:load_on() function is not included
-func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[string]*Plugconf, funcCap int) []byte {
-	functions := make([]string, 0, funcCap)
+func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[string]*Plugconf) []byte {
+	functions := make([]string, 0, 64)
 	loadCmds := make([]string, 0, len(reposList))
 
 	for _, repos := range reposList {
@@ -287,10 +287,31 @@ type reposDepNode struct {
 }
 
 func GenerateBundlePlugconf(reposList []lockjson.Repos) ([]byte, *multierror.Error) {
-	// Parse plugconfs and make parsed plugconf info
+	plugconfMap, merr := parsePlugconfAsMap(reposList)
+	if merr.ErrorOrNil() != nil {
+		return nil, merr
+	}
+	sortByDepends(reposList, plugconfMap)
+	return makeBundledPlugconf(reposList, plugconfMap), nil
+}
+
+func RdepsOf(reposPath string, reposList []lockjson.Repos) ([]string, error) {
+	plugconfMap, merr := parsePlugconfAsMap(reposList)
+	if merr.ErrorOrNil() != nil {
+		return nil, merr
+	}
+	_, _, rdepsMap := getDepMaps(reposList, plugconfMap)
+	rdeps := rdepsMap[reposPath]
+	if rdeps == nil {
+		rdeps = make([]string, 0)
+	}
+	return rdeps, nil
+}
+
+// Parse plugconf of reposList and return parsed plugconf info as map
+func parsePlugconfAsMap(reposList []lockjson.Repos) (map[string]*Plugconf, *multierror.Error) {
 	var merr *multierror.Error
-	plugconf := make(map[string]*Plugconf, len(reposList))
-	funcCap := 0
+	plugconfMap := make(map[string]*Plugconf, len(reposList))
 	reposID := 1
 	for _, repos := range reposList {
 		var parsed *Plugconf
@@ -304,32 +325,18 @@ func GenerateBundlePlugconf(reposList []lockjson.Repos) ([]byte, *multierror.Err
 		if err != nil {
 			merr = multierror.Append(merr, err)
 		} else {
-			plugconf[repos.Path] = parsed
-			funcCap += len(parsed.functions) + 1 /* +1 for s:config() */
+			plugconfMap[repos.Path] = parsed
 			reposID += 1
 		}
 	}
-	sortByDepends(reposList, plugconf)
-	return makeBundledPlugconf(reposList, plugconf, funcCap), merr
+	return plugconfMap, merr
 }
 
 // Move the plugins which was depended to previous plugin which depends to them.
 // reposList is sorted in-place.
-func sortByDepends(reposList []lockjson.Repos, plugconf map[string]*Plugconf) {
-	reposMap := make(map[string]*lockjson.Repos, len(reposList))
-	depsMap := make(map[string][]string, len(reposList))
-	rdepsMap := make(map[string][]string, len(reposList))
+func sortByDepends(reposList []lockjson.Repos, plugconfMap map[string]*Plugconf) {
+	reposMap, depsMap, rdepsMap := getDepMaps(reposList, plugconfMap)
 	rank := make(map[string]int, len(reposList))
-	for i := range reposList {
-		reposPath := reposList[i].Path
-		reposMap[reposPath] = &reposList[i]
-		if p, exists := plugconf[reposPath]; exists {
-			depsMap[reposPath] = p.depends
-			for _, dep := range p.depends {
-				rdepsMap[dep] = append(rdepsMap[dep], reposPath)
-			}
-		}
-	}
 	for i := range reposList {
 		if _, exists := rank[reposList[i].Path]; !exists {
 			tree := makeDepTree(reposList[i].Path, reposMap, depsMap, rdepsMap)
@@ -341,6 +348,23 @@ func sortByDepends(reposList []lockjson.Repos, plugconf map[string]*Plugconf) {
 	sort.Slice(reposList, func(i, j int) bool {
 		return rank[reposList[i].Path] < rank[reposList[j].Path]
 	})
+}
+
+func getDepMaps(reposList []lockjson.Repos, plugconfMap map[string]*Plugconf) (map[string]*lockjson.Repos, map[string][]string, map[string][]string) {
+	reposMap := make(map[string]*lockjson.Repos, len(reposList))
+	depsMap := make(map[string][]string, len(reposList))
+	rdepsMap := make(map[string][]string, len(reposList))
+	for i := range reposList {
+		reposPath := reposList[i].Path
+		reposMap[reposPath] = &reposList[i]
+		if p, exists := plugconfMap[reposPath]; exists {
+			depsMap[reposPath] = p.depends
+			for _, dep := range p.depends {
+				rdepsMap[dep] = append(rdepsMap[dep], reposPath)
+			}
+		}
+	}
+	return reposMap, depsMap, rdepsMap
 }
 
 func makeDepTree(reposPath string, reposMap map[string]*lockjson.Repos, depsMap map[string][]string, rdepsMap map[string][]string) *reposDepTree {
@@ -378,7 +402,7 @@ func visitNode(node *reposDepNode, callback func(*reposDepNode)) {
 }
 
 func doVisitNode(visited map[string]bool, node *reposDepNode, callback func(*reposDepNode)) {
-	if visited[node.repos.Path] {
+	if node == nil || node.repos == nil || visited[node.repos.Path] {
 		return
 	}
 	visited[node.repos.Path] = true
