@@ -135,7 +135,11 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 		// Remove repository directory
 		err = cmd.removeRepos(reposPath)
 		if err != nil {
-			return err
+			if flags.plugconf {
+				logger.Warn(err.Error())
+			} else {
+				return err
+			}
 		}
 		if flags.plugconf {
 			// Remove plugconf file
@@ -146,7 +150,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 		}
 		// Update lockJSON
 		err = lockJSON.Repos.RemoveAllByPath(reposPath)
-		if err != nil {
+		if err != nil && !flags.plugconf {
 			return err
 		}
 		lockJSON.Profiles.RemoveAllReposPath(reposPath)
