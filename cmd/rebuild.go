@@ -727,6 +727,12 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 		}
 	}
 
+	err = cmd.Helptags(repos.Path)
+	if err != nil {
+		done <- actionReposResult{err, repos}
+		return
+	}
+
 	done <- actionReposResult{nil, repos}
 }
 
