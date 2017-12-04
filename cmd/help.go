@@ -59,6 +59,9 @@ Command
   add {from} {repository}
     Add local {from} repository as {repository} to lock.json
 
+  inspect -f {format}
+    Shows internal information (plugins, profiles, ...) by given format
+
   enable {repository} [{repository2} ...]
     This is shortcut of:
     volt profile add {current profile} {repository} [{repository2} ...]
