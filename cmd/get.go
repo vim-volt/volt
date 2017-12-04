@@ -384,13 +384,18 @@ func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 }
 
 func (cmd *getCmd) installPlugconf(reposPath string) error {
+	filename := pathutil.PlugconfOf(reposPath)
+	if pathutil.Exists(filename) {
+		logger.Debugf("plugconf '%s' exists... skip", filename)
+		return nil
+	}
+
 	// If non-nil error returned from FetchPlugconf(),
 	// create skeleton plugconf file
 	tmpl, err := plugconf.FetchPlugconf(reposPath)
 	if err != nil {
 		logger.Debug(err.Error())
 	}
-	filename := pathutil.PlugconfOf(reposPath)
 	content, err := plugconf.GenPlugconfByTemplate(tmpl, filename)
 	if err != nil {
 		return err
