@@ -74,9 +74,6 @@ Command
     This is shortcut of:
     volt profile rm {current profile} {repository} [{repository2} ...]
 
-  profile [get]
-    Get current profile name
-
   profile set {name}
     Set profile name
 

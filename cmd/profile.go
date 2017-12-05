@@ -25,7 +25,6 @@ var profileSubCmd = make(map[string]func([]string) error)
 
 func init() {
 	cmd := profileCmd{}
-	profileSubCmd["get"] = cmd.doGet
 	profileSubCmd["set"] = cmd.doSet
 	profileSubCmd["show"] = cmd.doShow
 	profileSubCmd["list"] = cmd.doList
@@ -40,9 +39,6 @@ func init() {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  profile [get]
-    Get current profile name.
-
   profile set {name}
     Set profile name to {name}.
 
@@ -131,7 +127,7 @@ func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
 	}
 
 	if len(fs.Args()) == 0 {
-		return append([]string{"get"}, fs.Args()...), nil
+		return nil, errors.New("must specify subcommand: volt profile")
 	}
 
 	subCmd := fs.Args()[0]
@@ -139,15 +135,6 @@ func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
 		return nil, errors.New("unknown subcommand: " + subCmd)
 	}
 	return fs.Args(), nil
-}
-
-func (cmd *profileCmd) doGet(_ []string) error {
-	currentProfile, err := cmd.getCurrentProfile()
-	if err != nil {
-		return err
-	}
-	fmt.Println(currentProfile)
-	return nil
 }
 
 func (*profileCmd) getCurrentProfile() (string, error) {
