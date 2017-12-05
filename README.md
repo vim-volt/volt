@@ -153,7 +153,7 @@ Some special functions can be defined in plugconf file:
 
 * `s:config()`
     * Plugin configuration
-* `s:load_on()` (optional)
+* `s:loaded_on()` (optional)
     * Return value: String (when to load a plugin by `:packadd`)
     * This function specifies when to load a plugin by `:packadd`
     * e.g.: `return "start"` (default, load on `VimEnter` autocommand)
@@ -182,11 +182,11 @@ NOTE:
 
 * Plugconf file is parsed by [go-vimlparser](https://github.com/haya14busa/go-vimlparser)
 * The rhs of `:return` must be literal
-* Breaking newline by backslash (`\`) in `s:load_on()` and `s:depends()` is safe, but the following code can not be recognized (currently not supported at least)
+* Breaking newline by backslash (`\`) in `s:loaded_on()` and `s:depends()` is safe, but the following code can not be recognized (currently not supported at least)
 
 ```vim
 " Wrong
-function! s:load_on()
+function! s:loaded_on()
   let when = 'filetype=vim'
   return when
 endfunction
