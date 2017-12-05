@@ -6,6 +6,7 @@ go:
 
 install:
   - make setup
+  - make # for integration tests under test/ dir
 
 script:
   - go test -v -race ./...
