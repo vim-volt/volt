@@ -88,7 +88,7 @@ func ParsePlugconf(file *ast.File, src string) (*Plugconf, error) {
 		}
 
 		switch name {
-		case "s:load_on":
+		case "s:loaded_on":
 			loadOnFunc = extractBody(fn, src)
 			var err error
 			loadOn, loadOnArg, err = inspectReturnValue(fn)
@@ -122,7 +122,7 @@ func ParsePlugconf(file *ast.File, src string) (*Plugconf, error) {
 	}, nil
 }
 
-// Inspect return value of s:load_on() function in plugconf
+// Inspect return value of s:loaded_on() function in plugconf
 func inspectReturnValue(fn *ast.Function) (loadOnType, string, error) {
 	var loadOn loadOnType
 	var loadOnArg string
@@ -156,7 +156,7 @@ func inspectReturnValue(fn *ast.Function) (loadOnType, string, error) {
 		return true
 	})
 	if string(loadOn) == "" {
-		return "", "", errors.New("can't detect return value of s:load_on()")
+		return "", "", errors.New("can't detect return value of s:loaded_on()")
 	}
 	return loadOn, loadOnArg, err
 }
@@ -201,7 +201,7 @@ func getDependencies(fn *ast.Function, src string) []string {
 	return deps
 }
 
-// s:load_on() function is not included
+// s:loaded_on() function is not included
 func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[string]*Plugconf) []byte {
 	functions := make([]string, 0, 64)
 	loadCmds := make([]string, 0, len(reposList))
@@ -268,7 +268,7 @@ let g:loaded_volt_system_bundled_plugconf = 1`)
 var rxFuncName = regexp.MustCompile(`^(fu\w+!?\s+s:\w+)`)
 
 func convertToDecodableFunc(funcBody string, reposPath string, reposID int) string {
-	// Change function name (e.g. s:load_on() -> s:load_on_1())
+	// Change function name (e.g. s:loaded_on() -> s:loaded_on_1())
 	funcBody = rxFuncName.ReplaceAllString(funcBody, fmt.Sprintf("${1}_%d", reposID))
 	// Add repos path as comment
 	funcBody = "\" " + reposPath + "\n" + funcBody
@@ -442,7 +442,7 @@ const skeletonPlugconfConfig = `function! s:config()
   " Plugin configuration like the code written in vimrc.
 endfunction`
 
-const skeletonPlugconfLoadOn = `function! s:load_on()
+const skeletonPlugconfLoadOn = `function! s:loaded_on()
   " This function determines when a plugin is loaded.
   "
   " Possible values are:
@@ -494,7 +494,7 @@ func GenPlugconfByTemplate(tmplPlugconf string, filename string) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
-	// s:load_on()
+	// s:loaded_on()
 	if parsed.loadOnFunc != "" {
 		_, err = buf.WriteString(parsed.loadOnFunc)
 	} else {
