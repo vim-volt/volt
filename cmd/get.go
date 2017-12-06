@@ -182,6 +182,7 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 	}
 
 	// Wait results
+	var failed bool
 	var statusList []string
 	var updatedLockJSON bool
 	for i := 0; i < getCount; i++ {
@@ -192,6 +193,9 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 			strings.HasPrefix(r.status, statusPrefixUpgraded) {
 			cmd.updateReposVersion(lockJSON, r.reposPath, r.hash, profile)
 			updatedLockJSON = true
+		}
+		if strings.HasPrefix(r.status, statusPrefixFailed) {
+			failed = true
 		}
 	}
 
@@ -215,6 +219,9 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 		for i := range statusList {
 			fmt.Println(statusList[i])
 		}
+	}
+	if failed {
+		return errors.New("failed to install some plugins")
 	}
 	return nil
 }
