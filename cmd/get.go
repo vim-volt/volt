@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -235,12 +236,13 @@ const (
 func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
 	// Normally, when upgraded is true, repos is also non-nil.
 	var fromHash string
+	var err error
 	if flags.upgrade && pathutil.Exists(pathutil.FullReposPathOf(reposPath)) {
 		// Get HEAD hash string
-		var err error
 		fromHash, err = getReposHEAD(reposPath)
 		if err != nil {
 			logger.Error("Failed to get HEAD commit hash: " + err.Error())
+			cmd.rollbackRepos(reposPath)
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
@@ -254,10 +256,10 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 
 	if flags.upgrade && pathutil.Exists(pathutil.FullReposPathOf(reposPath)) {
 		// Upgrade plugin
-		err := cmd.upgradePlugin(reposPath, flags)
+		err = cmd.upgradePlugin(reposPath, flags)
 		if err != git.NoErrAlreadyUpToDate && err != nil {
 			logger.Warn("Failed to upgrade plugin: " + err.Error())
-
+			cmd.rollbackRepos(reposPath)
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf("%s %s : upgrade failed : %s", statusPrefixFailed, reposPath, err.Error()),
@@ -271,9 +273,10 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 		}
 	} else {
 		// Install plugin
-		err := cmd.installPlugin(reposPath, flags)
+		err = cmd.installPlugin(reposPath, flags)
 		if err != nil {
 			logger.Warn("Failed to install plugin: " + err.Error())
+			cmd.rollbackRepos(reposPath)
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
@@ -287,6 +290,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 		err = cmd.installPlugconf(reposPath)
 		if err != nil {
 			logger.Warn("Failed to install plugconf: " + err.Error())
+			cmd.rollbackRepos(reposPath)
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
@@ -296,9 +300,11 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	}
 
 	// Get HEAD hash string
-	toHash, err := getReposHEAD(reposPath)
+	var toHash string
+	toHash, err = getReposHEAD(reposPath)
 	if err != nil {
 		logger.Error("Failed to get HEAD commit hash: " + err.Error())
+		cmd.rollbackRepos(reposPath)
 		done <- getParallelResult{
 			reposPath: reposPath,
 			status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
@@ -315,6 +321,18 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 		reposPath: reposPath,
 		status:    status,
 		hash:      toHash,
+	}
+}
+
+func (*getCmd) rollbackRepos(reposPath string) {
+	fullReposPath := pathutil.FullReposPathOf(reposPath)
+	logger.Debug("Rollbacking " + fullReposPath + " ...")
+	if pathutil.Exists(fullReposPath) {
+		if os.RemoveAll(fullReposPath) != nil {
+			logger.Warnf("Rollback failed: cannot remove '%s'", fullReposPath)
+		}
+		// Remove parent directories
+		fileutil.RemoveDirs(filepath.Dir(fullReposPath))
 	}
 }
 
