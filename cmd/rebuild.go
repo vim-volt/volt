@@ -360,7 +360,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 }
 
 func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string, install bool) error {
-	// Return error if destination file has magic comment
+	// Return error if destination file does not have magic comment
 	if pathutil.Exists(dst) {
 		err := cmd.shouldHaveMagicComment(dst)
 		// If the file does not have magic comment
