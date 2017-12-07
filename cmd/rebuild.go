@@ -232,7 +232,6 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		// If the file does not have magic comment
 		if err != nil {
 			rcFileExists = true
-			logger.Warn("already exists user vimrc or gvimrc: " + err.Error())
 		}
 	}
 
