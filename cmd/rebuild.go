@@ -225,12 +225,14 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		return err
 	}
 
-	// Exit with an error if vimrc or gvimrc without magic comment exists
+	// check vimrc or gvimrc without magic comment exists
+	rcFileExists := false
 	for _, file := range pathutil.LookUpVimrcOrGvimrc() {
 		err = cmd.shouldHaveMagicComment(file)
 		// If the file does not have magic comment
 		if err != nil {
-			return errors.New("already exists user vimrc or gvimrc: " + err.Error())
+			rcFileExists = true
+			logger.Warn("already exists user vimrc or gvimrc: " + err.Error())
 		}
 	}
 
@@ -273,26 +275,29 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 
 	logger.Info("Installing vimrc and gvimrc ...")
 
-	// Install vimrc
-	err = cmd.installRCFile(
-		lockJSON.ActiveProfile,
-		"vimrc.vim",
-		filepath.Join(vimDir, "vimrc"),
-		profile.UseVimrc,
-	)
-	if err != nil {
-		return err
-	}
+	// Install vimrc if not exists
+	if !rcFileExists {
+		err = cmd.installRCFile(
+			lockJSON.ActiveProfile,
+			"vimrc.vim",
+			filepath.Join(vimDir, "vimrc"),
+			profile.UseVimrc,
+		)
+		if err != nil {
+			return err
+		}
 
-	// Install gvimrc
-	err = cmd.installRCFile(
-		lockJSON.ActiveProfile,
-		"gvimrc.vim",
-		filepath.Join(vimDir, "gvimrc"),
-		profile.UseGvimrc,
-	)
-	if err != nil {
-		return err
+		// Install gvimrc
+		err = cmd.installRCFile(
+			lockJSON.ActiveProfile,
+			"gvimrc.vim",
+			filepath.Join(vimDir, "gvimrc"),
+			profile.UseGvimrc,
+		)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	// Mkdir opt dir
