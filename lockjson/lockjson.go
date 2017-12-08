@@ -67,6 +67,14 @@ func InitialLockJSON() *LockJSON {
 }
 
 func Read() (*LockJSON, error) {
+	return read(true)
+}
+
+func ReadNoMigrationMsg() (*LockJSON, error) {
+	return read(false)
+}
+
+func read(doLog bool) (*LockJSON, error) {
 	// Return initial lock.json struct if lockfile does not exist
 	lockfile := pathutil.LockJSON()
 	if !pathutil.Exists(lockfile) {
@@ -85,8 +93,10 @@ func Read() (*LockJSON, error) {
 	}
 
 	if lockJSON.Version < lockJSONVersion {
-		logger.Warnf("Performing auto-migration of lock.json: v%d -> v%d", lockJSON.Version, lockJSONVersion)
-		logger.Warn("Please run 'volt migrate' to migrate explicitly if it's not updated by after operations")
+		if doLog {
+			logger.Warnf("Performing auto-migration of lock.json: v%d -> v%d", lockJSON.Version, lockJSONVersion)
+			logger.Warn("Please run 'volt migrate' to migrate explicitly if it's not updated by after operations")
+		}
 		err = migrate(bytes, &lockJSON)
 		if err != nil {
 			return nil, err

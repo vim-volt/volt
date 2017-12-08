@@ -99,6 +99,9 @@ Command
   rebuild [-full]
     Rebuild ~/.vim/pack/volt/ directory
 
+  migrate
+    Convert old version $VOLTPATH/lock.json structure into the latest version
+
   version
     Show volt command version` + "\n\n")
 }
