@@ -3,6 +3,7 @@ package lockjson
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -45,9 +46,11 @@ type Profile struct {
 	UseGvimrc bool          `json:"use_gvimrc"`
 }
 
+const lockJSONVersion = 1
+
 func InitialLockJSON() *LockJSON {
 	return &LockJSON{
-		Version:       1,
+		Version:       lockJSONVersion,
 		TrxID:         1,
 		ActiveProfile: "default",
 		Repos:         make([]Repos, 0),
@@ -90,6 +93,11 @@ func Read() (*LockJSON, error) {
 }
 
 func validate(lockJSON *LockJSON) error {
+	// Validate if volt can manipulate lock.json of this version
+	if lockJSON.Version > lockJSONVersion {
+		return fmt.Errorf("this lock.json is version '%d' which volt cannot recognize. please upgrade volt to process this file", lockJSON.Version)
+	}
+
 	// Validate if missing required keys exist
 	err := validateMissing(lockJSON)
 	if err != nil {
