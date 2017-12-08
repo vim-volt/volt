@@ -22,7 +22,7 @@ func Errorf(format string, msgs ...interface{}) {
 	if logLevel < ErrorLevel {
 		return
 	}
-	msgs = append(msgs, getCallerMsg())
+	msgs = append([]interface{}{getCallerMsg()}, msgs...)
 	fmt.Fprintf(os.Stderr, "[ERROR]%s "+format+"\n", msgs...)
 }
 
@@ -39,7 +39,7 @@ func Warnf(format string, msgs ...interface{}) {
 	if logLevel < WarnLevel {
 		return
 	}
-	msgs = append(msgs, getCallerMsg())
+	msgs = append([]interface{}{getCallerMsg()}, msgs...)
 	fmt.Printf("[WARN]%s "+format+"\n", msgs...)
 }
 
@@ -56,7 +56,7 @@ func Infof(format string, msgs ...interface{}) {
 	if logLevel < InfoLevel {
 		return
 	}
-	msgs = append(msgs, getCallerMsg())
+	msgs = append([]interface{}{getCallerMsg()}, msgs...)
 	fmt.Printf("[INFO]%s "+format+"\n", msgs...)
 }
 
@@ -73,7 +73,7 @@ func Debugf(format string, msgs ...interface{}) {
 	if logLevel < DebugLevel {
 		return
 	}
-	msgs = append(msgs, getCallerMsg())
+	msgs = append([]interface{}{getCallerMsg()}, msgs...)
 	fmt.Printf("[DEBUG]%s "+format+"\n", msgs...)
 }
 
