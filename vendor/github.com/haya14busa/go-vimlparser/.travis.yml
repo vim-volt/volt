@@ -1,0 +1,23 @@
+language: go
+
+go:
+  - 1.8
+  - tip
+
+install:
+  - go get -d -v -t ./...
+  - go get github.com/haya14busa/goverage
+  - go get github.com/haya14busa/gosum/cmd/gosumcheck
+
+before_script:
+  - vim --cmd version --cmd quit
+
+script:
+  - go test -v -race ./...
+  - goverage -coverprofile=coverage.txt ./...
+  - bash go/generate.sh
+  - (! git diff | grep '^') # check diff
+  - gosumcheck ./...
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

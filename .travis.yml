@@ -4,8 +4,5 @@ go:
   - 1.9.1
   - tip
 
-install:
-  - make setup
-
 script:
   - go test -v -race ./...

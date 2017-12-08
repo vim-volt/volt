@@ -1,0 +1,2 @@
+function! Funcname()
+endfunction

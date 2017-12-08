@@ -1,0 +1,2 @@
+(echo (lambda (a) 0))
+(echo (lambda (a) 0))

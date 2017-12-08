@@ -14,12 +14,6 @@ all: $(BIN_DIR)/$(NAME)
 $(BIN_DIR)/$(NAME): $(SRC)
 	go build -o $(BIN_DIR)/$(NAME)
 
-setup:
-	@which go >/dev/null 2>&1   || (echo '[Error] You need to install go,make commands'; exit 1)
-	@which make >/dev/null 2>&1 || (echo '[Error] You need to install go,make commands'; exit 1)
-	go get github.com/golang/dep/cmd/dep
-	dep ensure
-
 precompile:
 	go build -a -i -o $(BIN_DIR)/$(NAME)
 	rm $(BIN_DIR)/$(NAME)
@@ -44,4 +38,4 @@ release: $(BIN_DIR)/$(NAME)
 	done
 
 
-.PHONY: all setup precompile release
+.PHONY: all precompile release
