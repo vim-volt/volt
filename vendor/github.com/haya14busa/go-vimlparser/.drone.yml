@@ -1,0 +1,25 @@
+# Run the below command when you edit .drone.yml
+#   drone secure --repo haya14busa/go-vimlparser --in .drone.sec.yaml
+#
+build:
+  test:
+    image: golang
+    commands:
+      - go get -d -v -t ./...
+      - go test -v ./...
+  lint:
+    image: golang
+    environment:
+      - REVIEWDOG_GITHUB_API_TOKEN=$$REVIEWDOG_GITHUB_API_TOKEN
+    commands:
+      - go get github.com/haya14busa/reviewdog/cmd/reviewdog
+      - go get github.com/golang/lint/golint
+      - go get honnef.co/go/tools/cmd/unused
+      - |
+        go tool vet -all -shadowstrict . 2>&1 | reviewdog -f=govet -ci=droneio
+      - |
+        golint ./... | reviewdog -f=golint -ci=droneio
+      - |
+        unused ./... | reviewdog -efm="%f:%l:%c: %m" -ci=droneio
+    when:
+      event: pull_request

@@ -1,0 +1,132 @@
+# Vim Script Parser written in Go
+
+[![Build Status](https://travis-ci.org/haya14busa/go-vimlparser.svg?branch=master)](https://travis-ci.org/haya14busa/go-vimlparser)
+[![codecov](https://codecov.io/gh/haya14busa/go-vimlparser/branch/master/graph/badge.svg)](https://codecov.io/gh/haya14busa/go-vimlparser)
+[![Sourcegraph](https://sourcegraph.com/github.com/haya14busa/go-vimlparser/-/badge.svg)](https://sourcegraph.com/github.com/haya14busa/go-vimlparser?badge)
+[![GoDoc](https://godoc.org/github.com/haya14busa/go-vimlparser?status.svg)](https://godoc.org/github.com/haya14busa/go-vimlparser)
+
+This repository is the fork of https://github.com/ynkdir/vim-vimlparser and it provides Go-ish interface with performance improvement.
+
+### :zap: The Fastest Vim Script Parser!
+
+#### Benchmarks
+
+<details>
+
+```sh
+$ pwd
+/home/haya14busa/src/github.com/ynkdir/vim-vimlparser
+
+$ git rev-parse HEAD
+2fff43c58968a18bc01bc8304df68bde01af04d9
+
+$ wc -l < autoload/vimlparser.vim
+5195
+
+$ time vim -u NONE -N --cmd "let &rtp .= ',' . getcwd()" --cmd "silent call vimlparser#test('autoload/vimlparser.vim')" -c ":q"
+vim -u NONE -N --cmd "let &rtp .= ',' . getcwd()" --cmd  -c ":q"  48.88s user 0.05s system 99% cpu 48.942 total
+
+$ python3 -V
+Python 3.5.0
+
+$ time python3 py/vimlparser.py autoload/vimlparser.vim > /dev/null
+python3 py/vimlparser.py autoload/vimlparser.vim > /dev/null  4.17s user 0.04s system 99% cpu 4.236 total
+
+$ pypy3 -V
+Python 3.2.5 (b2091e973da69152b3f928bfaabd5d2347e6df46, Mar 04 2016, 07:08:30)
+[PyPy 2.4.0 with GCC 5.3.0]
+
+$ time pypy3 py/vimlparser.py autoload/vimlparser.vim > /dev/null
+pypy3 py/vimlparser.py autoload/vimlparser.vim > /dev/null  2.63s user 0.06s system 99% cpu 2.694 total
+
+$ node --version
+v4.2.3
+
+$ time node js/vimlparser.js autoload/vimlparser.vim > /dev/null
+node js/vimlparser.js autoload/vimlparser.vim > /dev/null  0.77s user 0.04s system 125% cpu 0.644 total
+
+$ go get github.com/haya14busa/go-vimlparser/cmd/vimlparser
+$ time vimlparser autoload/vimlparser.vim > /dev/null
+vimlparser autoload/vimlparser.vim > /dev/null  0.25s user 0.03s system 114% cpu 0.244 total
+```
+</details>
+
+| Language | Time (sec) |
+| -------- | ---- |
+| Vim script | 48.88s |
+| Python3 | 4.17s |
+| pypy3 | 2.63s |
+| node | 0.77s |
+| Go | **0.25s** |
+
+Note that, in addition to the Go lang speed, I added [performance improvement](https://github.com/haya14busa/go-vimlparser/pull/4) for Go implementation.
+
+### Rich interface compared to other implementation
+
+go-vimlparser is written in Go which is typed language and I added Go-ish interface,
+so you can see each node fields. e.g. https://godoc.org/github.com/haya14busa/go-vimlparser/ast#Function
+
+| package | doc |
+| --- | --- |
+| go-vimlparser | [![GoDoc](https://godoc.org/github.com/haya14busa/go-vimlparser?status.svg)](https://godoc.org/github.com/haya14busa/go-vimlparser) |
+| go-vimlparser/ast | [![GoDoc](https://godoc.org/github.com/haya14busa/go-vimlparser/ast?status.svg)](https://godoc.org/github.com/haya14busa/go-vimlparser/ast) |
+| go-vimlparser/token | [![GoDoc](https://godoc.org/github.com/haya14busa/go-vimlparser/token?status.svg)](https://godoc.org/github.com/haya14busa/go-vimlparser/token) |
+
+### CLI tool
+
+#### Installation
+
+```
+go get github.com/haya14busa/go-vimlparser/cmd/vimlparser
+```
+
+#### Usage
+
+```
+$ echo 'let x = 1' | vimlparser
+(let = x 1)
+$ vimlparser autoload/vimlparser.vim | head -n 5
+; vim:set ts=8 sts=2 sw=2 tw=0 et:
+;
+; VimL parser - Vim Script Parser
+;
+; License: This file is placed in the public domain.
+```
+
+#### As a Lint Tool
+
+You can use it to detect syntax error.
+It doesn't check much things compared to existing lint tool for Vim script, but it runs fast even if you pass lots of files to it.
+
+```
+$ vimlparser **/*.vim > /dev/null
+test/test_err_funcarg_duplicate.vim:1:20: vimlparser: E853: Duplicate argument name: b
+test/test_err_funcarg_firstline.vim:1:14: vimlparser: E125: Illegal argument: firstline
+test/test_err_funcarg_lastline.vim:1:14: vimlparser: E125: Illegal argument: lastline
+test/test_err_funcarg.vim:1:44: vimlparser: E125: Illegal argument: a:bar
+test/test_err_funcname.vim:11:10: vimlparser: E128: Function name must start with a capital or contain a colon: foo
+test/test_err_toomanyarg.vim:1:9: vimlparser: E740: Too many arguments for function
+test/test_err_varname.vim:1:5: vimlparser: E461: Illegal variable name: foo:bar
+test/test_issue16_err_line_continuation_lnum2.vim:3:9: vimlparser: E488: Trailing characters: z
+test/test_issue16_err_line_continuation_lnum.vim:2:9: vimlparser: E488: Trailing characters: z
+test/test_neo_tnoremap.vim:1:1: vimlparser: E492: Not an editor command: tnoremap <Esc> <C-\><C-N>
+test/test_noneo_tnoremap.vim:1:1: vimlparser: E492: Not an editor command: tnoremap <Esc> <C-\><C-N>
+test/test_xxx_colonsharp.vim:2:6: vimlparser: unexpected token: :
+test/test_xxx_err_funcarg_space_comma.vim:19:14: vimlparser: E475: Invalid argument: White space is not allowed before comma
+```
+
+```vim
+" sample
+command! LintVimLParser :silent cexpr system('vimlparser ' . expand('%') . ' > /dev/null')
+augroup lint-vimlparser
+  autocmd!
+  autocmd BufWritePost *.vim LintVimLParser
+augroup END
+```
+
+### Credit
+
+[@ynkdir](https://github.com/ynkdir) for https://github.com/ynkdir/vim-vimlparser
+
+### :bird: Author
+haya14busa (https://github.com/haya14busa)

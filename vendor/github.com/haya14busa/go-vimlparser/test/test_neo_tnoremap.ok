@@ -1,0 +1,1 @@
+(excmd "tnoremap <Esc> <C-\\><C-N>")

@@ -276,7 +276,6 @@ See `volt help profile` for more detailed information.
 If you want to contribute to volt, you can setup like:
 
 ```
-$ make setup
 $ make precompile   # this speeds up 'go build'
 $ vim ...           # edit sources
 $ make
@@ -286,7 +285,6 @@ $ bin/volt ...      # run volt command
 ## How to build release binaries
 
 ```
-$ make setup
 $ make release
 $ ls -1 dist/
 volt-v0.0.1-alpha-darwin-amd64

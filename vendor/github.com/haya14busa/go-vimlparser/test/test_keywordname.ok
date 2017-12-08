@@ -1,0 +1,6 @@
+(echo is)
+(echo is#)
+(echo isnot)
+(echo isnot#)
+(echo (dot foo is))
+(echo (dot foo isnot))
