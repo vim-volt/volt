@@ -219,8 +219,8 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		return errors.New("could not read lock.json: " + err.Error())
 	}
 
-	// Get active profile's repos list
-	profile, reposList, err := cmd.getActiveProfileAndReposList(lockJSON)
+	// Get current profile's repos list
+	profile, reposList, err := cmd.getCurrentProfileAndReposList(lockJSON)
 	if err != nil {
 		return err
 	}
@@ -574,8 +574,8 @@ func (*rebuildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCoun
 	return merr
 }
 
-func (*rebuildCmd) getActiveProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
-	// Find active profile
+func (*rebuildCmd) getCurrentProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
+	// Find current profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
 		// this must not be occurred because lockjson.Read()

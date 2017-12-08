@@ -53,7 +53,7 @@ Usage
 
   profile destroy {name}
     Delete profile of {name}.
-    NOTE: Cannot delete current active profile.
+    NOTE: Cannot delete current profile.
 
   profile add [-current | {name}] {repository} [{repository2} ...]
     Add one or more repositories to profile {name}.
@@ -87,7 +87,7 @@ Quick example
 
   $ volt profile destroy foo   # will delete profile "foo"
 
-  $ volt profile use -current vimrc false   # Disable installing vimrc on current active profile on "volt rebuild"
+  $ volt profile use -current vimrc false   # Disable installing vimrc on current profile on "volt rebuild"
   $ volt profile use default gvimrc true   # Enable installing gvimrc on profile default on "volt rebuild"` + "\n\n")
 		profileFlags.helped = true
 	}
@@ -159,9 +159,9 @@ func (cmd *profileCmd) doSet(args []string) error {
 		return errors.New("failed to read lock.json: " + err.Error())
 	}
 
-	// Exit if current active_profile is same as profileName
+	// Exit if current profile is same as profileName
 	if lockJSON.CurrentProfileName == profileName {
-		logger.Info("Unchanged active profile '" + profileName + "'")
+		logger.Info("Current profile was not changed: " + profileName)
 		return nil
 	}
 
@@ -187,7 +187,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 		return err
 	}
 
-	logger.Info("Set active profile to '" + profileName + "'")
+	logger.Info("Changed current profile: " + profileName)
 
 	// Rebuild ~/.vim/pack/volt dir
 	err = (&rebuildCmd{}).doRebuild(false)
@@ -318,9 +318,9 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 		return errors.New("failed to read lock.json: " + err.Error())
 	}
 
-	// Return error if active_profile matches profileName
+	// Return error if current profile matches profileName
 	if lockJSON.CurrentProfileName == profileName {
-		return errors.New("cannot destroy active profile: " + profileName)
+		return errors.New("cannot destroy current profile: " + profileName)
 	}
 
 	// Return error if profiles[]/name does not match profileName

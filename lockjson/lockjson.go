@@ -159,7 +159,7 @@ func validate(lockJSON *LockJSON) error {
 		}
 	}
 
-	// Validate if active_profile exists in profiles[]/name
+	// Validate if current_profile_name exists in profiles[]/name
 	found := false
 	for i := range lockJSON.Profiles {
 		profile := &lockJSON.Profiles[i]
@@ -169,7 +169,7 @@ func validate(lockJSON *LockJSON) error {
 		}
 	}
 	if !found {
-		return errors.New("'" + lockJSON.CurrentProfileName + "' (active_profile) doesn't exist in profiles")
+		return errors.New("'" + lockJSON.CurrentProfileName + "' (current_profile_name) doesn't exist in profiles")
 	}
 
 	// Validate if profiles[]/repos_path[] exists in repos[]/path
