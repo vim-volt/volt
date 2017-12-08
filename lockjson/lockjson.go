@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 )
 
@@ -16,11 +17,11 @@ type ReposList []Repos
 type ProfileList []Profile
 
 type LockJSON struct {
-	Version       int64       `json:"version"`
-	TrxID         int64       `json:"trx_id"`
-	ActiveProfile string      `json:"active_profile"`
-	Repos         ReposList   `json:"repos"`
-	Profiles      ProfileList `json:"profiles"`
+	Version            int64       `json:"version"`
+	TrxID              int64       `json:"trx_id"`
+	CurrentProfileName string      `json:"current_profile_name"`
+	Repos              ReposList   `json:"repos"`
+	Profiles           ProfileList `json:"profiles"`
 }
 
 type ReposType string
@@ -46,14 +47,14 @@ type Profile struct {
 	UseGvimrc bool          `json:"use_gvimrc"`
 }
 
-const lockJSONVersion = 1
+const lockJSONVersion = 2
 
 func InitialLockJSON() *LockJSON {
 	return &LockJSON{
-		Version:       lockJSONVersion,
-		TrxID:         1,
-		ActiveProfile: "default",
-		Repos:         make([]Repos, 0),
+		Version:            lockJSONVersion,
+		TrxID:              1,
+		CurrentProfileName: "default",
+		Repos:              make([]Repos, 0),
 		Profiles: []Profile{
 			Profile{
 				Name:      "default",
@@ -83,6 +84,15 @@ func Read() (*LockJSON, error) {
 		return nil, err
 	}
 
+	if lockJSON.Version < lockJSONVersion {
+		logger.Warnf("Performing auto-migration of lock.json: v%d -> v%d", lockJSON.Version, lockJSONVersion)
+		logger.Warn("Please run 'volt migrate' to migrate explicitly if it's not updated by after operations")
+		err = migrate(bytes, &lockJSON)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Validate lock.json
 	err = validate(&lockJSON)
 	if err != nil {
@@ -93,9 +103,12 @@ func Read() (*LockJSON, error) {
 }
 
 func validate(lockJSON *LockJSON) error {
+	if lockJSON.Version < 1 {
+		return fmt.Errorf("lock.json version is '%d' (must be 1 or greater)", lockJSON.Version)
+	}
 	// Validate if volt can manipulate lock.json of this version
 	if lockJSON.Version > lockJSONVersion {
-		return fmt.Errorf("this lock.json is version '%d' which volt cannot recognize. please upgrade volt to process this file", lockJSON.Version)
+		return fmt.Errorf("this lock.json version is '%d' which volt cannot recognize. please upgrade volt to process this file", lockJSON.Version)
 	}
 
 	// Validate if missing required keys exist
@@ -140,13 +153,13 @@ func validate(lockJSON *LockJSON) error {
 	found := false
 	for i := range lockJSON.Profiles {
 		profile := &lockJSON.Profiles[i]
-		if profile.Name == lockJSON.ActiveProfile {
+		if profile.Name == lockJSON.CurrentProfileName {
 			found = true
 			break
 		}
 	}
 	if !found {
-		return errors.New("'" + lockJSON.ActiveProfile + "' (active_profile) doesn't exist in profiles")
+		return errors.New("'" + lockJSON.CurrentProfileName + "' (active_profile) doesn't exist in profiles")
 	}
 
 	// Validate if profiles[]/repos_path[] exists in repos[]/path

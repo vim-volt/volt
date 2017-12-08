@@ -152,7 +152,7 @@ func (*getCmd) getReposPathList(flags *getFlagsType, args []string, lockJSON *lo
 
 func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *lockjson.LockJSON) error {
 	// Find matching profile
-	profile, err := lockJSON.Profiles.FindByName(lockJSON.ActiveProfile)
+	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates if the matching profile exists

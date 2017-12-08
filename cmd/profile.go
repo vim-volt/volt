@@ -142,7 +142,7 @@ func (*profileCmd) getCurrentProfile() (string, error) {
 	if err != nil {
 		return "", errors.New("failed to read lock.json: " + err.Error())
 	}
-	return lockJSON.ActiveProfile, nil
+	return lockJSON.CurrentProfileName, nil
 }
 
 func (cmd *profileCmd) doSet(args []string) error {
@@ -160,7 +160,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	}
 
 	// Exit if current active_profile is same as profileName
-	if lockJSON.ActiveProfile == profileName {
+	if lockJSON.CurrentProfileName == profileName {
 		logger.Info("Unchanged active profile '" + profileName + "'")
 		return nil
 	}
@@ -179,7 +179,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	}
 
 	// Set profile name
-	lockJSON.ActiveProfile = profileName
+	lockJSON.CurrentProfileName = profileName
 
 	// Write to lock.json
 	err = lockJSON.Write()
@@ -213,7 +213,7 @@ func (cmd *profileCmd) doShow(args []string) error {
 
 	var profileName string
 	if args[0] == "-current" {
-		profileName = lockJSON.ActiveProfile
+		profileName = lockJSON.CurrentProfileName
 	} else {
 		profileName = args[0]
 	}
@@ -248,7 +248,7 @@ func (cmd *profileCmd) doList(args []string) error {
 
 	// List profile names
 	for _, profile := range lockJSON.Profiles {
-		if profile.Name == lockJSON.ActiveProfile {
+		if profile.Name == lockJSON.CurrentProfileName {
 			fmt.Println("* " + profile.Name)
 		} else {
 			fmt.Println("  " + profile.Name)
@@ -319,7 +319,7 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 	}
 
 	// Return error if active_profile matches profileName
-	if lockJSON.ActiveProfile == profileName {
+	if lockJSON.CurrentProfileName == profileName {
 		return errors.New("cannot destroy active profile: " + profileName)
 	}
 
@@ -364,7 +364,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	}
 
 	if profileName == "-current" {
-		profileName = lockJSON.ActiveProfile
+		profileName = lockJSON.CurrentProfileName
 	}
 
 	var enabled []string
@@ -411,7 +411,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	}
 
 	if profileName == "-current" {
-		profileName = lockJSON.ActiveProfile
+		profileName = lockJSON.CurrentProfileName
 	}
 
 	var disabled []string
@@ -528,7 +528,7 @@ func (cmd *profileCmd) doUse(args []string) error {
 	var rcName string
 	var value bool
 	if args[0] == "-current" {
-		profileName = lockJSON.ActiveProfile
+		profileName = lockJSON.CurrentProfileName
 	} else {
 		profileName = args[0]
 	}
