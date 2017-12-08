@@ -219,8 +219,8 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		return errors.New("could not read lock.json: " + err.Error())
 	}
 
-	// Get active profile's repos list
-	profile, reposList, err := cmd.getActiveProfileAndReposList(lockJSON)
+	// Get current profile's repos list
+	profile, reposList, err := cmd.getCurrentProfileAndReposList(lockJSON)
 	if err != nil {
 		return err
 	}
@@ -277,7 +277,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	// Install vimrc if not exists
 	if !rcFileExists {
 		err = cmd.installRCFile(
-			lockJSON.ActiveProfile,
+			lockJSON.CurrentProfileName,
 			"vimrc.vim",
 			filepath.Join(vimDir, "vimrc"),
 			profile.UseVimrc,
@@ -288,7 +288,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 
 		// Install gvimrc
 		err = cmd.installRCFile(
-			lockJSON.ActiveProfile,
+			lockJSON.CurrentProfileName,
 			"gvimrc.vim",
 			filepath.Join(vimDir, "gvimrc"),
 			profile.UseGvimrc,
@@ -574,9 +574,9 @@ func (*rebuildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCoun
 	return merr
 }
 
-func (*rebuildCmd) getActiveProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
-	// Find active profile
-	profile, err := lockJSON.Profiles.FindByName(lockJSON.ActiveProfile)
+func (*rebuildCmd) getCurrentProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
+	// Find current profile
+	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates that the matching profile exists

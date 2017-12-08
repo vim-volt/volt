@@ -53,7 +53,7 @@ Usage
 
   profile destroy {name}
     Delete profile of {name}.
-    NOTE: Cannot delete current active profile.
+    NOTE: Cannot delete current profile.
 
   profile add [-current | {name}] {repository} [{repository2} ...]
     Add one or more repositories to profile {name}.
@@ -87,7 +87,7 @@ Quick example
 
   $ volt profile destroy foo   # will delete profile "foo"
 
-  $ volt profile use -current vimrc false   # Disable installing vimrc on current active profile on "volt rebuild"
+  $ volt profile use -current vimrc false   # Disable installing vimrc on current profile on "volt rebuild"
   $ volt profile use default gvimrc true   # Enable installing gvimrc on profile default on "volt rebuild"` + "\n\n")
 		profileFlags.helped = true
 	}
@@ -142,7 +142,7 @@ func (*profileCmd) getCurrentProfile() (string, error) {
 	if err != nil {
 		return "", errors.New("failed to read lock.json: " + err.Error())
 	}
-	return lockJSON.ActiveProfile, nil
+	return lockJSON.CurrentProfileName, nil
 }
 
 func (cmd *profileCmd) doSet(args []string) error {
@@ -159,9 +159,9 @@ func (cmd *profileCmd) doSet(args []string) error {
 		return errors.New("failed to read lock.json: " + err.Error())
 	}
 
-	// Exit if current active_profile is same as profileName
-	if lockJSON.ActiveProfile == profileName {
-		logger.Info("Unchanged active profile '" + profileName + "'")
+	// Exit if current profile is same as profileName
+	if lockJSON.CurrentProfileName == profileName {
+		logger.Info("Current profile was not changed: " + profileName)
 		return nil
 	}
 
@@ -179,7 +179,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	}
 
 	// Set profile name
-	lockJSON.ActiveProfile = profileName
+	lockJSON.CurrentProfileName = profileName
 
 	// Write to lock.json
 	err = lockJSON.Write()
@@ -187,7 +187,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 		return err
 	}
 
-	logger.Info("Set active profile to '" + profileName + "'")
+	logger.Info("Changed current profile: " + profileName)
 
 	// Rebuild ~/.vim/pack/volt dir
 	err = (&rebuildCmd{}).doRebuild(false)
@@ -213,7 +213,7 @@ func (cmd *profileCmd) doShow(args []string) error {
 
 	var profileName string
 	if args[0] == "-current" {
-		profileName = lockJSON.ActiveProfile
+		profileName = lockJSON.CurrentProfileName
 	} else {
 		profileName = args[0]
 	}
@@ -248,7 +248,7 @@ func (cmd *profileCmd) doList(args []string) error {
 
 	// List profile names
 	for _, profile := range lockJSON.Profiles {
-		if profile.Name == lockJSON.ActiveProfile {
+		if profile.Name == lockJSON.CurrentProfileName {
 			fmt.Println("* " + profile.Name)
 		} else {
 			fmt.Println("  " + profile.Name)
@@ -318,9 +318,9 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 		return errors.New("failed to read lock.json: " + err.Error())
 	}
 
-	// Return error if active_profile matches profileName
-	if lockJSON.ActiveProfile == profileName {
-		return errors.New("cannot destroy active profile: " + profileName)
+	// Return error if current profile matches profileName
+	if lockJSON.CurrentProfileName == profileName {
+		return errors.New("cannot destroy current profile: " + profileName)
 	}
 
 	// Return error if profiles[]/name does not match profileName
@@ -364,7 +364,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	}
 
 	if profileName == "-current" {
-		profileName = lockJSON.ActiveProfile
+		profileName = lockJSON.CurrentProfileName
 	}
 
 	var enabled []string
@@ -411,7 +411,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	}
 
 	if profileName == "-current" {
-		profileName = lockJSON.ActiveProfile
+		profileName = lockJSON.CurrentProfileName
 	}
 
 	var disabled []string
@@ -528,7 +528,7 @@ func (cmd *profileCmd) doUse(args []string) error {
 	var rcName string
 	var value bool
 	if args[0] == "-current" {
-		profileName = lockJSON.ActiveProfile
+		profileName = lockJSON.CurrentProfileName
 	} else {
 		profileName = args[0]
 	}

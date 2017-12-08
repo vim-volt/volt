@@ -123,7 +123,7 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 	}
 
 	// Find matching profile
-	profile, err := lockJSON.Profiles.FindByName(lockJSON.ActiveProfile)
+	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
 		return err
 	}
