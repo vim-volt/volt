@@ -181,11 +181,9 @@ func (cmd *rmCmd) removeRepos(reposPath string) error {
 func (cmd *rmCmd) removePlugconf(reposPath string) error {
 	logger.Info("Removing plugconf files ...")
 	plugconfPath := pathutil.PlugconfOf(reposPath)
-	if pathutil.Exists(plugconfPath) {
-		err := os.Remove(plugconfPath)
-		if err != nil {
-			return err
-		}
+	err := os.Remove(plugconfPath)
+	if err != nil {
+		return err
 	}
 	// Remove parent directories of plugconf
 	fileutil.RemoveDirs(filepath.Dir(plugconfPath))
