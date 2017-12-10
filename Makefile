@@ -20,7 +20,7 @@ precompile:
 
 test:
 	make
-	go test -v -race ./...
+	go test -v -race -parallel 3 ./...
 
 # Make static-linked binaries and tarballs
 release: $(BIN_DIR)/$(NAME)
