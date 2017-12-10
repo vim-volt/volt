@@ -4,8 +4,5 @@ go:
   - 1.9.1
   - tip
 
-install:
-  - make # for integration tests under test/ dir
-
 script:
-  - go test -v -race ./...
+  - make test

@@ -18,6 +18,10 @@ precompile:
 	go build -a -i -o $(BIN_DIR)/$(NAME)
 	rm $(BIN_DIR)/$(NAME)
 
+test:
+	make
+	go test -v -race ./...
+
 # Make static-linked binaries and tarballs
 release: $(BIN_DIR)/$(NAME)
 	rm -fr $(DIST_DIR)
@@ -38,4 +42,4 @@ release: $(BIN_DIR)/$(NAME)
 	done
 
 
-.PHONY: all precompile release
+.PHONY: all precompile test release
