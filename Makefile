@@ -1,6 +1,6 @@
 
 NAME := volt
-SRC := $(wildcard *.go */*.go)
+SRC := $(shell find . -type d -name 'vendor' -prune -o -type d -name 'it' -prune -o -type f -name '*.go' -print)
 VERSION := $(shell sed -n -E 's/var version string = "([^"]+)"/\1/p' cmd/version.go)
 RELEASE_LDFLAGS := -extldflags '-static'
 RELEASE_OS := linux windows darwin
