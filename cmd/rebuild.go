@@ -219,18 +219,19 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		return errors.New("could not read lock.json: " + err.Error())
 	}
 
-	// Get active profile's repos list
-	profile, reposList, err := cmd.getActiveProfileAndReposList(lockJSON)
+	// Get current profile's repos list
+	profile, reposList, err := cmd.getCurrentProfileAndReposList(lockJSON)
 	if err != nil {
 		return err
 	}
 
-	// Exit with an error if vimrc or gvimrc without magic comment exists
+	// check vimrc or gvimrc without magic comment exists
+	rcFileExists := false
 	for _, file := range pathutil.LookUpVimrcOrGvimrc() {
 		err = cmd.shouldHaveMagicComment(file)
 		// If the file does not have magic comment
 		if err != nil {
-			return errors.New("already exists user vimrc or gvimrc: " + err.Error())
+			rcFileExists = true
 		}
 	}
 
@@ -273,26 +274,29 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 
 	logger.Info("Installing vimrc and gvimrc ...")
 
-	// Install vimrc
-	err = cmd.installRCFile(
-		lockJSON.ActiveProfile,
-		"vimrc.vim",
-		filepath.Join(vimDir, "vimrc"),
-		profile.UseVimrc,
-	)
-	if err != nil {
-		return err
-	}
+	// Install vimrc if not exists
+	if !rcFileExists {
+		err = cmd.installRCFile(
+			lockJSON.CurrentProfileName,
+			"vimrc.vim",
+			filepath.Join(vimDir, "vimrc"),
+			profile.UseVimrc,
+		)
+		if err != nil {
+			return err
+		}
 
-	// Install gvimrc
-	err = cmd.installRCFile(
-		lockJSON.ActiveProfile,
-		"gvimrc.vim",
-		filepath.Join(vimDir, "gvimrc"),
-		profile.UseGvimrc,
-	)
-	if err != nil {
-		return err
+		// Install gvimrc
+		err = cmd.installRCFile(
+			lockJSON.CurrentProfileName,
+			"gvimrc.vim",
+			filepath.Join(vimDir, "gvimrc"),
+			profile.UseGvimrc,
+		)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	// Mkdir opt dir
@@ -356,7 +360,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 }
 
 func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string, install bool) error {
-	// Return error if destination file has magic comment
+	// Return error if destination file does not have magic comment
 	if pathutil.Exists(dst) {
 		err := cmd.shouldHaveMagicComment(dst)
 		// If the file does not have magic comment
@@ -570,9 +574,9 @@ func (*rebuildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCoun
 	return merr
 }
 
-func (*rebuildCmd) getActiveProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
-	// Find active profile
-	profile, err := lockJSON.Profiles.FindByName(lockJSON.ActiveProfile)
+func (*rebuildCmd) getCurrentProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
+	// Find current profile
+	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates that the matching profile exists

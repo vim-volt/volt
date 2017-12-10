@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/vim-volt/volt/fileutil"
@@ -16,6 +17,7 @@ import (
 	"github.com/vim-volt/volt/plugconf"
 	"github.com/vim-volt/volt/transaction"
 
+	multierror "github.com/hashicorp/go-multierror"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"
 )
@@ -152,7 +154,7 @@ func (*getCmd) getReposPathList(flags *getFlagsType, args []string, lockJSON *lo
 
 func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *lockjson.LockJSON) error {
 	// Find matching profile
-	profile, err := lockJSON.Profiles.FindByName(lockJSON.ActiveProfile)
+	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates if the matching profile exists
@@ -182,12 +184,24 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 	}
 
 	// Wait results
-	var failed bool
-	var statusList []string
+	failed := false
+	statusList := make([]string, 0, getCount)
 	var updatedLockJSON bool
 	for i := 0; i < getCount; i++ {
 		r := <-done
-		statusList = append(statusList, r.status)
+		if r.err != nil {
+			if merr, ok := r.err.(*multierror.Error); ok {
+				st := r.status
+				for _, err := range merr.Errors {
+					st += "\n  * " + err.Error()
+				}
+				statusList = append(statusList, st)
+			} else {
+				statusList = append(statusList, fmt.Sprintf("%s\n  * %s)", r.status, r.err.Error()))
+			}
+		} else {
+			statusList = append(statusList, r.status)
+		}
 		// Update repos[]/trx_id, repos[]/version
 		if strings.HasPrefix(r.status, statusPrefixInstalled) ||
 			strings.HasPrefix(r.status, statusPrefixUpgraded) {
@@ -198,6 +212,9 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 			failed = true
 		}
 	}
+
+	// Sort by status
+	sort.Strings(statusList)
 
 	if updatedLockJSON {
 		// Write to lock.json
@@ -214,11 +231,8 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 	}
 
 	// Show results
-	if len(statusList) > 0 {
-		fmt.Print("\nDone!\n\n")
-		for i := range statusList {
-			fmt.Println(statusList[i])
-		}
+	for i := range statusList {
+		fmt.Println(statusList[i])
 	}
 	if failed {
 		return errors.New("failed to install some plugins")
@@ -230,6 +244,7 @@ type getParallelResult struct {
 	reposPath string
 	status    string
 	hash      string
+	err       error
 }
 
 const (
@@ -241,35 +256,70 @@ const (
 
 // This function is executed in goroutine of each plugin
 func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
-	// Normally, when upgraded is true, repos is also non-nil.
+	// true:upgrade, false:install
+	fullReposPath := pathutil.FullReposPathOf(reposPath)
+	doUpgrade := flags.upgrade && pathutil.Exists(fullReposPath)
+
 	var fromHash string
 	var err error
-	if flags.upgrade && pathutil.Exists(pathutil.FullReposPathOf(reposPath)) {
+	if doUpgrade {
 		// Get HEAD hash string
 		fromHash, err = getReposHEAD(reposPath)
 		if err != nil {
-			logger.Error("Failed to get HEAD commit hash: " + err.Error())
-			cmd.rollbackRepos(reposPath)
+			result := errors.New("failed to get HEAD commit hash: " + err.Error())
+			if flags.verbose {
+				logger.Info("Rollbacking " + fullReposPath + " ...")
+			} else {
+				logger.Debug("Rollbacking " + fullReposPath + " ...")
+			}
+			err = cmd.rollbackRepos(fullReposPath)
+			if err != nil {
+				result = multierror.Append(result, err)
+			}
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+				err:       result,
 			}
 			return
 		}
 	}
 
 	var status string
-	upgraded := false
+	var upgraded bool
 
-	if flags.upgrade && pathutil.Exists(pathutil.FullReposPathOf(reposPath)) {
+	if doUpgrade {
+		// when flags.upgrade is true, repos must not be nil.
+		if repos == nil {
+			msg := "-u was specified but repos == nil"
+			done <- getParallelResult{
+				reposPath: reposPath,
+				status:    fmt.Sprintf("%s %s : upgrade failed : %s", statusPrefixFailed, reposPath, msg),
+				err:       errors.New("failed to upgrade plugin: " + msg),
+			}
+		}
 		// Upgrade plugin
-		err = cmd.upgradePlugin(reposPath, flags)
+		if flags.verbose {
+			logger.Info("Upgrading " + reposPath + " ...")
+		} else {
+			logger.Debug("Upgrading " + reposPath + " ...")
+		}
+		err := cmd.upgradePlugin(reposPath, flags)
 		if err != git.NoErrAlreadyUpToDate && err != nil {
-			logger.Warn("Failed to upgrade plugin: " + err.Error())
-			cmd.rollbackRepos(reposPath)
+			result := errors.New("failed to upgrade plugin: " + err.Error())
+			if flags.verbose {
+				logger.Info("Rollbacking " + fullReposPath + " ...")
+			} else {
+				logger.Debug("Rollbacking " + fullReposPath + " ...")
+			}
+			err = cmd.rollbackRepos(fullReposPath)
+			if err != nil {
+				result = multierror.Append(result, err)
+			}
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf("%s %s : upgrade failed : %s", statusPrefixFailed, reposPath, err.Error()),
+				err:       result,
 			}
 			return
 		}
@@ -280,29 +330,60 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 		}
 	} else {
 		// Install plugin
-		err = cmd.installPlugin(reposPath, flags)
-		if err != nil {
-			logger.Warn("Failed to install plugin: " + err.Error())
-			cmd.rollbackRepos(reposPath)
+		if flags.verbose {
+			logger.Info("Installing " + reposPath + " ...")
+		} else {
+			logger.Debug("Installing " + reposPath + " ...")
+		}
+		err := cmd.installPlugin(reposPath, flags)
+		// if err == errRepoExists, silently skip
+		if err != nil && err != errRepoExists {
+			result := errors.New("failed to install plugin: " + err.Error())
+			if flags.verbose {
+				logger.Info("Rollbacking " + fullReposPath + " ...")
+			} else {
+				logger.Debug("Rollbacking " + fullReposPath + " ...")
+			}
+			err = cmd.rollbackRepos(fullReposPath)
+			if err != nil {
+				result = multierror.Append(result, err)
+			}
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+				err:       result,
 			}
 			return
 		}
-		status = fmt.Sprintf("%s %s : installed", statusPrefixInstalled, reposPath)
-
-		// Install plugconf
-		logger.Info("Installing plugconf " + reposPath + " ...")
-		err = cmd.installPlugconf(reposPath)
-		if err != nil {
-			logger.Warn("Failed to install plugconf: " + err.Error())
-			cmd.rollbackRepos(reposPath)
-			done <- getParallelResult{
-				reposPath: reposPath,
-				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+		if err == errRepoExists {
+			status = fmt.Sprintf("%s %s : no change", statusPrefixNoChange, reposPath)
+		} else {
+			// Install plugconf
+			if flags.verbose {
+				logger.Info("Installing plugconf " + reposPath + " ...")
+			} else {
+				logger.Debug("Installing plugconf " + reposPath + " ...")
 			}
-			return
+			err = cmd.installPlugconf(reposPath)
+			if err != nil {
+				result := errors.New("failed to install plugconf: " + err.Error())
+				if flags.verbose {
+					logger.Info("Rollbacking " + fullReposPath + " ...")
+				} else {
+					logger.Debug("Rollbacking " + fullReposPath + " ...")
+				}
+				err = cmd.rollbackRepos(fullReposPath)
+				if err != nil {
+					result = multierror.Append(result, err)
+				}
+				done <- getParallelResult{
+					reposPath: reposPath,
+					status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+					err:       result,
+				}
+				return
+			}
+			status = fmt.Sprintf("%s %s : installed", statusPrefixInstalled, reposPath)
 		}
 	}
 
@@ -310,17 +391,26 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	var toHash string
 	toHash, err = getReposHEAD(reposPath)
 	if err != nil {
-		logger.Error("Failed to get HEAD commit hash: " + err.Error())
-		cmd.rollbackRepos(reposPath)
+		result := errors.New("failed to get HEAD commit hash: " + err.Error())
+		if flags.verbose {
+			logger.Info("Rollbacking " + fullReposPath + " ...")
+		} else {
+			logger.Debug("Rollbacking " + fullReposPath + " ...")
+		}
+		err = cmd.rollbackRepos(fullReposPath)
+		if err != nil {
+			result = multierror.Append(result, err)
+		}
 		done <- getParallelResult{
 			reposPath: reposPath,
 			status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+			err:       result,
 		}
 		return
 	}
 
 	// Show old and new revisions: "upgraded ({from}..{to})".
-	if upgraded && repos != nil {
+	if upgraded {
 		status = fmt.Sprintf("%s %s : upgraded (%s..%s)", statusPrefixUpgraded, reposPath, fromHash, toHash)
 	}
 
@@ -331,27 +421,25 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	}
 }
 
-func (*getCmd) rollbackRepos(reposPath string) {
-	fullReposPath := pathutil.FullReposPathOf(reposPath)
-	logger.Debug("Rollbacking " + fullReposPath + " ...")
+func (*getCmd) rollbackRepos(fullReposPath string) error {
 	if pathutil.Exists(fullReposPath) {
-		if os.RemoveAll(fullReposPath) != nil {
-			logger.Warnf("Rollback failed: cannot remove '%s'", fullReposPath)
+		err := os.RemoveAll(fullReposPath)
+		if err != nil {
+			return fmt.Errorf("Rollback failed: cannot remove '%s'", fullReposPath)
 		}
 		// Remove parent directories
 		fileutil.RemoveDirs(filepath.Dir(fullReposPath))
 	}
+	return nil
 }
 
 func (cmd *getCmd) upgradePlugin(reposPath string, flags *getFlagsType) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 
-	logger.Info("Upgrading " + reposPath + " ...")
-
 	var progress sideband.Progress = nil
-	if flags.verbose {
-		progress = os.Stdout
-	}
+	// if flags.verbose {
+	// 	progress = os.Stdout
+	// }
 
 	repos, err := git.PlainOpen(fullpath)
 	if err != nil {
@@ -380,18 +468,18 @@ func (cmd *getCmd) upgradePlugin(reposPath string, flags *getFlagsType) error {
 	}
 }
 
+var errRepoExists = errors.New("repository exists")
+
 func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 	if pathutil.Exists(fullpath) {
-		return errors.New("repository exists")
+		return errRepoExists
 	}
-
-	logger.Info("Installing " + reposPath + " ...")
 
 	var progress sideband.Progress = nil
-	if flags.verbose {
-		progress = os.Stdout
-	}
+	// if flags.verbose {
+	// 	progress = os.Stdout
+	// }
 
 	// Create parent directories
 	err := os.MkdirAll(filepath.Dir(fullpath), 0755)

@@ -5,7 +5,6 @@ go:
   - tip
 
 install:
-  - make setup
   - make # for integration tests under test/ dir
 
 script:

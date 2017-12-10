@@ -1,0 +1,2 @@
+function Foo(firstline)
+endfunction

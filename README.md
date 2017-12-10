@@ -237,7 +237,7 @@ $ volt profile list
 * foo
 ```
 
-You can delete profile by `volt profile destroy` (but you cannot delete current active profile which you are switching on).
+You can delete profile by `volt profile destroy` (but you cannot delete current profile which you are switching on).
 
 ```
 $ volt profile destroy foo   # will delete profile "foo"
@@ -264,7 +264,7 @@ This file is copied to `~/.vim/vimrc` and `~/.vim/gvimrc` with magic comment (sh
 And you can enable/disable vimrc by `volt profile use` (or you can simply remove `$VOLTPATH/rc/<profile name>/vimrc.vim` file if you don't want vimrc for the profile).
 
 ```
-$ volt profile use -current vimrc false   # Disable installing vimrc on current active profile
+$ volt profile use -current vimrc false   # Disable installing vimrc on current profile
 $ volt profile use default gvimrc true   # Enable installing gvimrc on profile default
 ```
 
@@ -276,7 +276,6 @@ See `volt help profile` for more detailed information.
 If you want to contribute to volt, you can setup like:
 
 ```
-$ make setup
 $ make precompile   # this speeds up 'go build'
 $ vim ...           # edit sources
 $ make
@@ -286,7 +285,6 @@ $ bin/volt ...      # run volt command
 ## How to build release binaries
 
 ```
-$ make setup
 $ make release
 $ ls -1 dist/
 volt-v0.0.1-alpha-darwin-amd64
