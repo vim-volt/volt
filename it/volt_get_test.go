@@ -71,7 +71,7 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 	}
 }
 
-func TestVoltGetInvalidArgs(t *testing.T) {
+func TestErrVoltGetInvalidArgs(t *testing.T) {
 	testutils.SetUpVoltpath(t)
 	out, err := testutils.RunVolt("get", "caw.vim")
 	testutils.FailExit(t, out, err)
@@ -107,7 +107,7 @@ func TestVoltGetInvalidArgs(t *testing.T) {
 	}
 }
 
-func TestVoltGetNotFound(t *testing.T) {
+func TestErrVoltGetNotFound(t *testing.T) {
 	testutils.SetUpVoltpath(t)
 	out, err := testutils.RunVolt("get", "vim-volt/not_found")
 	testutils.FailExit(t, out, err)

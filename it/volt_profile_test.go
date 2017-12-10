@@ -24,7 +24,7 @@ func TestVoltProfileSet(t *testing.T) {
 	}
 }
 
-func TestVoltProfileSetCurrentProfile(t *testing.T) {
+func TestErrVoltProfileSetCurrentProfile(t *testing.T) {
 	testutils.SetUpVoltpath(t)
 	out, err := testutils.RunVolt("profile", "set", "default")
 	testutils.FailExit(t, out, err)
