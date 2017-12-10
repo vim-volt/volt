@@ -425,7 +425,7 @@ func (*getCmd) rollbackRepos(fullReposPath string) error {
 	if pathutil.Exists(fullReposPath) {
 		err := os.RemoveAll(fullReposPath)
 		if err != nil {
-			return fmt.Errorf("Rollback failed: cannot remove '%s'", fullReposPath)
+			return fmt.Errorf("rollback failed: cannot remove '%s'", fullReposPath)
 		}
 		// Remove parent directories
 		fileutil.RemoveDirs(filepath.Dir(fullReposPath))
