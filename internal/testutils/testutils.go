@@ -11,7 +11,7 @@ import (
 
 const voltCommand = "../bin/volt"
 
-func SetUpVoltpath(t *testing.T) {
+func SetUpEnv(t *testing.T) {
 	tempDir, err := ioutil.TempDir("/tmp", "volt-test-")
 	if err != nil {
 		t.Fatal("failed to create temp dir")

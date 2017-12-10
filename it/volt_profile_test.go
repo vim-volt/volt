@@ -7,34 +7,44 @@ import (
 	"github.com/vim-volt/volt/lockjson"
 )
 
+// Checks:
+// (A) Does not show `[ERROR]`, `[WARN]` messages
+// (B) Exit with zero status
+// (C) Changes current profile
+
+// * Run `volt profile set <profile>` (`<profile>` is not current profile) (A, B, C)
+// * Run `volt profile set <profile>` (`<profile>` is current profile) (!A, !B, !C)
 func TestVoltProfileSet(t *testing.T) {
-	testutils.SetUpVoltpath(t)
+	testutils.SetUpEnv(t)
 	newOut, newErr := testutils.RunVolt("profile", "new", "foo")
 	testutils.SuccessExit(t, newOut, newErr)
-	setOut, setErr := testutils.RunVolt("profile", "set", "foo")
+
+	// Run `volt profile set <profile>` (`<profile>` is not current profile)
+	profileName := "foo"
+	setOut, setErr := testutils.RunVolt("profile", "set", profileName)
+	// (A, B)
 	testutils.SuccessExit(t, setOut, setErr)
 
-	// Check if it changes current profile
+	// (C)
 	lockJSON, err := lockjson.Read()
 	if err != nil {
 		t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
 	}
-	if lockJSON.CurrentProfileName != "foo" {
-		t.Fatal("current profile is not foo: " + lockJSON.CurrentProfileName)
+	if lockJSON.CurrentProfileName != profileName {
+		t.Fatal("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
 	}
-}
 
-func TestErrVoltProfileSetCurrentProfile(t *testing.T) {
-	testutils.SetUpVoltpath(t)
-	out, err := testutils.RunVolt("profile", "set", "default")
+	// Run `volt profile set <profile>` (`<profile>` is current profile)
+	out, err := testutils.RunVolt("profile", "set", profileName)
+	// (!A, !B)
 	testutils.FailExit(t, out, err)
 
-	// Check if it changes current profile
-	lockJSON, err := lockjson.Read()
+	// (!C)
+	lockJSON, err = lockjson.Read()
 	if err != nil {
 		t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
 	}
-	if lockJSON.CurrentProfileName != "default" {
-		t.Fatalf("current profile was changed: \"%s\" != \"default\"", lockJSON.CurrentProfileName)
+	if lockJSON.CurrentProfileName != profileName {
+		t.Fatal("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
 	}
 }
