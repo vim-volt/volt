@@ -18,6 +18,9 @@ import (
 // (E) Repositories are removed from `~/.vim/pack/volt/<repos>/`
 // (F) Specified entries in lock.json are removed
 
+// TODO: Add test cases
+// * [error] Run `volt rm <plugin>` when the plugin is depended by some plugins (!A, !B, !C, !D, !E, !F)
+
 // Run `volt rm <plugin>` (repos: exists, plugconf: exists, vim repos: exists) (A, B, C, !D, E, F)
 func TestVoltRmOnePlugin(t *testing.T) {
 	testutils.SetUpEnv(t)
