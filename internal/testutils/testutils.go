@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -15,9 +16,15 @@ func SetUpVoltpath(t *testing.T) {
 	if err != nil {
 		t.Fatal("failed to create temp dir")
 	}
-	err = os.Setenv("VOLTPATH", tempDir)
-	if err != nil {
-		t.Fatal("failed to set VOLTPATH")
+	for _, env := range []string{"VOLTPATH", "HOME"} {
+		value := filepath.Join(tempDir, strings.ToLower(env))
+		if os.Mkdir(value, 0755) != nil {
+			t.Fatalf("failed to mkdir %s: %s", env, value)
+		}
+		err = os.Setenv(env, value)
+		if err != nil {
+			t.Fatalf("failed to set %s", env)
+		}
 	}
 }
 
