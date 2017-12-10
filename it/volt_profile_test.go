@@ -19,8 +19,8 @@ func TestVoltProfileSet(t *testing.T) {
 	if err != nil {
 		t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
 	}
-	if lockJSON.ActiveProfile != "foo" {
-		t.Fatal("current profile is not foo: " + lockJSON.ActiveProfile)
+	if lockJSON.CurrentProfileName != "foo" {
+		t.Fatal("current profile is not foo: " + lockJSON.CurrentProfileName)
 	}
 }
 
@@ -34,7 +34,7 @@ func TestVoltProfileSetCurrentProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
 	}
-	if lockJSON.ActiveProfile != "default" {
-		t.Fatalf("current profile was changed: \"%s\" != \"default\"", lockJSON.ActiveProfile)
+	if lockJSON.CurrentProfileName != "default" {
+		t.Fatalf("current profile was changed: \"%s\" != \"default\"", lockJSON.CurrentProfileName)
 	}
 }
