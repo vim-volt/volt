@@ -131,6 +131,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 	}
 
 	// Remove each repository
+	removeCount := 0
 	for _, reposPath := range reposPathList {
 		fullReposPath := pathutil.FullReposPathOf(reposPath)
 		// Remove repository directory
@@ -138,6 +139,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 			if err = cmd.removeRepos(fullReposPath); err != nil {
 				return err
 			}
+			removeCount++
 		} else {
 			logger.Debugf("No repository was installed for '%s' ... skip.", reposPath)
 		}
@@ -146,6 +148,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 			if err = cmd.removePlugconf(plugconfPath); err != nil {
 				return err
 			}
+			removeCount++
 		} else {
 			logger.Debugf("No plugconf was installed for '%s' ... skip.", reposPath)
 		}
@@ -155,14 +158,19 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 	}
 
 	// Write to lock.json
-	return lockJSON.Write()
+	if err = lockJSON.Write(); err != nil {
+		return err
+	}
+	if removeCount == 0 {
+		return errors.New("no plugins are removed")
+	}
+	return nil
 }
 
 // Remove repository directory
 func (cmd *rmCmd) removeRepos(fullReposPath string) error {
 	logger.Info("Removing " + fullReposPath + " ...")
-	err := os.RemoveAll(fullReposPath)
-	if err != nil {
+	if err := os.RemoveAll(fullReposPath); err != nil {
 		return err
 	}
 	fileutil.RemoveDirs(filepath.Dir(fullReposPath))
@@ -172,8 +180,7 @@ func (cmd *rmCmd) removeRepos(fullReposPath string) error {
 // Remove plugconf file
 func (*rmCmd) removePlugconf(plugconfPath string) error {
 	logger.Info("Removing plugconf files ...")
-	err := os.Remove(plugconfPath)
-	if err != nil {
+	if err := os.Remove(plugconfPath); err != nil {
 		return err
 	}
 	// Remove parent directories of plugconf
