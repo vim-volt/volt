@@ -313,6 +313,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	// Wait copy
 	var copyModified bool
 	copyErr := cmd.waitCopyRepos(copyDone, copyCount, func(result *actionReposResult) error {
+		logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
 		// Construct buildInfo from the result
 		cmd.constructBuildInfo(buildInfo, result)
 		copyModified = true
@@ -510,7 +511,6 @@ func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int,
 					"failed to copy repository '"+result.repos.Path+
 						"': "+result.err.Error()))
 		} else {
-			logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
 			err := callback(&result)
 			if err != nil {
 				merr = multierror.Append(merr, err)
