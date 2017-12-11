@@ -117,7 +117,8 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 	logger.Infof("Adding '%s' as '%s' ...", from, reposPath)
 
 	// Copy directory from to dst
-	err = fileutil.CopyDir(from, dst)
+	buf := make([]byte, 32*1024)
+	err = fileutil.CopyDir(from, dst, buf)
 	if err != nil {
 		return err
 	}

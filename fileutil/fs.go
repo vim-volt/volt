@@ -12,7 +12,7 @@ import (
 // CopyDir recursively copies a directory tree, attempting to preserve permissions.
 // Source directory must exist, destination directory must *not* exist.
 // Symlinks are ignored and skipped.
-func CopyDir(src, dst string) (err error) {
+func CopyDir(src, dst string, buf []byte) (err error) {
 	src = filepath.Clean(src)
 	dst = filepath.Clean(dst)
 
@@ -47,7 +47,7 @@ func CopyDir(src, dst string) (err error) {
 		dstPath := filepath.Join(dst, entry.Name())
 
 		if entry.IsDir() {
-			err = CopyDir(srcPath, dstPath)
+			err = CopyDir(srcPath, dstPath, buf)
 			if err != nil {
 				return
 			}
@@ -57,7 +57,7 @@ func CopyDir(src, dst string) (err error) {
 				continue
 			}
 
-			err = CopyFile(srcPath, dstPath)
+			err = CopyFile(srcPath, dstPath, buf)
 			if err != nil {
 				return
 			}
@@ -72,7 +72,7 @@ func CopyDir(src, dst string) (err error) {
 // destination file exists, all it's contents will be replaced by the contents
 // of the source file. The file mode will be copied from the source and
 // the copied data is synced/flushed to stable storage.
-func CopyFile(src, dst string) (err error) {
+func CopyFile(src, dst string, buf []byte) (err error) {
 	in, err := os.Open(src)
 	if err != nil {
 		return
@@ -89,7 +89,7 @@ func CopyFile(src, dst string) (err error) {
 		}
 	}()
 
-	_, err = io.Copy(out, in)
+	_, err = io.CopyBuffer(out, in, buf)
 	if err != nil {
 		return
 	}

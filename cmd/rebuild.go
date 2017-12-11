@@ -712,6 +712,7 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 	}
 
 	// Copy files/directories except ".git", ".gitignore"
+	buf := make([]byte, 32*1024)
 	for _, file := range files {
 		if file.Name() == ".git" || file.Name() == ".gitignore" {
 			continue
@@ -721,9 +722,9 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 		os.MkdirAll(filepath.Dir(to), 0755)
 		var err error
 		if file.IsDir() {
-			err = fileutil.CopyDir(from, to)
+			err = fileutil.CopyDir(from, to, buf)
 		} else {
-			err = fileutil.CopyFile(from, to)
+			err = fileutil.CopyFile(from, to, buf)
 		}
 		if err != nil {
 			done <- actionReposResult{err, repos}
@@ -781,7 +782,8 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	}
 
 	// Copy ~/volt/repos/{repos} to ~/.vim/volt/opt/{repos}
-	err = fileutil.CopyDir(src, dst)
+	buf := make([]byte, 32*1024)
+	err = fileutil.CopyDir(src, dst, buf)
 	if err != nil {
 		done <- actionReposResult{
 			errors.New("failed to copy static directory: " + err.Error()),
