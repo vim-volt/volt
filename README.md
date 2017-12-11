@@ -39,8 +39,7 @@ Or download binaries from [GitHub releases](https://github.com/vim-volt/volt/rel
 
 ## Build environment
 
-* Go 1.9.1 or higher
-* or Go 1.9.0 with [a patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ([#1](https://github.com/vim-volt/go-volt/issues/1))
+* Go 1.9.0 or higher **with [the patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ([#1](https://github.com/vim-volt/go-volt/issues/1))**
 
 ## Introduction
 
