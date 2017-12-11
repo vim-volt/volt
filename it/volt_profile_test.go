@@ -3,7 +3,7 @@ package it
 import (
 	"testing"
 
-	"github.com/vim-volt/volt/internal/testutils"
+	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
 )
 
@@ -15,15 +15,15 @@ import (
 // * Run `volt profile set <profile>` (`<profile>` is not current profile) (A, B, C)
 // * Run `volt profile set <profile>` (`<profile>` is current profile) (!A, !B, !C)
 func TestVoltProfileSet(t *testing.T) {
-	testutils.SetUpEnv(t)
-	newOut, newErr := testutils.RunVolt("profile", "new", "foo")
-	testutils.SuccessExit(t, newOut, newErr)
+	testutil.SetUpEnv(t)
+	newOut, newErr := testutil.RunVolt("profile", "new", "foo")
+	testutil.SuccessExit(t, newOut, newErr)
 
 	// Run `volt profile set <profile>` (`<profile>` is not current profile)
 	profileName := "foo"
-	setOut, setErr := testutils.RunVolt("profile", "set", profileName)
+	setOut, setErr := testutil.RunVolt("profile", "set", profileName)
 	// (A, B)
-	testutils.SuccessExit(t, setOut, setErr)
+	testutil.SuccessExit(t, setOut, setErr)
 
 	// (C)
 	lockJSON, err := lockjson.Read()
@@ -35,9 +35,9 @@ func TestVoltProfileSet(t *testing.T) {
 	}
 
 	// Run `volt profile set <profile>` (`<profile>` is current profile)
-	out, err := testutils.RunVolt("profile", "set", profileName)
+	out, err := testutil.RunVolt("profile", "set", profileName)
 	// (!A, !B)
-	testutils.FailExit(t, out, err)
+	testutil.FailExit(t, out, err)
 
 	// (!C)
 	lockJSON, err = lockjson.Read()

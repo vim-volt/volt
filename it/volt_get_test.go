@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/vim-volt/volt/internal/testutils"
+	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
 	git "gopkg.in/src-d/go-git.v4"
@@ -25,7 +25,7 @@ import (
 
 // Specify one plugin with help (A, B, C, D, E, F, G) / without help (A, B, C, D, E, F, !G)
 func TestVoltGetOnePlugin(t *testing.T) {
-	testutils.SetUpEnv(t)
+	testutil.SetUpEnv(t)
 	for _, tt := range []struct {
 		withHelp  bool
 		reposPath string
@@ -33,9 +33,9 @@ func TestVoltGetOnePlugin(t *testing.T) {
 		{true, "github.com/tyru/caw.vim"},
 		{false, "github.com/tyru/dummy"},
 	} {
-		out, err := testutils.RunVolt("get", tt.reposPath)
+		out, err := testutil.RunVolt("get", tt.reposPath)
 		// (A, B)
-		testutils.SuccessExit(t, out, err)
+		testutil.SuccessExit(t, out, err)
 
 		// (C)
 		reposDir := pathutil.FullReposPathOf(tt.reposPath)
@@ -80,7 +80,7 @@ func TestVoltGetOnePlugin(t *testing.T) {
 
 // Specify two or more plugins without help (A, B, C, D, E, F, !G) / with help (A, B, C, D, E, F, G)
 func TestVoltGetTwoOrMorePlugin(t *testing.T) {
-	testutils.SetUpEnv(t)
+	testutil.SetUpEnv(t)
 
 	for _, tt := range []struct {
 		withHelp      bool
@@ -91,8 +91,8 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 	} {
 		// (A, B)
 		args := append([]string{"get"}, tt.reposPathList...)
-		out, err := testutils.RunVolt(args...)
-		testutils.SuccessExit(t, out, err)
+		out, err := testutil.RunVolt(args...)
+		testutil.SuccessExit(t, out, err)
 
 		for _, reposPath := range tt.reposPathList {
 			// (C)
@@ -138,10 +138,10 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 
 // [error] Specify invalid argument (!A, !B, !C, !D, !E, !F, !G)
 func TestErrVoltGetInvalidArgs(t *testing.T) {
-	testutils.SetUpEnv(t)
-	out, err := testutils.RunVolt("get", "caw.vim")
+	testutil.SetUpEnv(t)
+	out, err := testutil.RunVolt("get", "caw.vim")
 	// (!A, !B)
-	testutils.FailExit(t, out, err)
+	testutil.FailExit(t, out, err)
 
 	for _, reposPath := range []string{"caw.vim", "github.com/caw.vim"} {
 		// (!C)
@@ -175,10 +175,10 @@ func TestErrVoltGetInvalidArgs(t *testing.T) {
 
 // [error] Specify plugin which does not exist (!A, !B, !C, !D, !E, !F, !G)
 func TestErrVoltGetNotFound(t *testing.T) {
-	testutils.SetUpEnv(t)
-	out, err := testutils.RunVolt("get", "vim-volt/not_found")
+	testutil.SetUpEnv(t)
+	out, err := testutil.RunVolt("get", "vim-volt/not_found")
 	// (!A, !B)
-	testutils.FailExit(t, out, err)
+	testutil.FailExit(t, out, err)
 	reposPath := "github.com/vim-volt/not_found"
 
 	// (!C)
