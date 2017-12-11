@@ -5,4 +5,5 @@ go:
   - tip
 
 script:
+  - go vet -v ./...
   - make test
