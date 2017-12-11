@@ -102,6 +102,9 @@ Command
   migrate
     Convert old version $VOLTPATH/lock.json structure into the latest version
 
+  self-upgrade [-check]
+    Upgrade to the latest volt command, or if -check was given, it only checks the newer version is available
+
   version
     Show volt command version` + "\n\n")
 }

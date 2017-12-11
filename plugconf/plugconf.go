@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/vim-volt/volt/httputil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
 
@@ -423,19 +424,8 @@ func makeRank(rank map[string]int, node *reposDepNode, value int) {
 }
 
 func FetchPlugconf(reposPath string) (string, error) {
-	url := "https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/" + reposPath + ".vim"
-
-	res, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	if res.StatusCode/100 != 2 { // Not 2xx status code
-		return "", errors.New("Returned non-successful status: " + res.Status)
-	}
-	defer res.Body.Close()
-
-	b, err := ioutil.ReadAll(res.Body)
-	return string(b), err
+	url := path.Join("https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates", reposPath+".vim")
+	return httputil.GetContentString(url)
 }
 
 const skeletonPlugconfConfig = `function! s:config()
