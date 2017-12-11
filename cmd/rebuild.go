@@ -274,8 +274,8 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 
 	logger.Info("Installing vimrc and gvimrc ...")
 
-	// Install vimrc if not exists
 	if !rcFileExists {
+		// Install vimrc
 		err = cmd.installRCFile(
 			lockJSON.CurrentProfileName,
 			"vimrc.vim",
@@ -296,7 +296,6 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		if err != nil {
 			return err
 		}
-
 	}
 
 	// Mkdir opt dir
@@ -615,6 +614,7 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 	dst := pathutil.PackReposPathOf(repos.Path)
 
 	// Remove ~/.vim/volt/opt/{repos}
+	// TODO: Do not remove here, copy newer files only after
 	err := os.RemoveAll(dst)
 	if err != nil {
 		done <- actionReposResult{
@@ -793,6 +793,7 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	dst := pathutil.PackReposPathOf(repos.Path)
 
 	// Remove ~/.vim/volt/opt/{repos}
+	// TODO: Do not remove here, copy newer files only after
 	err := os.RemoveAll(dst)
 	if err != nil {
 		done <- actionReposResult{
