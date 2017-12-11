@@ -153,16 +153,18 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 			logger.Debugf("No plugconf was installed for '%s' ... skip.", reposPath)
 		}
 		// Update lockJSON
-		lockJSON.Repos.RemoveAllByPath(reposPath)
-		lockJSON.Profiles.RemoveAllReposPath(reposPath)
+		if lockJSON.Repos.RemoveAllByPath(reposPath) == nil ||
+			lockJSON.Profiles.RemoveAllReposPath(reposPath) == nil {
+			removeCount++
+		}
+	}
+	if removeCount == 0 {
+		return errors.New("no plugins are removed")
 	}
 
 	// Write to lock.json
 	if err = lockJSON.Write(); err != nil {
 		return err
-	}
-	if removeCount == 0 {
-		return errors.New("no plugins are removed")
 	}
 	return nil
 }
