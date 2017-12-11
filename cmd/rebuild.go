@@ -97,17 +97,17 @@ func Rebuild(args []string) int {
 const currentRebuildVersion = 1
 
 type buildInfoType struct {
-	Repos   reposList `json:"repos"`
-	Version int64     `json:"version"`
+	Repos   biReposList `json:"repos"`
+	Version int64       `json:"version"`
 }
 
-type reposList []repos
+type biReposList []biRepos
 
-type repos struct {
+type biRepos struct {
 	Type    reposType `json:"type"`
 	Path    string    `json:"path"`
 	Version string    `json:"version"`
-	Files   []file    `json:"files,omitempty"`
+	Files   []biFile  `json:"files,omitempty"`
 }
 
 type reposType string
@@ -118,7 +118,7 @@ const (
 	reposSystemType reposType = "system"
 )
 
-type file struct {
+type biFile struct {
 	Path    string `json:"path"`
 	Version string `json:"version"`
 }
@@ -189,7 +189,7 @@ func (buildInfo *buildInfoType) validate() error {
 	return nil
 }
 
-func (reposList *reposList) findByReposPath(reposPath string) *repos {
+func (reposList *biReposList) findByReposPath(reposPath string) *biRepos {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
 		if repos.Path == reposPath {
@@ -199,7 +199,7 @@ func (reposList *reposList) findByReposPath(reposPath string) *repos {
 	return nil
 }
 
-func (reposList *reposList) removeByReposPath(reposPath string) {
+func (reposList *biReposList) removeByReposPath(reposPath string) {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
 		if repos.Path == reposPath {
@@ -250,12 +250,12 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	// Put repos into map to be able to search with O(1).
 	// Use empty build-info.json map if the -full option was given
 	// because the repos info is unnecessary because it is not referenced.
-	var buildReposMap map[string]*repos
+	var buildReposMap map[string]*biRepos
 	if full {
-		buildReposMap = make(map[string]*repos)
+		buildReposMap = make(map[string]*biRepos)
 		logger.Info("Full rebuilding " + optDir + " directory ...")
 	} else {
-		buildReposMap = make(map[string]*repos, len(buildInfo.Repos))
+		buildReposMap = make(map[string]*biRepos, len(buildInfo.Repos))
 		for i := range buildInfo.Repos {
 			repos := &buildInfo.Repos[i]
 			buildReposMap[repos.Path] = repos
@@ -438,7 +438,7 @@ type actionReposResult struct {
 	repos *lockjson.Repos
 }
 
-func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*repos, reposList []lockjson.Repos, optDir string) (chan actionReposResult, int) {
+func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*biRepos, reposList []lockjson.Repos, optDir string) (chan actionReposResult, int) {
 	copyDone := make(chan actionReposResult, len(reposList))
 	copyCount := 0
 	for i := range reposList {
@@ -468,8 +468,8 @@ func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*repos, reposList 
 	return copyDone, copyCount
 }
 
-func (cmd *rebuildCmd) removeReposList(buildInfoRepos reposList, lockReposList lockjson.ReposList) (chan actionReposResult, int) {
-	var removeList []repos
+func (cmd *rebuildCmd) removeReposList(buildInfoRepos biReposList, lockReposList lockjson.ReposList) (chan actionReposResult, int) {
+	var removeList []biRepos
 	for i := range buildInfoRepos {
 		if !lockReposList.Contains(buildInfoRepos[i].Path) {
 			removeList = append(removeList, buildInfoRepos[i])
@@ -477,7 +477,7 @@ func (cmd *rebuildCmd) removeReposList(buildInfoRepos reposList, lockReposList l
 	}
 	removeDone := make(chan actionReposResult, len(removeList))
 	for i := range removeList {
-		go func(repos *repos) {
+		go func(repos *biRepos) {
 			// Remove directory under $VOLTPATH
 			path := pathutil.FullReposPathOf(repos.Path)
 			err := os.RemoveAll(path)
@@ -528,7 +528,7 @@ func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRe
 		} else {
 			buildInfo.Repos = append(
 				buildInfo.Repos,
-				repos{
+				biRepos{
 					Type:    reposGitType,
 					Path:    result.repos.Path,
 					Version: result.repos.Version,
@@ -542,7 +542,7 @@ func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRe
 		} else {
 			buildInfo.Repos = append(
 				buildInfo.Repos,
-				repos{
+				biRepos{
 					Type:    reposStaticType,
 					Path:    result.repos.Path,
 					Version: time.Now().Format(time.RFC3339),
@@ -597,7 +597,7 @@ func (*rebuildCmd) getLatestModTime(path string) (time.Time, error) {
 	return mtime, nil
 }
 
-func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *repos) bool {
+func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *biRepos) bool {
 	if repos.Version != buildRepos.Version {
 		// repository has changed, do copy
 		return true
@@ -759,7 +759,7 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 	done <- actionReposResult{nil, repos}
 }
 
-func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *repos, optDir string) bool {
+func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *biRepos, optDir string) bool {
 	src := pathutil.FullReposPathOf(repos.Path)
 
 	// Get latest mtime of src
