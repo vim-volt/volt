@@ -643,7 +643,19 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 		return
 	}
 
-	if cfg.Core.IsBare {
+	// Copy files from .git/objects/... when:
+	// * bare repository
+	// * or worktree is clean
+	copyFromGitObjects := cfg.Core.IsBare
+	if !copyFromGitObjects {
+		if wt, err := r.Worktree(); err == nil {
+			if st, err := wt.Status(); err == nil && st.IsClean() {
+				copyFromGitObjects = true
+			}
+		}
+	}
+
+	if copyFromGitObjects {
 		cmd.updateBareGitRepos(r, src, dst, repos, done)
 	} else {
 		cmd.updateNonBareGitRepos(r, src, dst, repos, done)
