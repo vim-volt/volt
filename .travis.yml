@@ -5,5 +5,6 @@ go:
   - tip
 
 script:
-  - go vet -v ./...
+  # Ignore ./it and ./internal/testutil
+  - go vet -v $(go list -f '{{ .ImportPath }}' github.com/vim-volt/volt/... | grep -v -E '/volt/(it|internal/testutil)$')
   - make test
