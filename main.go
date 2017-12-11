@@ -37,6 +37,8 @@ func Main() int {
 		return cmd.Rebuild(os.Args[2:])
 	case "migrate":
 		return cmd.Migrate(os.Args[2:])
+	case "self-upgrade":
+		return cmd.SelfUpgrade(os.Args[2:])
 	case "version":
 		return cmd.Version(os.Args[2:])
 	case "help":
