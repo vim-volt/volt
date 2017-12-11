@@ -161,8 +161,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 
 	// Exit if current profile is same as profileName
 	if lockJSON.CurrentProfileName == profileName {
-		logger.Info("Current profile was not changed: " + profileName)
-		return nil
+		return fmt.Errorf("'%s' is current profile", profileName)
 	}
 
 	// Begin transaction

@@ -1,6 +1,6 @@
 
 NAME := volt
-SRC := $(wildcard *.go */*.go)
+SRC := $(shell find . -type d -name 'vendor' -prune -o -type d -name 'it' -prune -o -type f -name '*.go' -print)
 VERSION := $(shell sed -n -E 's/var voltVersion string = "([^"]+)"/\1/p' cmd/version.go)
 RELEASE_LDFLAGS := -extldflags '-static'
 RELEASE_OS := linux windows darwin
@@ -17,6 +17,10 @@ $(BIN_DIR)/$(NAME): $(SRC)
 precompile:
 	go build -a -i -o $(BIN_DIR)/$(NAME)
 	rm $(BIN_DIR)/$(NAME)
+
+test:
+	make
+	go test -v -race -parallel 3 ./...
 
 # Make static-linked binaries and tarballs
 release: $(BIN_DIR)/$(NAME)
@@ -38,4 +42,4 @@ release: $(BIN_DIR)/$(NAME)
 	done
 
 
-.PHONY: all precompile release
+.PHONY: all precompile test release
