@@ -272,9 +272,9 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		}
 	}
 
-	logger.Info("Installing vimrc and gvimrc ...")
-
 	if !rcFileExists {
+		logger.Info("Installing vimrc and gvimrc ...")
+
 		// Install vimrc
 		err = cmd.installRCFile(
 			lockJSON.CurrentProfileName,
@@ -303,8 +303,6 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	if !pathutil.Exists(optDir) {
 		return errors.New("could not create " + optDir)
 	}
-
-	logger.Info("Installing all repositories files ...")
 
 	// Copy all repositories files to optDir
 	copyDone, copyCount := cmd.copyReposList(buildReposMap, reposList, optDir)
@@ -352,7 +350,6 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		if err != nil {
 			return err
 		}
-		logger.Info("Written build-info.json")
 	}
 
 	return nil
