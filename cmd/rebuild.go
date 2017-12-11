@@ -460,8 +460,8 @@ func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*biRepos, reposLis
 			}
 		} else {
 			copyDone <- actionReposResult{
-				errors.New("invalid repository type: " + string(reposList[i].Type)),
-				&reposList[i],
+				err:   errors.New("invalid repository type: " + string(reposList[i].Type)),
+				repos: &reposList[i],
 			}
 		}
 	}
@@ -483,16 +483,16 @@ func (cmd *rebuildCmd) removeReposList(buildInfoRepos biReposList, lockReposList
 			err := os.RemoveAll(path)
 			logger.Info("Removing " + string(repos.Type) + " repository " + path + " ... Done.")
 			removeDone <- actionReposResult{
-				err,
-				&lockjson.Repos{Path: repos.Path},
+				err:   err,
+				repos: &lockjson.Repos{Path: repos.Path},
 			}
 			// Remove directory under vim dir
 			path = pathutil.PackReposPathOf(repos.Path)
 			err = os.RemoveAll(path)
 			logger.Info("Removing " + path + " ... Done.")
 			removeDone <- actionReposResult{
-				err,
-				&lockjson.Repos{Path: repos.Path},
+				err:   err,
+				repos: &lockjson.Repos{Path: repos.Path},
 			}
 		}(&removeList[i])
 	}
@@ -615,8 +615,8 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 	err := os.RemoveAll(dst)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to remove repository: " + err.Error()),
-			repos,
+			err:   errors.New("failed to remove repository: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -625,8 +625,8 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 	r, err := git.PlainOpen(src)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to open repository: " + err.Error()),
-			repos,
+			err:   errors.New("failed to open repository: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -634,8 +634,8 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 	cfg, err := r.Config()
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to get repository config: " + err.Error()),
-			repos,
+			err:   errors.New("failed to get repository config: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -665,8 +665,8 @@ func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, re
 	commitObj, err := r.CommitObject(commit)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to get HEAD commit object: " + err.Error()),
-			repos,
+			err:   errors.New("failed to get HEAD commit object: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -675,8 +675,8 @@ func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, re
 	tree, err := r.TreeObject(commitObj.TreeHash)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to get tree " + commit.String() + ": " + err.Error()),
-			repos,
+			err:   errors.New("failed to get tree " + commit.String() + ": " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -699,24 +699,36 @@ func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, re
 		return nil
 	})
 	if err != nil {
-		done <- actionReposResult{err, repos}
+		done <- actionReposResult{
+			err:   err,
+			repos: repos,
+		}
 		return
 	}
 
 	// Do ":helptags" to generate tags file
 	err = cmd.Helptags(repos.Path)
 	if err != nil {
-		done <- actionReposResult{err, repos}
+		done <- actionReposResult{
+			err:   err,
+			repos: repos,
+		}
 		return
 	}
 
-	done <- actionReposResult{nil, repos}
+	done <- actionReposResult{
+		err:   nil,
+		repos: repos,
+	}
 }
 
 func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
 	files, err := ioutil.ReadDir(src)
 	if err != nil {
-		done <- actionReposResult{err, repos}
+		done <- actionReposResult{
+			err:   err,
+			repos: repos,
+		}
 		return
 	}
 
@@ -745,18 +757,27 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 			err = fileutil.CopyFile(from, to, buf, file.Mode())
 		}
 		if err != nil {
-			done <- actionReposResult{err, repos}
+			done <- actionReposResult{
+				err:   err,
+				repos: repos,
+			}
 			return
 		}
 	}
 
 	err = cmd.Helptags(repos.Path)
 	if err != nil {
-		done <- actionReposResult{err, repos}
+		done <- actionReposResult{
+			err:   err,
+			repos: repos,
+		}
 		return
 	}
 
-	done <- actionReposResult{nil, repos}
+	done <- actionReposResult{
+		err:   nil,
+		repos: repos,
+	}
 }
 
 func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *biRepos, optDir string) bool {
@@ -794,8 +815,8 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	err := os.RemoveAll(dst)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to remove repository: " + err.Error()),
-			repos,
+			err:   errors.New("failed to remove repository: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -805,23 +826,23 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	si, err := os.Stat(src)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to copy static directory: " + err.Error()),
-			repos,
+			err:   errors.New("failed to copy static directory: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
 	if !si.IsDir() {
 		done <- actionReposResult{
-			errors.New("failed to copy static directory: source is not a directory"),
-			repos,
+			err:   errors.New("failed to copy static directory: source is not a directory"),
+			repos: repos,
 		}
 		return
 	}
 	err = fileutil.CopyDir(src, dst, buf, si.Mode())
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to copy static directory: " + err.Error()),
-			repos,
+			err:   errors.New("failed to copy static directory: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -829,11 +850,17 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	// Do ":helptags" to generate tags file
 	err = cmd.Helptags(repos.Path)
 	if err != nil {
-		done <- actionReposResult{err, repos}
+		done <- actionReposResult{
+			err:   err,
+			repos: repos,
+		}
 		return
 	}
 
-	done <- actionReposResult{nil, repos}
+	done <- actionReposResult{
+		err:   nil,
+		repos: repos,
+	}
 }
 
 func (cmd *rebuildCmd) Helptags(reposPath string) error {
