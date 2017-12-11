@@ -711,20 +711,29 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 		return
 	}
 
-	// Copy files/directories except ".git", ".gitignore"
 	buf := make([]byte, 32*1024)
+	created := make(map[string]bool, len(files))
 	for _, file := range files {
+		// Skip ".git" and ".gitignore"
 		if file.Name() == ".git" || file.Name() == ".gitignore" {
 			continue
 		}
+		// Skip symlinks
+		if file.Mode()&os.ModeSymlink != 0 {
+			continue
+		}
+
 		from := filepath.Join(src, file.Name())
 		to := filepath.Join(dst, file.Name())
-		os.MkdirAll(filepath.Dir(to), 0755)
+		if !created[dst] {
+			os.MkdirAll(dst, 0755)
+			created[dst] = true
+		}
 		var err error
 		if file.IsDir() {
-			err = fileutil.CopyDir(from, to, buf)
+			err = fileutil.CopyDir(from, to, buf, file.Mode())
 		} else {
-			err = fileutil.CopyFile(from, to, buf)
+			err = fileutil.CopyFile(from, to, buf, file.Mode())
 		}
 		if err != nil {
 			done <- actionReposResult{err, repos}
@@ -783,7 +792,22 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 
 	// Copy ~/volt/repos/{repos} to ~/.vim/volt/opt/{repos}
 	buf := make([]byte, 32*1024)
-	err = fileutil.CopyDir(src, dst, buf)
+	si, err := os.Stat(src)
+	if err != nil {
+		done <- actionReposResult{
+			errors.New("failed to copy static directory: " + err.Error()),
+			repos,
+		}
+		return
+	}
+	if !si.IsDir() {
+		done <- actionReposResult{
+			errors.New("failed to copy static directory: source is not a directory"),
+			repos,
+		}
+		return
+	}
+	err = fileutil.CopyDir(src, dst, buf, si.Mode())
 	if err != nil {
 		done <- actionReposResult{
 			errors.New("failed to copy static directory: " + err.Error()),
