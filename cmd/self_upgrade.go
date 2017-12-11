@@ -165,7 +165,7 @@ func (cmd *selfUpgradeCmd) doSelfUpgrade(flags *selfUpgradeFlagsType, latestURL 
 		return err
 	}
 	{
-		latestFile, err := os.Create(voltExe + ".latest")
+		latestFile, err := os.OpenFile(voltExe+".latest", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 		if err != nil {
 			return err
 		}
