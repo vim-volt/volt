@@ -31,7 +31,7 @@ func TestVoltProfileSet(t *testing.T) {
 		t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
 	}
 	if lockJSON.CurrentProfileName != profileName {
-		t.Fatal("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
+		t.Fatalf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
 	}
 
 	// Run `volt profile set <profile>` (`<profile>` is current profile)
@@ -45,6 +45,6 @@ func TestVoltProfileSet(t *testing.T) {
 		t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
 	}
 	if lockJSON.CurrentProfileName != profileName {
-		t.Fatal("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
+		t.Fatalf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
 	}
 }
