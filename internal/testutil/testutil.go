@@ -57,6 +57,11 @@ func FailExit(t *testing.T, out []byte, err error) {
 }
 
 func getCallerMsg() string {
+	const voltDirName = "github.com/vim-volt/volt/"
 	_, fn, line, _ := runtime.Caller(2)
+	idx := strings.Index(fn, voltDirName)
+	if idx >= 0 {
+		fn = fn[idx+len(voltDirName):]
+	}
 	return fmt.Sprintf("[%s:%d]", fn, line)
 }

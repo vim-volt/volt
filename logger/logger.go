@@ -86,9 +86,8 @@ func Debug(msgs ...interface{}) {
 	fmt.Println(msgs...)
 }
 
-const voltDirName = "github.com/vim-volt/volt"
-
 func getCallerMsg() string {
+	const voltDirName = "github.com/vim-volt/volt"
 	if logLevel < DebugLevel {
 		return ""
 	}
