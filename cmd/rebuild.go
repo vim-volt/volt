@@ -107,7 +107,7 @@ type biRepos struct {
 	Type    reposType `json:"type"`
 	Path    string    `json:"path"`
 	Version string    `json:"version"`
-	Files   []biFile  `json:"files,omitempty"`
+	Files   biFileMap `json:"files,omitempty"`
 }
 
 type reposType string
@@ -118,10 +118,8 @@ const (
 	reposSystemType reposType = "system"
 )
 
-type biFile struct {
-	Path    string `json:"path"`
-	Version string `json:"version"`
-}
+// key: filepath, value: version
+type biFileMap map[string]string
 
 func (cmd *rebuildCmd) readBuildInfo() (*buildInfoType, error) {
 	// Return initial build-info.json struct
@@ -175,16 +173,6 @@ func (buildInfo *buildInfoType) validate() error {
 			return errors.New("duplicate repos: " + r.Path)
 		}
 		dupRepos[r.Path] = true
-
-		// Validate if files do not have duplicate repository
-		dupFiles := make(map[string]bool, len(r.Files))
-		for j := range r.Files {
-			f := &r.Files[j]
-			if _, exists := dupFiles[f.Path]; exists {
-				return errors.New(r.Path + ": duplicate files: " + f.Path)
-			}
-			dupFiles[f.Path] = true
-		}
 	}
 	return nil
 }
@@ -437,6 +425,7 @@ func (*rebuildCmd) copyFileWithMagicComment(src, dst string) error {
 type actionReposResult struct {
 	err   error
 	repos *lockjson.Repos
+	files biFileMap
 }
 
 func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*biRepos, reposList []lockjson.Repos, optDir string) (chan actionReposResult, int) {
@@ -448,7 +437,7 @@ func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*biRepos, reposLis
 			if !exists ||
 				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
 				cmd.hasChangedGitRepos(&reposList[i], buildRepos) {
-				go cmd.updateGitRepos(&reposList[i], copyDone)
+				go cmd.updateGitRepos(&reposList[i], buildRepos, copyDone)
 				copyCount++
 			}
 		} else if reposList[i].Type == lockjson.ReposStaticType {
@@ -525,6 +514,7 @@ func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRe
 		r := buildInfo.Repos.findByReposPath(result.repos.Path)
 		if r != nil {
 			r.Version = result.repos.Version
+			r.Files = result.files
 		} else {
 			buildInfo.Repos = append(
 				buildInfo.Repos,
@@ -532,6 +522,7 @@ func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRe
 					Type:    reposGitType,
 					Path:    result.repos.Path,
 					Version: result.repos.Version,
+					Files:   result.files,
 				},
 			)
 		}
@@ -539,6 +530,7 @@ func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRe
 		r := buildInfo.Repos.findByReposPath(result.repos.Path)
 		if r != nil {
 			r.Version = time.Now().Format(time.RFC3339)
+			r.Files = result.files
 		} else {
 			buildInfo.Repos = append(
 				buildInfo.Repos,
@@ -546,6 +538,7 @@ func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRe
 					Type:    reposStaticType,
 					Path:    result.repos.Path,
 					Version: time.Now().Format(time.RFC3339),
+					Files:   result.files,
 				},
 			)
 		}
@@ -606,7 +599,7 @@ func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *biRepos
 }
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
-func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionReposResult) {
+func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, buildRepos *biRepos, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
 
@@ -653,13 +646,13 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 	}
 
 	if copyFromGitObjects {
-		cmd.updateBareGitRepos(r, src, dst, repos, done)
+		cmd.updateBareGitRepos(r, src, dst, repos, buildRepos, done)
 	} else {
 		cmd.updateNonBareGitRepos(r, src, dst, repos, done)
 	}
 }
 
-func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
+func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, buildRepos *biRepos, done chan actionReposResult) {
 	// Get locked commit hash
 	commit := plumbing.NewHash(repos.Version)
 	commitObj, err := r.CommitObject(commit)
@@ -682,6 +675,7 @@ func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, re
 	}
 
 	// Copy files
+	files := make(biFileMap, 512)
 	err = tree.Files().ForEach(func(file *object.File) error {
 		osMode, err := file.Mode.ToOSFileMode()
 		if err != nil {
@@ -696,6 +690,8 @@ func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, re
 		filename := filepath.Join(dst, file.Name)
 		os.MkdirAll(filepath.Dir(filename), 0755)
 		ioutil.WriteFile(filename, []byte(contents), osMode)
+
+		files[file.Name] = file.Hash.String() // blob hash
 		return nil
 	})
 	if err != nil {
@@ -719,6 +715,7 @@ func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, re
 	done <- actionReposResult{
 		err:   nil,
 		repos: repos,
+		files: files,
 	}
 }
 
@@ -777,6 +774,7 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 	done <- actionReposResult{
 		err:   nil,
 		repos: repos,
+		files: nil, // all files are overwritten next time even when timestamp is older
 	}
 }
 
