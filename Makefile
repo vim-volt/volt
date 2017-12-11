@@ -1,7 +1,7 @@
 
 NAME := volt
 SRC := $(wildcard *.go */*.go)
-VERSION := $(shell sed -n -E 's/var version string = "([^"]+)"/\1/p' cmd/version.go)
+VERSION := $(shell sed -n -E 's/var voltVersion string = "([^"]+)"/\1/p' cmd/version.go)
 RELEASE_LDFLAGS := -extldflags '-static'
 RELEASE_OS := linux windows darwin
 RELEASE_ARCH := amd64 386
