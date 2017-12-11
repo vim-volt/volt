@@ -90,9 +90,11 @@ func (*addCmd) parseArgs(args []string) (string, string, error) {
 }
 
 func (cmd *addCmd) doAdd(from, reposPath string) error {
-	// Check from and destination (full path of repos path) path
-	if !pathutil.Exists(from) {
-		return errors.New("no such a directory: " + from)
+	fromInfo, err := os.Stat(from)
+	if err != nil {
+		return err
+	} else if !fromInfo.IsDir() {
+		return fmt.Errorf("source is not a directory: " + from)
 	}
 
 	dst := pathutil.FullReposPathOf(reposPath)
@@ -117,7 +119,8 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 	logger.Infof("Adding '%s' as '%s' ...", from, reposPath)
 
 	// Copy directory from to dst
-	err = fileutil.CopyDir(from, dst)
+	buf := make([]byte, 32*1024)
+	err = fileutil.CopyDir(from, dst, buf, fromInfo.Mode())
 	if err != nil {
 		return err
 	}

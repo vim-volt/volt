@@ -97,17 +97,17 @@ func Rebuild(args []string) int {
 const currentRebuildVersion = 1
 
 type buildInfoType struct {
-	Repos   reposList `json:"repos"`
-	Version int64     `json:"version"`
+	Repos   biReposList `json:"repos"`
+	Version int64       `json:"version"`
 }
 
-type reposList []repos
+type biReposList []biRepos
 
-type repos struct {
+type biRepos struct {
 	Type    reposType `json:"type"`
 	Path    string    `json:"path"`
 	Version string    `json:"version"`
-	Files   []file    `json:"files,omitempty"`
+	Files   biFileMap `json:"files,omitempty"`
 }
 
 type reposType string
@@ -118,10 +118,8 @@ const (
 	reposSystemType reposType = "system"
 )
 
-type file struct {
-	Path    string `json:"path"`
-	Version string `json:"version"`
-}
+// key: filepath, value: version
+type biFileMap map[string]string
 
 func (cmd *rebuildCmd) readBuildInfo() (*buildInfoType, error) {
 	// Return initial build-info.json struct
@@ -175,21 +173,11 @@ func (buildInfo *buildInfoType) validate() error {
 			return errors.New("duplicate repos: " + r.Path)
 		}
 		dupRepos[r.Path] = true
-
-		// Validate if files do not have duplicate repository
-		dupFiles := make(map[string]bool, len(r.Files))
-		for j := range r.Files {
-			f := &r.Files[j]
-			if _, exists := dupFiles[f.Path]; exists {
-				return errors.New(r.Path + ": duplicate files: " + f.Path)
-			}
-			dupFiles[f.Path] = true
-		}
 	}
 	return nil
 }
 
-func (reposList *reposList) findByReposPath(reposPath string) *repos {
+func (reposList *biReposList) findByReposPath(reposPath string) *biRepos {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
 		if repos.Path == reposPath {
@@ -199,7 +187,7 @@ func (reposList *reposList) findByReposPath(reposPath string) *repos {
 	return nil
 }
 
-func (reposList *reposList) removeByReposPath(reposPath string) {
+func (reposList *biReposList) removeByReposPath(reposPath string) {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
 		if repos.Path == reposPath {
@@ -250,12 +238,12 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	// Put repos into map to be able to search with O(1).
 	// Use empty build-info.json map if the -full option was given
 	// because the repos info is unnecessary because it is not referenced.
-	var buildReposMap map[string]*repos
+	var buildReposMap map[string]*biRepos
 	if full {
-		buildReposMap = make(map[string]*repos)
+		buildReposMap = make(map[string]*biRepos)
 		logger.Info("Full rebuilding " + optDir + " directory ...")
 	} else {
-		buildReposMap = make(map[string]*repos, len(buildInfo.Repos))
+		buildReposMap = make(map[string]*biRepos, len(buildInfo.Repos))
 		for i := range buildInfo.Repos {
 			repos := &buildInfo.Repos[i]
 			buildReposMap[repos.Path] = repos
@@ -272,10 +260,10 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		}
 	}
 
-	logger.Info("Installing vimrc and gvimrc ...")
-
-	// Install vimrc if not exists
 	if !rcFileExists {
+		logger.Info("Installing vimrc and gvimrc ...")
+
+		// Install vimrc
 		err = cmd.installRCFile(
 			lockJSON.CurrentProfileName,
 			"vimrc.vim",
@@ -296,7 +284,6 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		if err != nil {
 			return err
 		}
-
 	}
 
 	// Mkdir opt dir
@@ -304,8 +291,6 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	if !pathutil.Exists(optDir) {
 		return errors.New("could not create " + optDir)
 	}
-
-	logger.Info("Installing all repositories files ...")
 
 	// Copy all repositories files to optDir
 	copyDone, copyCount := cmd.copyReposList(buildReposMap, reposList, optDir)
@@ -316,6 +301,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	// Wait copy
 	var copyModified bool
 	copyErr := cmd.waitCopyRepos(copyDone, copyCount, func(result *actionReposResult) error {
+		logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
 		// Construct buildInfo from the result
 		cmd.constructBuildInfo(buildInfo, result)
 		copyModified = true
@@ -353,7 +339,6 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		if err != nil {
 			return err
 		}
-		logger.Info("Written build-info.json")
 	}
 
 	return nil
@@ -440,9 +425,10 @@ func (*rebuildCmd) copyFileWithMagicComment(src, dst string) error {
 type actionReposResult struct {
 	err   error
 	repos *lockjson.Repos
+	files biFileMap
 }
 
-func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*repos, reposList []lockjson.Repos, optDir string) (chan actionReposResult, int) {
+func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*biRepos, reposList []lockjson.Repos, optDir string) (chan actionReposResult, int) {
 	copyDone := make(chan actionReposResult, len(reposList))
 	copyCount := 0
 	for i := range reposList {
@@ -451,7 +437,7 @@ func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*repos, reposList 
 			if !exists ||
 				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
 				cmd.hasChangedGitRepos(&reposList[i], buildRepos) {
-				go cmd.updateGitRepos(&reposList[i], copyDone)
+				go cmd.updateGitRepos(&reposList[i], buildRepos, copyDone)
 				copyCount++
 			}
 		} else if reposList[i].Type == lockjson.ReposStaticType {
@@ -464,16 +450,16 @@ func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*repos, reposList 
 			}
 		} else {
 			copyDone <- actionReposResult{
-				errors.New("invalid repository type: " + string(reposList[i].Type)),
-				&reposList[i],
+				err:   errors.New("invalid repository type: " + string(reposList[i].Type)),
+				repos: &reposList[i],
 			}
 		}
 	}
 	return copyDone, copyCount
 }
 
-func (cmd *rebuildCmd) removeReposList(buildInfoRepos reposList, lockReposList lockjson.ReposList) (chan actionReposResult, int) {
-	var removeList []repos
+func (cmd *rebuildCmd) removeReposList(buildInfoRepos biReposList, lockReposList lockjson.ReposList) (chan actionReposResult, int) {
+	var removeList []biRepos
 	for i := range buildInfoRepos {
 		if !lockReposList.Contains(buildInfoRepos[i].Path) {
 			removeList = append(removeList, buildInfoRepos[i])
@@ -481,22 +467,22 @@ func (cmd *rebuildCmd) removeReposList(buildInfoRepos reposList, lockReposList l
 	}
 	removeDone := make(chan actionReposResult, len(removeList))
 	for i := range removeList {
-		go func(repos *repos) {
+		go func(repos *biRepos) {
 			// Remove directory under $VOLTPATH
 			path := pathutil.FullReposPathOf(repos.Path)
 			err := os.RemoveAll(path)
 			logger.Info("Removing " + string(repos.Type) + " repository " + path + " ... Done.")
 			removeDone <- actionReposResult{
-				err,
-				&lockjson.Repos{Path: repos.Path},
+				err:   err,
+				repos: &lockjson.Repos{Path: repos.Path},
 			}
 			// Remove directory under vim dir
 			path = pathutil.PackReposPathOf(repos.Path)
 			err = os.RemoveAll(path)
 			logger.Info("Removing " + path + " ... Done.")
 			removeDone <- actionReposResult{
-				err,
-				&lockjson.Repos{Path: repos.Path},
+				err:   err,
+				repos: &lockjson.Repos{Path: repos.Path},
 			}
 		}(&removeList[i])
 	}
@@ -514,7 +500,6 @@ func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int,
 					"failed to copy repository '"+result.repos.Path+
 						"': "+result.err.Error()))
 		} else {
-			logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
 			err := callback(&result)
 			if err != nil {
 				merr = multierror.Append(merr, err)
@@ -529,13 +514,15 @@ func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRe
 		r := buildInfo.Repos.findByReposPath(result.repos.Path)
 		if r != nil {
 			r.Version = result.repos.Version
+			r.Files = result.files
 		} else {
 			buildInfo.Repos = append(
 				buildInfo.Repos,
-				repos{
+				biRepos{
 					Type:    reposGitType,
 					Path:    result.repos.Path,
 					Version: result.repos.Version,
+					Files:   result.files,
 				},
 			)
 		}
@@ -543,13 +530,15 @@ func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRe
 		r := buildInfo.Repos.findByReposPath(result.repos.Path)
 		if r != nil {
 			r.Version = time.Now().Format(time.RFC3339)
+			r.Files = result.files
 		} else {
 			buildInfo.Repos = append(
 				buildInfo.Repos,
-				repos{
+				biRepos{
 					Type:    reposStaticType,
 					Path:    result.repos.Path,
 					Version: time.Now().Format(time.RFC3339),
+					Files:   result.files,
 				},
 			)
 		}
@@ -601,7 +590,7 @@ func (*rebuildCmd) getLatestModTime(path string) (time.Time, error) {
 	return mtime, nil
 }
 
-func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *repos) bool {
+func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *biRepos) bool {
 	if repos.Version != buildRepos.Version {
 		// repository has changed, do copy
 		return true
@@ -610,16 +599,17 @@ func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *repos) 
 }
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
-func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionReposResult) {
+func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, buildRepos *biRepos, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
 
 	// Remove ~/.vim/volt/opt/{repos}
+	// TODO: Do not remove here, copy newer files only after
 	err := os.RemoveAll(dst)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to remove repository: " + err.Error()),
-			repos,
+			err:   errors.New("failed to remove repository: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -628,8 +618,8 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 	r, err := git.PlainOpen(src)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to open repository: " + err.Error()),
-			repos,
+			err:   errors.New("failed to open repository: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -637,27 +627,39 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, done chan actionRep
 	cfg, err := r.Config()
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to get repository config: " + err.Error()),
-			repos,
+			err:   errors.New("failed to get repository config: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
 
-	if cfg.Core.IsBare {
-		cmd.updateBareGitRepos(r, src, dst, repos, done)
+	// Copy files from .git/objects/... when:
+	// * bare repository
+	// * or worktree is clean
+	copyFromGitObjects := cfg.Core.IsBare
+	if !copyFromGitObjects {
+		if wt, err := r.Worktree(); err == nil {
+			if st, err := wt.Status(); err == nil && st.IsClean() {
+				copyFromGitObjects = true
+			}
+		}
+	}
+
+	if copyFromGitObjects {
+		cmd.updateBareGitRepos(r, src, dst, repos, buildRepos, done)
 	} else {
 		cmd.updateNonBareGitRepos(r, src, dst, repos, done)
 	}
 }
 
-func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
+func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, buildRepos *biRepos, done chan actionReposResult) {
 	// Get locked commit hash
 	commit := plumbing.NewHash(repos.Version)
 	commitObj, err := r.CommitObject(commit)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to get HEAD commit object: " + err.Error()),
-			repos,
+			err:   errors.New("failed to get HEAD commit object: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -666,13 +668,14 @@ func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, re
 	tree, err := r.TreeObject(commitObj.TreeHash)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to get tree " + commit.String() + ": " + err.Error()),
-			repos,
+			err:   errors.New("failed to get tree " + commit.String() + ": " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
 
 	// Copy files
+	files := make(biFileMap, 512)
 	err = tree.Files().ForEach(func(file *object.File) error {
 		osMode, err := file.Mode.ToOSFileMode()
 		if err != nil {
@@ -687,60 +690,95 @@ func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, re
 		filename := filepath.Join(dst, file.Name)
 		os.MkdirAll(filepath.Dir(filename), 0755)
 		ioutil.WriteFile(filename, []byte(contents), osMode)
+
+		files[file.Name] = file.Hash.String() // blob hash
 		return nil
 	})
 	if err != nil {
-		done <- actionReposResult{err, repos}
+		done <- actionReposResult{
+			err:   err,
+			repos: repos,
+		}
 		return
 	}
 
 	// Do ":helptags" to generate tags file
 	err = cmd.Helptags(repos.Path)
 	if err != nil {
-		done <- actionReposResult{err, repos}
+		done <- actionReposResult{
+			err:   err,
+			repos: repos,
+		}
 		return
 	}
 
-	done <- actionReposResult{nil, repos}
+	done <- actionReposResult{
+		err:   nil,
+		repos: repos,
+		files: files,
+	}
 }
 
 func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
 	files, err := ioutil.ReadDir(src)
 	if err != nil {
-		done <- actionReposResult{err, repos}
+		done <- actionReposResult{
+			err:   err,
+			repos: repos,
+		}
 		return
 	}
 
-	// Copy files/directories except ".git", ".gitignore"
+	buf := make([]byte, 32*1024)
+	created := make(map[string]bool, len(files))
 	for _, file := range files {
+		// Skip ".git" and ".gitignore"
 		if file.Name() == ".git" || file.Name() == ".gitignore" {
 			continue
 		}
+		// Skip symlinks
+		if file.Mode()&os.ModeSymlink != 0 {
+			continue
+		}
+
 		from := filepath.Join(src, file.Name())
 		to := filepath.Join(dst, file.Name())
-		os.MkdirAll(filepath.Dir(to), 0755)
+		if !created[dst] {
+			os.MkdirAll(dst, 0755)
+			created[dst] = true
+		}
 		var err error
 		if file.IsDir() {
-			err = fileutil.CopyDir(from, to)
+			err = fileutil.CopyDir(from, to, buf, file.Mode())
 		} else {
-			err = fileutil.CopyFile(from, to)
+			err = fileutil.CopyFile(from, to, buf, file.Mode())
 		}
 		if err != nil {
-			done <- actionReposResult{err, repos}
+			done <- actionReposResult{
+				err:   err,
+				repos: repos,
+			}
 			return
 		}
 	}
 
 	err = cmd.Helptags(repos.Path)
 	if err != nil {
-		done <- actionReposResult{err, repos}
+		done <- actionReposResult{
+			err:   err,
+			repos: repos,
+		}
 		return
 	}
 
-	done <- actionReposResult{nil, repos}
+	done <- actionReposResult{
+		err:   nil,
+		repos: repos,
+		files: nil, // all files are overwritten next time even when timestamp is older
+	}
 }
 
-func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *repos, optDir string) bool {
+func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *biRepos, optDir string) bool {
 	src := pathutil.FullReposPathOf(repos.Path)
 
 	// Get latest mtime of src
@@ -771,21 +809,38 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	dst := pathutil.PackReposPathOf(repos.Path)
 
 	// Remove ~/.vim/volt/opt/{repos}
+	// TODO: Do not remove here, copy newer files only after
 	err := os.RemoveAll(dst)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to remove repository: " + err.Error()),
-			repos,
+			err:   errors.New("failed to remove repository: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
 
 	// Copy ~/volt/repos/{repos} to ~/.vim/volt/opt/{repos}
-	err = fileutil.CopyDir(src, dst)
+	buf := make([]byte, 32*1024)
+	si, err := os.Stat(src)
 	if err != nil {
 		done <- actionReposResult{
-			errors.New("failed to copy static directory: " + err.Error()),
-			repos,
+			err:   errors.New("failed to copy static directory: " + err.Error()),
+			repos: repos,
+		}
+		return
+	}
+	if !si.IsDir() {
+		done <- actionReposResult{
+			err:   errors.New("failed to copy static directory: source is not a directory"),
+			repos: repos,
+		}
+		return
+	}
+	err = fileutil.CopyDir(src, dst, buf, si.Mode())
+	if err != nil {
+		done <- actionReposResult{
+			err:   errors.New("failed to copy static directory: " + err.Error()),
+			repos: repos,
 		}
 		return
 	}
@@ -793,11 +848,17 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	// Do ":helptags" to generate tags file
 	err = cmd.Helptags(repos.Path)
 	if err != nil {
-		done <- actionReposResult{err, repos}
+		done <- actionReposResult{
+			err:   err,
+			repos: repos,
+		}
 		return
 	}
 
-	done <- actionReposResult{nil, repos}
+	done <- actionReposResult{
+		err:   nil,
+		repos: repos,
+	}
 }
 
 func (cmd *rebuildCmd) Helptags(reposPath string) error {

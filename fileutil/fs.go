@@ -1,7 +1,6 @@
 package fileutil
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,59 +11,38 @@ import (
 // CopyDir recursively copies a directory tree, attempting to preserve permissions.
 // Source directory must exist, destination directory must *not* exist.
 // Symlinks are ignored and skipped.
-func CopyDir(src, dst string) (err error) {
-	src = filepath.Clean(src)
-	dst = filepath.Clean(dst)
-
-	si, err := os.Stat(src)
-	if err != nil {
+func CopyDir(src, dst string, buf []byte, perm os.FileMode) error {
+	if err := os.MkdirAll(dst, perm); err != nil {
 		return err
-	}
-	if !si.IsDir() {
-		return fmt.Errorf("source is not a directory")
-	}
-
-	_, err = os.Stat(dst)
-	if err != nil && !os.IsNotExist(err) {
-		return
-	}
-	if err == nil {
-		return fmt.Errorf("destination already exists")
-	}
-
-	err = os.MkdirAll(dst, si.Mode())
-	if err != nil {
-		return
 	}
 
 	entries, err := ioutil.ReadDir(src)
 	if err != nil {
-		return
+		return err
 	}
 
-	for _, entry := range entries {
-		srcPath := filepath.Join(src, entry.Name())
-		dstPath := filepath.Join(dst, entry.Name())
+	for i := range entries {
+		srcPath := filepath.Join(src, entries[i].Name())
+		dstPath := filepath.Join(dst, entries[i].Name())
 
-		if entry.IsDir() {
-			err = CopyDir(srcPath, dstPath)
-			if err != nil {
-				return
+		si, err := os.Stat(srcPath)
+		if err != nil {
+			return err
+		}
+
+		if entries[i].IsDir() {
+			if err = CopyDir(srcPath, dstPath, buf, si.Mode()); err != nil {
+				return err
 			}
+		} else if entries[i].Mode()&os.ModeSymlink != 0 {
+			// Skip symlinks
 		} else {
-			// Skip symlinks.
-			if entry.Mode()&os.ModeSymlink != 0 {
-				continue
-			}
-
-			err = CopyFile(srcPath, dstPath)
-			if err != nil {
-				return
+			if err = CopyFile(srcPath, dstPath, buf, si.Mode()); err != nil {
+				return err
 			}
 		}
 	}
-
-	return
+	return nil
 }
 
 // CopyFile copies the contents of the file named src to the file named
@@ -72,42 +50,29 @@ func CopyDir(src, dst string) (err error) {
 // destination file exists, all it's contents will be replaced by the contents
 // of the source file. The file mode will be copied from the source and
 // the copied data is synced/flushed to stable storage.
-func CopyFile(src, dst string) (err error) {
-	in, err := os.Open(src)
+func CopyFile(src, dst string, buf []byte, perm os.FileMode) (err error) {
+	r, err := os.Open(src)
 	if err != nil {
 		return
 	}
-	defer in.Close()
+	defer r.Close()
 
-	out, err := os.Create(dst)
+	w, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, perm)
 	if err != nil {
 		return
 	}
 	defer func() {
-		if e := out.Close(); e != nil {
+		if e := w.Close(); e != nil {
 			err = e
 		}
 	}()
 
-	_, err = io.Copy(out, in)
+	_, err = io.CopyBuffer(w, r, buf)
 	if err != nil {
 		return
 	}
 
-	err = out.Sync()
-	if err != nil {
-		return
-	}
-
-	si, err := os.Stat(src)
-	if err != nil {
-		return
-	}
-	err = os.Chmod(dst, si.Mode())
-	if err != nil {
-		return
-	}
-
+	err = w.Sync()
 	return
 }
 
