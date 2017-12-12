@@ -18,6 +18,10 @@ precompile:
 	go build -a -i -o $(BIN_DIR)/$(NAME)
 	rm $(BIN_DIR)/$(NAME)
 
+install-dep:
+	curl -L -o bin/dep https://github.com/golang/dep/releases/download/v0.3.2/dep-linux-amd64
+	echo 'Installed dep v0.3.2 to bin/dep'
+
 test:
 	make
 	go test -v -race -parallel 3 ./...
@@ -42,4 +46,4 @@ release: $(BIN_DIR)/$(NAME)
 	done
 
 
-.PHONY: all precompile test release
+.PHONY: all precompile install-dep test release
