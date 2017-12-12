@@ -1,0 +1,34 @@
+version: '{build}'
+clone_depth: 1
+
+platform: x64
+
+clone_folder: c:\gopath\src\github.com\vim-volt\volt
+
+environment:
+  GOPATH: c:\gopath
+  VIM_URL: http://vim-jp.org/redirects/koron/vim-kaoriya/vim80/oldest/win64/
+
+install:
+  - echo %PATH%
+  - echo %GOPATH%
+  - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
+  - go version
+  - go env
+  # Install vim
+  # https://github.com/vim-jp/vital.vim/blob/master/appveyor.yml
+  - ps: |
+      $zip = $Env:APPVEYOR_BUILD_FOLDER + '\vim.zip'
+      $vim = $Env:APPVEYOR_BUILD_FOLDER + '\vim\'
+      $redirect = Invoke-WebRequest -URI $Env:VIM_URL
+      (New-Object Net.WebClient).DownloadFile($redirect.Links[0].href, $zip)
+      [Reflection.Assembly]::LoadWithPartialName('System.IO.Compression.FileSystem') > $null
+      [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $vim)
+      $Env:VOLT_VIM = $vim + (Get-ChildItem $vim).Name + '\vim.exe'
+
+test_script:
+  - go build -o c:\gopath\src\github.com\vim-volt\volt\bin\volt.exe
+  - go test -v -race -parallel 3 ./...
+
+build: off
+deploy: off
