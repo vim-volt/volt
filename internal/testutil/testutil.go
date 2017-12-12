@@ -11,10 +11,21 @@ import (
 	"testing"
 )
 
-const voltCommand = "../bin/volt"
+var voltCommand string
+
+func init() {
+	const thisFile = "internal/testutil/testutil.go"
+	_, fn, _, _ := runtime.Caller(0)
+	dir := strings.TrimSuffix(fn, thisFile)
+	if runtime.GOOS == "windows" {
+		voltCommand = filepath.Join(dir, "bin", "volt.exe")
+	} else {
+		voltCommand = filepath.Join(dir, "bin", "volt")
+	}
+}
 
 func SetUpEnv(t *testing.T) {
-	tempDir, err := ioutil.TempDir("/tmp", "volt-test-")
+	tempDir, err := ioutil.TempDir("", "volt-test-")
 	if err != nil {
 		t.Fatal("failed to create temp dir")
 	}
