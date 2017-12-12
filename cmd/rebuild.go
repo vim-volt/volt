@@ -10,8 +10,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -19,7 +21,6 @@ import (
 	"github.com/vim-volt/volt/plugconf"
 	"github.com/vim-volt/volt/transaction"
 
-	"github.com/hashicorp/go-multierror"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
@@ -198,6 +199,11 @@ func (reposList *biReposList) removeByReposPath(reposPath string) {
 }
 
 func (cmd *rebuildCmd) doRebuild(full bool) error {
+	// Exit if vim executable was not found in PATH
+	if _, err := pathutil.VimExecutable(); err != nil {
+		return err
+	}
+
 	vimDir := pathutil.VimDir()
 	optDir := pathutil.VimVoltOptDir()
 
@@ -703,7 +709,7 @@ func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, re
 	}
 
 	// Do ":helptags" to generate tags file
-	err = cmd.Helptags(repos.Path)
+	err = cmd.helptags(repos.Path)
 	if err != nil {
 		done <- actionReposResult{
 			err:   err,
@@ -762,7 +768,7 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 		}
 	}
 
-	err = cmd.Helptags(repos.Path)
+	err = cmd.helptags(repos.Path)
 	if err != nil {
 		done <- actionReposResult{
 			err:   err,
@@ -846,7 +852,7 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	}
 
 	// Do ":helptags" to generate tags file
-	err = cmd.Helptags(repos.Path)
+	err = cmd.helptags(repos.Path)
 	if err != nil {
 		done <- actionReposResult{
 			err:   err,
@@ -861,7 +867,7 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	}
 }
 
-func (cmd *rebuildCmd) Helptags(reposPath string) error {
+func (cmd *rebuildCmd) helptags(reposPath string) error {
 	// Do nothing if <reposPath>/doc directory doesn't exist
 	docdir := filepath.Join(pathutil.PackReposPathOf(reposPath), "doc")
 	if !pathutil.Exists(docdir) {
@@ -872,8 +878,17 @@ func (cmd *rebuildCmd) Helptags(reposPath string) error {
 	if err != nil {
 		return errors.New("vim command is not in PATH: " + err.Error())
 	}
+
+	// Find vim executable from PATH
+	vimExe, err := pathutil.VimExecutable()
+	if err != nil {
+		return err
+	}
+	vimArgs := cmd.makeVimArgs(reposPath)
+
 	// Execute ":helptags doc" in reposPath
-	err = exec.Command("vim", cmd.makeVimArgs(reposPath)...).Run()
+	logger.Debugf("Executing '%s %s' ...", vimExe, strings.Join(vimArgs, " "))
+	err = exec.Command(vimExe, vimArgs...).Run()
 	if err != nil {
 		return errors.New("failed to make tags file: " + err.Error())
 	}

@@ -107,6 +107,24 @@ func TempPath() string {
 	return filepath.Join(VoltPath(), "tmp")
 }
 
+func VimExecutable() (string, error) {
+	var vim string
+	if vim = os.Getenv("VOLT_VIM"); vim != "" {
+		return vim, nil
+	}
+	exeName := "vim"
+	if runtime.GOOS == "windows" {
+		exeName = "vim.exe"
+	}
+	sep := string([]rune{os.PathListSeparator})
+	for _, path := range strings.Split(os.Getenv("PATH"), sep) {
+		if vim = filepath.Join(path, exeName); Exists(vim) {
+			return vim, nil
+		}
+	}
+	return "", errors.New("vim not found in PATH")
+}
+
 func VimDir() string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(HomeDir(), "vimfiles")
