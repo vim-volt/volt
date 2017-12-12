@@ -1,4 +1,4 @@
-package it
+package cmd
 
 import (
 	"path/filepath"
