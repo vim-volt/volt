@@ -7,3 +7,10 @@ go:
 script:
   - go vet -v ./...
   - make test
+
+notifications:
+  email:
+    # we can see the result on GitHub :)
+    on_success: never
+    # notify only first failure
+    on_failure: change
