@@ -3,6 +3,7 @@ package pathutil
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -116,13 +117,7 @@ func VimExecutable() (string, error) {
 	if runtime.GOOS == "windows" {
 		exeName = "vim.exe"
 	}
-	sep := string([]rune{os.PathListSeparator})
-	for _, path := range strings.Split(os.Getenv("PATH"), sep) {
-		if vim = filepath.Join(path, exeName); Exists(vim) {
-			return vim, nil
-		}
-	}
-	return "", errors.New("vim not found in PATH")
+	return exec.LookPath(exeName)
 }
 
 func VimDir() string {
