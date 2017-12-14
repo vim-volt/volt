@@ -105,10 +105,11 @@ type buildInfoType struct {
 type biReposList []biRepos
 
 type biRepos struct {
-	Type    reposType `json:"type"`
-	Path    string    `json:"path"`
-	Version string    `json:"version"`
-	Files   biFileMap `json:"files,omitempty"`
+	Type          reposType `json:"type"`
+	Path          string    `json:"path"`
+	Version       string    `json:"version"`
+	Files         biFileMap `json:"files,omitempty"`
+	DirtyWorktree bool      `json:"dirty_worktree,omitempty"`
 }
 
 type reposType string
@@ -219,7 +220,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		return err
 	}
 
-	// check vimrc or gvimrc without magic comment exists
+	// Check vimrc or gvimrc without magic comment exists
 	rcFileExists := false
 	for _, file := range pathutil.LookUpVimrcOrGvimrc() {
 		err = cmd.shouldHaveMagicComment(file)
@@ -439,21 +440,16 @@ func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*biRepos, reposLis
 	copyCount := 0
 	for i := range reposList {
 		if reposList[i].Type == lockjson.ReposGitType {
-			buildRepos, exists := buildReposMap[reposList[i].Path]
-			if !exists ||
-				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
-				cmd.hasChangedGitRepos(&reposList[i], buildRepos) {
-				go cmd.updateGitRepos(&reposList[i], buildRepos, copyDone)
-				copyCount++
+			n, err := cmd.copyReposGit(&reposList[i], buildReposMap[reposList[i].Path], copyDone)
+			if err != nil {
+				copyDone <- actionReposResult{
+					err:   errors.New("failed to copy " + string(reposList[i].Type) + " repos: " + err.Error()),
+					repos: &reposList[i],
+				}
 			}
+			copyCount += n
 		} else if reposList[i].Type == lockjson.ReposStaticType {
-			buildRepos, exists := buildReposMap[reposList[i].Path]
-			if !exists ||
-				!pathutil.Exists(pathutil.FullReposPathOf(reposList[i].Path)) ||
-				cmd.hasChangedStaticRepos(&reposList[i], buildRepos, optDir) {
-				go cmd.updateStaticRepos(&reposList[i], copyDone)
-				copyCount++
-			}
+			copyCount += cmd.copyReposStatic(&reposList[i], buildReposMap[reposList[i].Path], optDir, copyDone)
 		} else {
 			copyDone <- actionReposResult{
 				err:   errors.New("invalid repository type: " + string(reposList[i].Type)),
@@ -462,6 +458,45 @@ func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*biRepos, reposLis
 		}
 	}
 	return copyDone, copyCount
+}
+
+func (cmd *rebuildCmd) copyReposGit(repos *lockjson.Repos, buildRepos *biRepos, done chan actionReposResult) (int, error) {
+	// Open ~/volt/repos/{repos}
+	src := pathutil.FullReposPathOf(repos.Path)
+	r, err := git.PlainOpen(src)
+	if err != nil {
+		return 0, errors.New("failed to open repository: " + err.Error())
+	}
+
+	cfg, err := r.Config()
+	if err != nil {
+		return 0, errors.New("failed to get repository config: " + err.Error())
+	}
+
+	isClean := false
+	if wt, err := r.Worktree(); err == nil {
+		if st, err := wt.Status(); err == nil && st.IsClean() {
+			isClean = true
+		}
+	}
+
+	if cmd.hasChangedGitRepos(repos, buildRepos, !isClean) {
+		// Copy files from .git/objects/... when:
+		// * bare repository
+		// * or worktree is clean
+		copyFromGitObjects := cfg.Core.IsBare || isClean
+		go cmd.updateGitRepos(repos, r, copyFromGitObjects, done)
+		return 1, nil
+	}
+	return 0, nil
+}
+
+func (cmd *rebuildCmd) copyReposStatic(repos *lockjson.Repos, buildRepos *biRepos, optDir string, done chan actionReposResult) int {
+	if cmd.hasChangedStaticRepos(repos, buildRepos, optDir) {
+		go cmd.updateStaticRepos(repos, done)
+		return 1
+	}
+	return 0
 }
 
 func (cmd *rebuildCmd) removeReposList(buildInfoRepos biReposList, lockReposList lockjson.ReposList) (chan actionReposResult, int) {
@@ -596,16 +631,21 @@ func (*rebuildCmd) getLatestModTime(path string) (time.Time, error) {
 	return mtime, nil
 }
 
-func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *biRepos) bool {
+func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *biRepos, isDirty bool) bool {
+	if buildRepos == nil { // Full rebuild
+		return true
+	}
 	if repos.Version != buildRepos.Version {
-		// repository has changed, do copy
+		return true
+	}
+	if buildRepos.DirtyWorktree || isDirty {
 		return true
 	}
 	return false
 }
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
-func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, buildRepos *biRepos, done chan actionReposResult) {
+func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, r *git.Repository, copyFromGitObjects bool, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
 
@@ -620,45 +660,16 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, buildRepos *biRepos
 		return
 	}
 
-	// Open ~/volt/repos/{repos}
-	r, err := git.PlainOpen(src)
-	if err != nil {
-		done <- actionReposResult{
-			err:   errors.New("failed to open repository: " + err.Error()),
-			repos: repos,
-		}
-		return
-	}
-
-	cfg, err := r.Config()
-	if err != nil {
-		done <- actionReposResult{
-			err:   errors.New("failed to get repository config: " + err.Error()),
-			repos: repos,
-		}
-		return
-	}
-
-	// Copy files from .git/objects/... when:
-	// * bare repository
-	// * or worktree is clean
-	copyFromGitObjects := cfg.Core.IsBare
-	if !copyFromGitObjects {
-		if wt, err := r.Worktree(); err == nil {
-			if st, err := wt.Status(); err == nil && st.IsClean() {
-				copyFromGitObjects = true
-			}
-		}
-	}
-
 	if copyFromGitObjects {
-		cmd.updateBareGitRepos(r, src, dst, repos, buildRepos, done)
+		logger.Debug("Copy from git objects: " + repos.Path)
+		cmd.updateBareGitRepos(r, src, dst, repos, done)
 	} else {
+		logger.Debug("Copy from filesystem: " + repos.Path)
 		cmd.updateNonBareGitRepos(r, src, dst, repos, done)
 	}
 }
 
-func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, buildRepos *biRepos, done chan actionReposResult) {
+func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
 	// Get locked commit hash
 	commit := plumbing.NewHash(repos.Version)
 	commitObj, err := r.CommitObject(commit)
@@ -785,6 +796,10 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 }
 
 func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *biRepos, optDir string) bool {
+	if buildRepos == nil { // Full rebuild
+		return true
+	}
+
 	src := pathutil.FullReposPathOf(repos.Path)
 
 	// Get latest mtime of src
