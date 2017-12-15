@@ -75,7 +75,7 @@ For example, what `volt get tyru/caw.vim` command does internally is:
 * Clone and install the repository to `$VOLTPATH/repos/github.com/tyru/caw.vim`
     * Volt does not require `git` command because it's powered by [go-git](https://github.com/src-d/go-git)
 * Update `$VOLTPATH/lock.json`
-* Run `volt rebuild`
+* Run `volt build`
     * Copy repository files to `~/.vim/pack/volt/opt/github.com_tyru_caw.vim`
     * Install `~/.vim/pack/volt/start/system/plugin/bundled_plugconf.vim`
         * It loads plugins like `packadd github.com_tyru_caw.vim`

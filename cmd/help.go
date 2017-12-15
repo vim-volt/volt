@@ -96,8 +96,8 @@ Command
   profile use [-current | {name}] gvimrc [true | false]
     Set vimrc / gvimrc flag to true or false.
 
-  rebuild [-full]
-    Rebuild ~/.vim/pack/volt/ directory
+  build [-full]
+    Build ~/.vim/pack/volt/ directory
 
   migrate
     Convert old version $VOLTPATH/lock.json structure into the latest version

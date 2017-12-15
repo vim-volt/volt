@@ -33,8 +33,8 @@ func Main() int {
 		return cmd.List(os.Args[2:])
 	case "profile":
 		return cmd.Profile(os.Args[2:])
-	case "rebuild":
-		return cmd.Rebuild(os.Args[2:])
+	case "build":
+		return cmd.Build(os.Args[2:])
 	case "migrate":
 		return cmd.Migrate(os.Args[2:])
 	case "self-upgrade":
