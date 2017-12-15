@@ -26,12 +26,12 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
-type rebuildFlagsType struct {
+type buildFlagsType struct {
 	helped bool
 	full   bool
 }
 
-var rebuildFlags rebuildFlagsType
+var buildFlags buildFlagsType
 
 func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
@@ -39,14 +39,14 @@ func init() {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt rebuild [-help] [-full]
+  volt build [-help] [-full]
 
 Quick example
-  $ volt rebuild        # rebuilds directories under ~/.vim/pack/volt
-  $ volt rebuild -full  # full rebuild (remove ~/.vim/pack/volt, and re-create all)
+  $ volt build        # builds directories under ~/.vim/pack/volt
+  $ volt build -full  # full build (remove ~/.vim/pack/volt, and re-create all)
 
 Description
-  Rebuild ~/.vim/pack/volt/opt/ directory:
+  Build ~/.vim/pack/volt/opt/ directory:
     1. Copy repositories' files into ~/.vim/pack/volt/opt/
       * If the repository is git repository, extract files from locked revision of tree object and copy them into above vim directories
       * If the repository is static repository (imported non-git directory by "volt add" command), copy files into above vim directories
@@ -55,26 +55,26 @@ Description
   ~/.vim/pack/volt/build-info.json is a file which holds the information that what vim plugins are installed in ~/.vim/pack/volt/ and its type (git repository, static repository, or system repository), its version. A user normally doesn't need to know the contents of build-info.json .
 
   If -full option was given, remove all directories in ~/.vim/pack/volt/opt/ , and copy repositories' files into above vim directories.
-  Otherwise, it will perform smart rebuild: copy / remove only changed repositories' files.` + "\n\n")
+  Otherwise, it will perform smart build: copy / remove only changed repositories' files.` + "\n\n")
 		fmt.Println("Options")
 		fs.PrintDefaults()
 		fmt.Println()
-		rebuildFlags.helped = true
+		buildFlags.helped = true
 	}
-	fs.BoolVar(&rebuildFlags.full, "full", false, "full rebuild")
+	fs.BoolVar(&buildFlags.full, "full", false, "full build")
 
-	cmdFlagSet["rebuild"] = fs
+	cmdFlagSet["build"] = fs
 }
 
-type rebuildCmd struct{}
+type buildCmd struct{}
 
-func Rebuild(args []string) int {
-	cmd := rebuildCmd{}
+func Build(args []string) int {
+	cmd := buildCmd{}
 
 	// Parse args
-	fs := cmdFlagSet["rebuild"]
+	fs := cmdFlagSet["build"]
 	fs.Parse(args)
-	if rebuildFlags.helped {
+	if buildFlags.helped {
 		return 0
 	}
 
@@ -86,16 +86,16 @@ func Rebuild(args []string) int {
 	}
 	defer transaction.Remove()
 
-	err = cmd.doRebuild(rebuildFlags.full)
+	err = cmd.doBuild(buildFlags.full)
 	if err != nil {
-		logger.Error("Failed to rebuild:", err.Error())
+		logger.Error("Failed to build:", err.Error())
 		return 12
 	}
 
 	return 0
 }
 
-const currentRebuildVersion = 1
+const currentBuildInfoVersion = 1
 
 type buildInfoType struct {
 	Repos   biReposList `json:"repos"`
@@ -123,7 +123,7 @@ const (
 // key: filepath, value: version
 type biFileMap map[string]string
 
-func (cmd *rebuildCmd) readBuildInfo() (*buildInfoType, error) {
+func (cmd *buildCmd) readBuildInfo() (*buildInfoType, error) {
 	// Return initial build-info.json struct
 	// if the file does not exist
 	file := pathutil.BuildInfoJSON()
@@ -199,7 +199,7 @@ func (reposList *biReposList) removeByReposPath(reposPath string) {
 	}
 }
 
-func (cmd *rebuildCmd) doRebuild(full bool) error {
+func (cmd *buildCmd) doBuild(full bool) error {
 	// Exit if vim executable was not found in PATH
 	if _, err := pathutil.VimExecutable(); err != nil {
 		return err
@@ -236,11 +236,11 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 		return err
 	}
 
-	// Do -full rebuild when build-info.json's version is different
-	if buildInfo.Version != currentRebuildVersion {
+	// Do full build when build-info.json's version is different
+	if buildInfo.Version != currentBuildInfoVersion {
 		full = true
 	}
-	buildInfo.Version = currentRebuildVersion
+	buildInfo.Version = currentBuildInfoVersion
 
 	// Put repos into map to be able to search with O(1).
 	// Use empty build-info.json map if the -full option was given
@@ -248,14 +248,14 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	var buildReposMap map[string]*biRepos
 	if full {
 		buildReposMap = make(map[string]*biRepos)
-		logger.Info("Full rebuilding " + optDir + " directory ...")
+		logger.Info("Full building " + optDir + " directory ...")
 	} else {
 		buildReposMap = make(map[string]*biRepos, len(buildInfo.Repos))
 		for i := range buildInfo.Repos {
 			repos := &buildInfo.Repos[i]
 			buildReposMap[repos.Path] = repos
 		}
-		logger.Info("Rebuilding " + optDir + " directory ...")
+		logger.Info("Building " + optDir + " directory ...")
 	}
 
 	// Remove ~/.vim/pack/volt/ if -full option was given
@@ -351,7 +351,7 @@ func (cmd *rebuildCmd) doRebuild(full bool) error {
 	return nil
 }
 
-func (cmd *rebuildCmd) installRCFile(profileName, srcRCFileName, dst string, install bool) error {
+func (cmd *buildCmd) installRCFile(profileName, srcRCFileName, dst string, install bool) error {
 	// Return error if destination file does not have magic comment
 	if pathutil.Exists(dst) {
 		err := cmd.shouldHaveMagicComment(dst)
@@ -380,7 +380,7 @@ const magicComment = "\" NOTE: this file was generated by volt. please modify or
 const magicCommentNext = "\" Original file: %s\n\n"
 
 // Return error if the magic comment does not exist
-func (*rebuildCmd) shouldHaveMagicComment(dst string) error {
+func (*buildCmd) shouldHaveMagicComment(dst string) error {
 	reader, err := os.Open(dst)
 	if err != nil {
 		return err
@@ -402,7 +402,7 @@ func (*rebuildCmd) shouldHaveMagicComment(dst string) error {
 	return nil
 }
 
-func (*rebuildCmd) copyFileWithMagicComment(src, dst string) error {
+func (*buildCmd) copyFileWithMagicComment(src, dst string) error {
 	reader, err := os.Open(src)
 	if err != nil {
 		return err
@@ -435,7 +435,7 @@ type actionReposResult struct {
 	files biFileMap
 }
 
-func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*biRepos, reposList []lockjson.Repos, optDir string) (chan actionReposResult, int) {
+func (cmd *buildCmd) copyReposList(buildReposMap map[string]*biRepos, reposList []lockjson.Repos, optDir string) (chan actionReposResult, int) {
 	copyDone := make(chan actionReposResult, len(reposList))
 	copyCount := 0
 	for i := range reposList {
@@ -460,7 +460,7 @@ func (cmd *rebuildCmd) copyReposList(buildReposMap map[string]*biRepos, reposLis
 	return copyDone, copyCount
 }
 
-func (cmd *rebuildCmd) copyReposGit(repos *lockjson.Repos, buildRepos *biRepos, done chan actionReposResult) (int, error) {
+func (cmd *buildCmd) copyReposGit(repos *lockjson.Repos, buildRepos *biRepos, done chan actionReposResult) (int, error) {
 	// Open ~/volt/repos/{repos}
 	src := pathutil.FullReposPathOf(repos.Path)
 	r, err := git.PlainOpen(src)
@@ -491,7 +491,7 @@ func (cmd *rebuildCmd) copyReposGit(repos *lockjson.Repos, buildRepos *biRepos, 
 	return 0, nil
 }
 
-func (cmd *rebuildCmd) copyReposStatic(repos *lockjson.Repos, buildRepos *biRepos, optDir string, done chan actionReposResult) int {
+func (cmd *buildCmd) copyReposStatic(repos *lockjson.Repos, buildRepos *biRepos, optDir string, done chan actionReposResult) int {
 	if cmd.hasChangedStaticRepos(repos, buildRepos, optDir) {
 		go cmd.updateStaticRepos(repos, done)
 		return 1
@@ -499,7 +499,7 @@ func (cmd *rebuildCmd) copyReposStatic(repos *lockjson.Repos, buildRepos *biRepo
 	return 0
 }
 
-func (cmd *rebuildCmd) removeReposList(buildInfoRepos biReposList, lockReposList lockjson.ReposList) (chan actionReposResult, int) {
+func (cmd *buildCmd) removeReposList(buildInfoRepos biReposList, lockReposList lockjson.ReposList) (chan actionReposResult, int) {
 	var removeList []biRepos
 	for i := range buildInfoRepos {
 		if !lockReposList.Contains(buildInfoRepos[i].Path) {
@@ -530,7 +530,7 @@ func (cmd *rebuildCmd) removeReposList(buildInfoRepos biReposList, lockReposList
 	return removeDone, len(removeList) * 2
 }
 
-func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, callback func(*actionReposResult) error) *multierror.Error {
+func (*buildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, callback func(*actionReposResult) error) *multierror.Error {
 	var merr *multierror.Error
 	for i := 0; i < copyCount; i++ {
 		result := <-copyDone
@@ -550,7 +550,7 @@ func (*rebuildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int,
 	return merr
 }
 
-func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionReposResult) {
+func (*buildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionReposResult) {
 	if result.repos.Type == lockjson.ReposGitType {
 		r := buildInfo.Repos.findByReposPath(result.repos.Path)
 		if r != nil {
@@ -588,7 +588,7 @@ func (*rebuildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRe
 	}
 }
 
-func (*rebuildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCount int, callback func(result *actionReposResult)) *multierror.Error {
+func (*buildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCount int, callback func(result *actionReposResult)) *multierror.Error {
 	var merr *multierror.Error
 	for i := 0; i < removeCount; i++ {
 		result := <-removeDone
@@ -604,7 +604,7 @@ func (*rebuildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCoun
 	return merr
 }
 
-func (*rebuildCmd) getCurrentProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
+func (*buildCmd) getCurrentProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
 	// Find current profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
@@ -617,7 +617,7 @@ func (*rebuildCmd) getCurrentProfileAndReposList(lockJSON *lockjson.LockJSON) (*
 	return profile, reposList, err
 }
 
-func (*rebuildCmd) getLatestModTime(path string) (time.Time, error) {
+func (*buildCmd) getLatestModTime(path string) (time.Time, error) {
 	mtime := time.Unix(0, 0)
 	err := fileutil.Traverse(path, func(fi os.FileInfo) {
 		t := fi.ModTime()
@@ -631,8 +631,8 @@ func (*rebuildCmd) getLatestModTime(path string) (time.Time, error) {
 	return mtime, nil
 }
 
-func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *biRepos, isDirty bool) bool {
-	if buildRepos == nil { // Full rebuild
+func (*buildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *biRepos, isDirty bool) bool {
+	if buildRepos == nil { // Full build
 		return true
 	}
 	if repos.Version != buildRepos.Version {
@@ -645,7 +645,7 @@ func (*rebuildCmd) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *biRepos
 }
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
-func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, r *git.Repository, copyFromGitObjects bool, done chan actionReposResult) {
+func (cmd *buildCmd) updateGitRepos(repos *lockjson.Repos, r *git.Repository, copyFromGitObjects bool, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
 
@@ -669,7 +669,7 @@ func (cmd *rebuildCmd) updateGitRepos(repos *lockjson.Repos, r *git.Repository, 
 	}
 }
 
-func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
+func (cmd *buildCmd) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
 	// Get locked commit hash
 	commit := plumbing.NewHash(repos.Version)
 	commitObj, err := r.CommitObject(commit)
@@ -736,7 +736,7 @@ func (cmd *rebuildCmd) updateBareGitRepos(r *git.Repository, src, dst string, re
 	}
 }
 
-func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
+func (cmd *buildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
 	files, err := ioutil.ReadDir(src)
 	if err != nil {
 		done <- actionReposResult{
@@ -795,8 +795,8 @@ func (cmd *rebuildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string,
 	}
 }
 
-func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *biRepos, optDir string) bool {
-	if buildRepos == nil { // Full rebuild
+func (cmd *buildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *biRepos, optDir string) bool {
+	if buildRepos == nil { // Full build
 		return true
 	}
 
@@ -825,7 +825,7 @@ func (cmd *rebuildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *
 }
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
-func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan actionReposResult) {
+func (cmd *buildCmd) updateStaticRepos(repos *lockjson.Repos, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
 
@@ -882,7 +882,7 @@ func (cmd *rebuildCmd) updateStaticRepos(repos *lockjson.Repos, done chan action
 	}
 }
 
-func (cmd *rebuildCmd) helptags(reposPath string) error {
+func (cmd *buildCmd) helptags(reposPath string) error {
 	// Do nothing if <reposPath>/doc directory doesn't exist
 	docdir := filepath.Join(pathutil.PackReposPathOf(reposPath), "doc")
 	if !pathutil.Exists(docdir) {
@@ -910,7 +910,7 @@ func (cmd *rebuildCmd) helptags(reposPath string) error {
 	return nil
 }
 
-func (*rebuildCmd) makeVimArgs(reposPath string) []string {
+func (*buildCmd) makeVimArgs(reposPath string) []string {
 	return []string{
 		"-u", "NONE", "-N",
 		"-c", "cd " + pathutil.PackReposPathOf(reposPath),

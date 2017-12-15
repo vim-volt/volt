@@ -87,8 +87,8 @@ Quick example
 
   $ volt profile destroy foo   # will delete profile "foo"
 
-  $ volt profile use -current vimrc false   # Disable installing vimrc on current profile on "volt rebuild"
-  $ volt profile use default gvimrc true   # Enable installing gvimrc on profile default on "volt rebuild"` + "\n\n")
+  $ volt profile use -current vimrc false   # Disable installing vimrc on current profile on "volt build"
+  $ volt profile use default gvimrc true   # Enable installing gvimrc on profile default on "volt build"` + "\n\n")
 		profileFlags.helped = true
 	}
 
@@ -188,10 +188,10 @@ func (cmd *profileCmd) doSet(args []string) error {
 
 	logger.Info("Changed current profile: " + profileName)
 
-	// Rebuild ~/.vim/pack/volt dir
-	err = (&rebuildCmd{}).doRebuild(false)
+	// Build ~/.vim/pack/volt dir
+	err = (&buildCmd{}).doBuild(false)
 	if err != nil {
-		return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
 
 	return nil
@@ -386,10 +386,10 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	}
 
 	if len(enabled) > 0 {
-		// Rebuild ~/.vim/pack/volt dir
-		err = (&rebuildCmd{}).doRebuild(false)
+		// Build ~/.vim/pack/volt dir
+		err = (&buildCmd{}).doBuild(false)
 		if err != nil {
-			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+			return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 		}
 	}
 
@@ -435,10 +435,10 @@ func (cmd *profileCmd) doRm(args []string) error {
 	}
 
 	if len(disabled) > 0 {
-		// Rebuild ~/.vim/pack/volt dir
-		err = (&rebuildCmd{}).doRebuild(false)
+		// Build ~/.vim/pack/volt dir
+		err = (&buildCmd{}).doBuild(false)
 		if err != nil {
-			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+			return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 		}
 	}
 
@@ -578,10 +578,10 @@ func (cmd *profileCmd) doUse(args []string) error {
 			return err
 		}
 
-		// Rebuild ~/.vim/pack/volt dir
-		err = (&rebuildCmd{}).doRebuild(false)
+		// Build ~/.vim/pack/volt dir
+		err = (&buildCmd{}).doBuild(false)
 		if err != nil {
-			return errors.New("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+			return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 		}
 	}
 

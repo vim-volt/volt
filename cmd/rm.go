@@ -70,10 +70,10 @@ func Rm(args []string) int {
 		return 11
 	}
 
-	// Rebuild opt dir
-	err = (&rebuildCmd{}).doRebuild(false)
+	// Build opt dir
+	err = (&buildCmd{}).doBuild(false)
 	if err != nil {
-		logger.Error("could not rebuild " + pathutil.VimVoltDir() + ": " + err.Error())
+		logger.Error("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 		return 12
 	}
 
