@@ -1,4 +1,6 @@
 :zap: Volt
+[![Travis CI - Build status](https://travis-ci.org/vim-volt/volt.svg?branch=master)](https://travis-ci.org/vim-volt/volt)
+[![AppVeyor - Build status](https://ci.appveyor.com/api/projects/status/github/vim-volt/volt?branch=master&svg=true)](https://ci.appveyor.com/project/vim-volt/volt)
 ----
 
 ```
