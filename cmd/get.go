@@ -481,7 +481,6 @@ func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 	// 	progress = os.Stdout
 	// }
 
-	// Create parent directories
 	err := os.MkdirAll(filepath.Dir(fullpath), 0755)
 	if err != nil {
 		return err
@@ -489,11 +488,40 @@ func (cmd *getCmd) installPlugin(reposPath string, flags *getFlagsType) error {
 
 	// Clone repository to $VOLTPATH/repos/{site}/{user}/{name}
 	isBare := false
-	_, err = git.PlainClone(fullpath, isBare, &git.CloneOptions{
+	r, err := git.PlainClone(fullpath, isBare, &git.CloneOptions{
 		URL:      pathutil.CloneURLOf(reposPath),
 		Progress: progress,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	return cmd.setUpstreamBranch(r)
+}
+
+func (cmd *getCmd) setUpstreamBranch(r *git.Repository) error {
+	cfg, err := r.Config()
+	if err != nil {
+		return err
+	}
+
+	head, err := r.Head()
+	if err != nil {
+		return err
+	}
+
+	refBranch := head.Name().String()
+	branch := refHeadsRx.FindStringSubmatch(refBranch)
+	if len(branch) == 0 {
+		return errors.New("HEAD is not matched to refs/heads/...: " + refBranch)
+	}
+
+	sec := cfg.Raw.Section("branch")
+	subsec := sec.Subsection(branch[1])
+	subsec.AddOption("remote", "origin")
+	subsec.AddOption("merge", refBranch)
+
+	return r.Storer.SetConfig(cfg)
 }
 
 func (cmd *getCmd) installPlugconf(reposPath string) error {

@@ -9,7 +9,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
-var defaultBranchRx = regexp.MustCompile(`^refs/heads/(.+)$`)
+var refHeadsRx = regexp.MustCompile(`^refs/heads/(.+)$`)
 
 // If the repository is bare:
 //   Return the reference of refs/remotes/origin/{branch}
@@ -43,7 +43,7 @@ func getReposHEAD(reposPath string) (string, error) {
 
 	// Get branch name from head.Name().String()
 	// e.g. head.Name().String() = "refs/heads/master"
-	defaultBranch := defaultBranchRx.FindStringSubmatch(head.Name().String())
+	defaultBranch := refHeadsRx.FindStringSubmatch(head.Name().String())
 	if len(defaultBranch) == 0 {
 		return "", errors.New("could not find branch name from HEAD")
 	}
