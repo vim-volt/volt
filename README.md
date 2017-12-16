@@ -122,6 +122,8 @@ $ volt rm tyru/caw.vim   # (sob)
 Users don't have to run `volt build` when running `volt get`, `volt rm`, `volt add`, `volt profile`, ... commands, because those commands invoke `volt build` command internally if the commands modify repositories, plugconf, lock.json.
 But if you edit `$VOLTPATH/rc/<profile>/vimrc.vim` or `$VOLTPATH/rc/<profile>/gvimrc.vim`, you have to run `volt build` to copy them to `~/.vim/vimrc` or `~/.vim/gvimrc`.
 
+Normally `volt build` synchronizes correctly, but if you met the bug, try `volt build -full` (and please [file an issue](https://github.com/vim-volt/volt/issues/new) as possible :)
+
 ### Self upgrade
 
 ```
