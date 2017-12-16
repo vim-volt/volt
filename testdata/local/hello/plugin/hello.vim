@@ -1,0 +1,1 @@
+command! Hello echo 'hello'

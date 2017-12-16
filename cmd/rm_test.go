@@ -22,9 +22,14 @@ import (
 
 // Run `volt rm <plugin>` (repos: exists, plugconf: exists, vim repos: exists) (A, B, C, !D, E, F)
 func TestVoltRmOnePlugin(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	out, err := testutil.RunVolt("get", "tyru/caw.vim")
 	testutil.SuccessExit(t, out, err)
+
+	// =============== run =============== //
+
 	out, err = testutil.RunVolt("rm", "tyru/caw.vim")
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
@@ -54,6 +59,8 @@ func TestVoltRmOnePlugin(t *testing.T) {
 
 // Run `volt rm <plugin>` (repos: exists, plugconf: not exists, vim repos: exists) (A, B, C, E, F)
 func TestVoltRmOnePluginNoPlugconf(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	out, err := testutil.RunVolt("get", "tyru/caw.vim")
 	testutil.SuccessExit(t, out, err)
@@ -61,6 +68,9 @@ func TestVoltRmOnePluginNoPlugconf(t *testing.T) {
 	if err := os.Remove(pathutil.PlugconfOf(reposPath)); err != nil {
 		t.Fatal("failed to remove plugconf: " + err.Error())
 	}
+
+	// =============== run =============== //
+
 	out, err = testutil.RunVolt("rm", "tyru/caw.vim")
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
@@ -83,9 +93,14 @@ func TestVoltRmOnePluginNoPlugconf(t *testing.T) {
 
 // Run `volt rm <plugin1> <plugin2>` (repos: exists, plugconf: exists, vim repos: exists) (A, B, C, !D, E, F)
 func TestVoltRmTwoOrMorePluginNoPlugconf(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	out, err := testutil.RunVolt("get", "tyru/caw.vim", "tyru/capture.vim")
 	testutil.SuccessExit(t, out, err)
+
+	// =============== run =============== //
+
 	out, err = testutil.RunVolt("rm", "tyru/caw.vim", "tyru/capture.vim")
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
@@ -118,6 +133,8 @@ func TestVoltRmTwoOrMorePluginNoPlugconf(t *testing.T) {
 
 // Run `volt rm <plugin>` (repos: not exists, plugconf: exists, vim repos: exists) (A, B, !D, E, F)
 func TestVoltRmOnePluginNoRepos(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	out, err := testutil.RunVolt("get", "tyru/caw.vim")
 	testutil.SuccessExit(t, out, err)
@@ -125,6 +142,9 @@ func TestVoltRmOnePluginNoRepos(t *testing.T) {
 	if err := os.RemoveAll(pathutil.FullReposPathOf(reposPath)); err != nil {
 		t.Fatal("failed to remove repos: " + err.Error())
 	}
+
+	// =============== run =============== //
+
 	out, err = testutil.RunVolt("rm", "tyru/caw.vim")
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
@@ -147,6 +167,8 @@ func TestVoltRmOnePluginNoRepos(t *testing.T) {
 
 // Run `volt rm <plugin>` (repos: not exists, plugconf: not exists, vim repos: exists) (A, B, E, F)
 func TestVoltRmOnePluginNoReposNoPlugconf(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	out, err := testutil.RunVolt("get", "tyru/caw.vim")
 	testutil.SuccessExit(t, out, err)
@@ -157,6 +179,9 @@ func TestVoltRmOnePluginNoReposNoPlugconf(t *testing.T) {
 	if err := os.Remove(pathutil.PlugconfOf(reposPath)); err != nil {
 		t.Fatal("failed to remove plugconf: " + err.Error())
 	}
+
+	// =============== run =============== //
+
 	out, err = testutil.RunVolt("rm", "tyru/caw.vim")
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
@@ -173,9 +198,14 @@ func TestVoltRmOnePluginNoReposNoPlugconf(t *testing.T) {
 
 // Run `volt rm -p <plugin>` (repos: exists, plugconf: exists, vim repos: exists) (A, B, C, D, E, F)
 func TestVoltRmPoptOnePlugin(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	out, err := testutil.RunVolt("get", "tyru/caw.vim")
 	testutil.SuccessExit(t, out, err)
+
+	// =============== run =============== //
+
 	out, err = testutil.RunVolt("rm", "-p", "tyru/caw.vim")
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
@@ -205,6 +235,8 @@ func TestVoltRmPoptOnePlugin(t *testing.T) {
 
 // Run `volt rm -p <plugin>` (repos: exists, plugconf: not exists, vim repos: exists) (A, B, C, E, F)
 func TestVoltRmPoptOnePluginNoPlugconf(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	out, err := testutil.RunVolt("get", "tyru/caw.vim")
 	testutil.SuccessExit(t, out, err)
@@ -212,6 +244,9 @@ func TestVoltRmPoptOnePluginNoPlugconf(t *testing.T) {
 	if err := os.Remove(pathutil.PlugconfOf(reposPath)); err != nil {
 		t.Fatal("failed to remove plugconf: " + err.Error())
 	}
+
+	// =============== run =============== //
+
 	out, err = testutil.RunVolt("rm", "-p", "tyru/caw.vim")
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
@@ -234,6 +269,8 @@ func TestVoltRmPoptOnePluginNoPlugconf(t *testing.T) {
 
 // Run `volt rm -p <plugin>` (repos: not exists, plugconf: exists, vim repos: exists) (A, B, D, E, F)
 func TestVoltRmPoptOnePluginNoRepos(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	out, err := testutil.RunVolt("get", "tyru/caw.vim")
 	testutil.SuccessExit(t, out, err)
@@ -241,6 +278,9 @@ func TestVoltRmPoptOnePluginNoRepos(t *testing.T) {
 	if err := os.RemoveAll(pathutil.FullReposPathOf(reposPath)); err != nil {
 		t.Fatal("failed to remove repos: " + err.Error())
 	}
+
+	// =============== run =============== //
+
 	out, err = testutil.RunVolt("rm", "-p", "tyru/caw.vim")
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
@@ -263,9 +303,14 @@ func TestVoltRmPoptOnePluginNoRepos(t *testing.T) {
 
 // Run `volt rm -p <plugin1> <plugin2>` (repos: exists, plugconf: exists, vim repos: exists) (A, B, C, D, E, F)
 func TestVoltRmPoptTwoOrMorePluginNoPlugconf(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	out, err := testutil.RunVolt("get", "tyru/caw.vim", "tyru/capture.vim")
 	testutil.SuccessExit(t, out, err)
+
+	// =============== run =============== //
+
 	out, err = testutil.RunVolt("rm", "-p", "tyru/caw.vim", "tyru/capture.vim")
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
@@ -298,6 +343,8 @@ func TestVoltRmPoptTwoOrMorePluginNoPlugconf(t *testing.T) {
 
 // Run `volt rm -p <plugin>` (repos: not exists, plugconf: not exists, vim repos: exists) (A, B, E, F)
 func TestVoltRmPoptOnePluginNoReposNoPlugconf(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	out, err := testutil.RunVolt("get", "tyru/caw.vim")
 	testutil.SuccessExit(t, out, err)
@@ -308,6 +355,9 @@ func TestVoltRmPoptOnePluginNoReposNoPlugconf(t *testing.T) {
 	if err := os.Remove(pathutil.PlugconfOf(reposPath)); err != nil {
 		t.Fatal("failed to remove plugconf: " + err.Error())
 	}
+
+	// =============== run =============== //
+
 	out, err = testutil.RunVolt("rm", "-p", "tyru/caw.vim")
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
@@ -324,7 +374,12 @@ func TestVoltRmPoptOnePluginNoReposNoPlugconf(t *testing.T) {
 
 // [error] Specify invalid argument (!A, !B)
 func TestErrVoltRmInvalidArgs(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
 	out, err := testutil.RunVolt("rm", "caw.vim")
 	// (!A, !B)
 	testutil.FailExit(t, out, err)
@@ -332,7 +387,12 @@ func TestErrVoltRmInvalidArgs(t *testing.T) {
 
 // [error] Specify plugin which does not exist (!A, !B)
 func TestErrVoltRmNotFound(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
 	out, err := testutil.RunVolt("rm", "vim-volt/not_found")
 	// (!A, !B)
 	testutil.FailExit(t, out, err)

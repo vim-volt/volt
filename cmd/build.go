@@ -33,6 +33,9 @@ type buildFlagsType struct {
 
 var buildFlags buildFlagsType
 
+var BuildModeInvalidType = os.ModeSymlink | os.ModeNamedPipe | os.ModeSocket | os.ModeDevice
+var ErrBuildModeType = "does not allow symlink, named pipe, socket, device"
+
 func init() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
@@ -274,7 +277,7 @@ func (cmd *buildCmd) doBuild(full bool) error {
 		err = cmd.installRCFile(
 			lockJSON.CurrentProfileName,
 			pathutil.ProfileVimrc,
-			filepath.Join(vimDir, "vimrc"),
+			filepath.Join(vimDir, pathutil.Vimrc),
 			profile.UseVimrc,
 		)
 		if err != nil {
@@ -285,7 +288,7 @@ func (cmd *buildCmd) doBuild(full bool) error {
 		err = cmd.installRCFile(
 			lockJSON.CurrentProfileName,
 			pathutil.ProfileGvimrc,
-			filepath.Join(vimDir, "gvimrc"),
+			filepath.Join(vimDir, pathutil.Gvimrc),
 			profile.UseGvimrc,
 		)
 		if err != nil {
@@ -402,31 +405,39 @@ func (*buildCmd) shouldHaveMagicComment(dst string) error {
 	return nil
 }
 
-func (*buildCmd) copyFileWithMagicComment(src, dst string) error {
-	reader, err := os.Open(src)
+func (*buildCmd) copyFileWithMagicComment(src, dst string) (err error) {
+	r, err := os.Open(src)
 	if err != nil {
-		return err
+		return
 	}
-	defer reader.Close()
+	defer func() {
+		if e := r.Close(); e != nil {
+			err = e
+		}
+	}()
 
-	writer, err := os.Create(dst)
+	os.MkdirAll(filepath.Dir(dst), 0755)
+	w, err := os.Create(dst)
 	if err != nil {
-		return err
+		return
 	}
-	defer writer.Close()
+	defer func() {
+		if e := w.Close(); e != nil {
+			err = e
+		}
+	}()
 
-	_, err = writer.Write([]byte(magicComment))
+	_, err = w.Write([]byte(magicComment))
 	if err != nil {
-		return err
+		return
 	}
-
-	_, err = writer.Write([]byte(fmt.Sprintf(magicCommentNext, src)))
+	_, err = w.Write([]byte(fmt.Sprintf(magicCommentNext, src)))
 	if err != nil {
-		return err
+		return
 	}
 
-	_, err = io.Copy(writer, reader)
-	return err
+	_, err = io.Copy(w, r)
+	return
 }
 
 type actionReposResult struct {
@@ -619,11 +630,15 @@ func (*buildCmd) getCurrentProfileAndReposList(lockJSON *lockjson.LockJSON) (*lo
 
 func (*buildCmd) getLatestModTime(path string) (time.Time, error) {
 	mtime := time.Unix(0, 0)
-	err := fileutil.Traverse(path, func(fi os.FileInfo) {
+	err := filepath.Walk(path, func(_ string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		t := fi.ModTime()
 		if mtime.Before(t) {
 			mtime = t
 		}
+		return nil
 	})
 	if err != nil {
 		return time.Now(), errors.New("failed to readdir: " + err.Error())
@@ -753,22 +768,25 @@ func (cmd *buildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string, r
 		if file.Name() == ".git" || file.Name() == ".gitignore" {
 			continue
 		}
-		// Skip symlinks
-		if file.Mode()&os.ModeSymlink != 0 {
-			continue
+		if file.Mode()&BuildModeInvalidType != 0 {
+			abspath := filepath.Join(src, file.Name())
+			done <- actionReposResult{
+				err:   errors.New(ErrBuildModeType + ": " + abspath),
+				repos: repos,
+			}
+			return
 		}
-
-		from := filepath.Join(src, file.Name())
-		to := filepath.Join(dst, file.Name())
 		if !created[dst] {
 			os.MkdirAll(dst, 0755)
 			created[dst] = true
 		}
+		from := filepath.Join(src, file.Name())
+		to := filepath.Join(dst, file.Name())
 		var err error
 		if file.IsDir() {
-			err = fileutil.CopyDir(from, to, buf, file.Mode())
+			err = fileutil.TryLinkDir(from, to, buf, file.Mode(), BuildModeInvalidType)
 		} else {
-			err = fileutil.CopyFile(from, to, buf, file.Mode())
+			err = fileutil.TryLinkFile(from, to, buf, file.Mode())
 		}
 		if err != nil {
 			done <- actionReposResult{
@@ -803,6 +821,7 @@ func (cmd *buildCmd) hasChangedStaticRepos(repos *lockjson.Repos, buildRepos *bi
 	src := pathutil.FullReposPathOf(repos.Path)
 
 	// Get latest mtime of src
+	// TODO: Don't check mtime here, do it when copy altogether
 	srcModTime, err := cmd.getLatestModTime(src)
 	if err != nil {
 		// failed to readdir, do copy again
@@ -857,7 +876,7 @@ func (cmd *buildCmd) updateStaticRepos(repos *lockjson.Repos, done chan actionRe
 		}
 		return
 	}
-	err = fileutil.CopyDir(src, dst, buf, si.Mode())
+	err = fileutil.TryLinkDir(src, dst, buf, si.Mode(), BuildModeInvalidType)
 	if err != nil {
 		done <- actionReposResult{
 			err:   errors.New("failed to copy static directory: " + err.Error()),

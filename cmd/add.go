@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"gopkg.in/src-d/go-git.v4"
+
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -80,7 +82,10 @@ func (*addCmd) parseArgs(args []string) (string, string, error) {
 	}
 
 	fsArgs := fs.Args()
-	if len(fsArgs) == 2 {
+	if len(fsArgs) == 1 {
+		reposPath := "localhost/local/" + filepath.Base(fsArgs[0])
+		return fsArgs[0], reposPath, nil
+	} else if len(fsArgs) == 2 {
 		reposPath, err := pathutil.NormalizeLocalRepos(fsArgs[1])
 		return fsArgs[0], reposPath, err
 	} else {
@@ -102,6 +107,25 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 		return errors.New("the repository already exists: " + reposPath)
 	}
 
+	reposType, err := cmd.detectReposType(dst)
+	if err != nil {
+		return err
+	}
+
+	// Check if regular files exist
+	err = filepath.Walk(from, func(path string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if fi.Mode()&BuildModeInvalidType != 0 {
+			return errors.New(ErrBuildModeType + ": " + path)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -120,8 +144,11 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 
 	// Copy directory from to dst
 	buf := make([]byte, 32*1024)
-	err = fileutil.CopyDir(from, dst, buf, fromInfo.Mode())
+	err = fileutil.CopyDir(from, dst, buf, fromInfo.Mode(), BuildModeInvalidType)
 	if err != nil {
+		if e, ok := err.(*fileutil.InvalidTypeError); ok {
+			return errors.New(ErrBuildModeType + ": " + e.Filename)
+		}
 		return err
 	}
 
@@ -132,7 +159,6 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 	}
 
 	// Add repos to lockJSON
-	reposType, err := cmd.detectReposType(dst)
 	lockJSON.Repos = append(lockJSON.Repos, lockjson.Repos{
 		Type:  reposType,
 		TrxID: lockJSON.TrxID,
@@ -161,10 +187,10 @@ func (cmd *addCmd) doAdd(from, reposPath string) error {
 }
 
 func (*addCmd) detectReposType(fullpath string) (lockjson.ReposType, error) {
-	if !pathutil.Exists(fullpath) {
-		return "", errors.New("no such a directory: " + fullpath)
-	}
 	if pathutil.Exists(filepath.Join(fullpath, ".git")) {
+		if _, err := git.PlainOpen(fullpath); err != nil {
+			return "", err
+		}
 		return lockjson.ReposGitType, nil
 	}
 	return lockjson.ReposStaticType, nil
