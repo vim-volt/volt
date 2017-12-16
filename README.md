@@ -122,6 +122,21 @@ $ volt rm tyru/caw.vim   # (sob)
 Users don't have to run `volt build` when running `volt get`, `volt rm`, `volt add`, `volt profile`, ... commands, because those commands invoke `volt build` command internally if the commands modify repositories, plugconf, lock.json.
 But if you edit `$VOLTPATH/rc/<profile>/vimrc.vim` or `$VOLTPATH/rc/<profile>/gvimrc.vim`, you have to run `volt build` to copy them to `~/.vim/vimrc` or `~/.vim/gvimrc`.
 
+### Self upgrade
+
+```
+$ volt self-upgrade
+```
+
+will upgrade current running volt binary to the latest version if the [newer releases](https://github.com/vim-volt/volt/releases) published.
+
+```
+$ volt self-upgrade -check
+```
+
+just checks if the newer releases published.
+It also shows the release note of the latest version.
+
 ### Easy setup
 
 If you want to install set of plugins which you have installed by `volt get`, you can use `volt get -l`.
