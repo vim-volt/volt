@@ -81,14 +81,11 @@ func PlugconfOf(reposPath string) string {
 	return filepath.Join(paths...)
 }
 
-func RCFileOf(profileName, filename string) string {
-	filenameList := strings.Split(filepath.ToSlash(filename), "/")
-	paths := make([]string, 0, len(filenameList)+3)
-	paths = append(paths, VoltPath())
-	paths = append(paths, "rc")
-	paths = append(paths, profileName)
-	paths = append(paths, filenameList...)
-	return filepath.Join(paths...)
+const ProfileVimrc = "vimrc.vim"
+const ProfileGvimrc = "gvimrc.vim"
+
+func RCDir(profileName string) string {
+	return filepath.Join([]string{VoltPath(), "rc", profileName}...)
 }
 
 func PackReposPathOf(reposPath string) string {
