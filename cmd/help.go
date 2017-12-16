@@ -86,6 +86,9 @@ Command
   profile destroy {name}
     Delete profile
 
+  profile rename {old} {new}
+    Rename profile {old} to {new}
+
   profile add {name} {repository} [{repository2} ...]
     Add one or more repositories to profile
 

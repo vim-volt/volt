@@ -30,6 +30,7 @@ func init() {
 	profileSubCmd["list"] = cmd.doList
 	profileSubCmd["new"] = cmd.doNew
 	profileSubCmd["destroy"] = cmd.doDestroy
+	profileSubCmd["rename"] = cmd.doRename
 	profileSubCmd["add"] = cmd.doAdd
 	profileSubCmd["rm"] = cmd.doRm
 	profileSubCmd["use"] = cmd.doUse
@@ -54,6 +55,9 @@ Usage
   profile destroy {name}
     Delete profile of {name}.
     NOTE: Cannot delete current profile.
+
+  profile rename {old} {new}
+    Rename profile {old} to {new}.
 
   profile add [-current | {name}] {repository} [{repository2} ...]
     Add one or more repositories to profile {name}.
@@ -345,6 +349,65 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 	}
 
 	logger.Info("Deleted profile '" + profileName + "'")
+
+	return nil
+}
+
+func (cmd *profileCmd) doRename(args []string) error {
+	if len(args) != 2 {
+		cmdFlagSet["profile"].Usage()
+		logger.Error("'volt profile rename' receives profile name.")
+		return nil
+	}
+	oldName := args[0]
+	newName := args[1]
+
+	// Read lock.json
+	lockJSON, err := lockjson.Read()
+	if err != nil {
+		return errors.New("failed to read lock.json: " + err.Error())
+	}
+
+	// Return error if profiles[]/name does not match oldName
+	index := lockJSON.Profiles.FindIndexByName(oldName)
+	if index < 0 {
+		return errors.New("profile '" + oldName + "' does not exist")
+	}
+
+	// Return error if profiles[]/name does not match newName
+	if lockJSON.Profiles.FindIndexByName(newName) >= 0 {
+		return errors.New("profile '" + newName + "' already exists")
+	}
+
+	// Begin transaction
+	err = transaction.Create()
+	if err != nil {
+		return err
+	}
+	defer transaction.Remove()
+
+	// Rename profile names
+	lockJSON.Profiles[index].Name = newName
+	if lockJSON.CurrentProfileName == oldName {
+		lockJSON.CurrentProfileName = newName
+	}
+
+	// Rename $VOLTPATH/rc/{profile} dir
+	oldRCDir := pathutil.RCDir(oldName)
+	if pathutil.Exists(oldRCDir) {
+		newRCDir := pathutil.RCDir(newName)
+		if err = os.Rename(oldRCDir, newRCDir); err != nil {
+			return fmt.Errorf("could not rename %s to %s", oldRCDir, newRCDir)
+		}
+	}
+
+	// Write to lock.json
+	err = lockJSON.Write()
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("Renamed profile '%s' to '%s'", oldName, newName)
 
 	return nil
 }

@@ -273,7 +273,7 @@ func (cmd *buildCmd) doBuild(full bool) error {
 		// Install vimrc
 		err = cmd.installRCFile(
 			lockJSON.CurrentProfileName,
-			"vimrc.vim",
+			pathutil.ProfileVimrc,
 			filepath.Join(vimDir, "vimrc"),
 			profile.UseVimrc,
 		)
@@ -284,7 +284,7 @@ func (cmd *buildCmd) doBuild(full bool) error {
 		// Install gvimrc
 		err = cmd.installRCFile(
 			lockJSON.CurrentProfileName,
-			"gvimrc.vim",
+			pathutil.ProfileGvimrc,
 			filepath.Join(vimDir, "gvimrc"),
 			profile.UseGvimrc,
 		)
@@ -368,7 +368,7 @@ func (cmd *buildCmd) installRCFile(profileName, srcRCFileName, dst string, insta
 	}
 
 	// Skip if use_vimrc/use_gvimrc is false or rc file does not exist
-	src := pathutil.RCFileOf(profileName, srcRCFileName)
+	src := filepath.Join(pathutil.RCDir(profileName), srcRCFileName)
 	if !install || !pathutil.Exists(src) {
 		return nil
 	}
