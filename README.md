@@ -109,6 +109,19 @@ To uninstall `tyru/caw.vim` like:
 $ volt rm tyru/caw.vim   # (sob)
 ```
 
+### Syncing ~/.vim/pack/volt directory with $VOLTPATH
+
+![volt build](https://raw.githubusercontent.com/vim-volt/volt/master/img/volt-build.png)
+
+`volt build` synchronizes `~/.vim/pack/volt/...` with `$VOLTPATH/...` like:
+1. Install `$VOLTPATH/rc/<profile>/{vimrc.vim,gvimrc.vim}` to `~/.vim/vimrc` and `~/.vim/gvimrc`
+1. Copy `$VOLTPATH/repos/<repos>` to `~/.vim/pack/volt/opt/<repos>`
+  * if `$VOLTPATH/repos/<repos>` has modified/new file(s), copy them to `~/.vim/pack/volt/opt/<repos>`
+  * if `$VOLTPATH/repos/<repos>` does not exist, remove `~/.vim/pack/volt/opt/<repos>`
+
+Users don't have to run `volt build` when running `volt get`, `volt rm`, `volt add`, `volt profile`, ... commands, because those commands invoke `volt build` command internally if the commands modify repositories, plugconf, lock.json.
+But if you edit `$VOLTPATH/rc/<profile>/vimrc.vim` or `$VOLTPATH/rc/<profile>/gvimrc.vim`, you have to run `volt build` to copy them to `~/.vim/vimrc` or `~/.vim/gvimrc`.
+
 ### Easy setup
 
 If you want to install set of plugins which you have installed by `volt get`, you can use `volt get -l`.
