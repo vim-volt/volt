@@ -16,15 +16,15 @@ import (
 func CopyFile(src, dst string, buf []byte, perm os.FileMode) error {
 	r, err := os.Open(src)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fi, err := r.Stat()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	w, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, perm)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	wfd := int(w.Fd())
