@@ -227,7 +227,7 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 		if strings.HasPrefix(status, statusPrefixFailed) {
 			failed = true
 		} else {
-			added := cmd.updateReposVersion(lockJSON, r.reposPath, r.hash, profile)
+			added := cmd.updateReposVersion(lockJSON, r.reposPath, r.reposType, r.hash, profile)
 			if added && strings.Contains(status, "already exists") {
 				status = fmt.Sprintf(fmtAddedRepos, statusPrefixInstalled, r.reposPath)
 			}
@@ -286,6 +286,7 @@ type getParallelResult struct {
 	reposPath string
 	status    string
 	hash      string
+	reposType lockjson.ReposType
 	err       error
 }
 
@@ -381,7 +382,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 		} else {
 			upgraded = true
 		}
-	} else {
+	} else if !pathutil.Exists(fullReposPath) {
 		// Install plugin
 		if flags.verbose {
 			logger.Info("Installing " + reposPath + " ...")
@@ -440,26 +441,29 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 		}
 	}
 
-	// Get HEAD hash string
 	var toHash string
-	toHash, err = getReposHEAD(reposPath)
-	if err != nil {
-		result := errors.New("failed to get HEAD commit hash: " + err.Error())
-		if flags.verbose {
-			logger.Info("Rollbacking " + fullReposPath + " ...")
-		} else {
-			logger.Debug("Rollbacking " + fullReposPath + " ...")
-		}
-		err = cmd.rollbackRepos(fullReposPath)
+	reposType, err := cmd.detectReposType(fullReposPath)
+	if err == nil && reposType == lockjson.ReposGitType {
+		// Get HEAD hash string
+		toHash, err = getReposHEAD(reposPath)
 		if err != nil {
-			result = multierror.Append(result, err)
+			result := errors.New("failed to get HEAD commit hash: " + err.Error())
+			if flags.verbose {
+				logger.Info("Rollbacking " + fullReposPath + " ...")
+			} else {
+				logger.Debug("Rollbacking " + fullReposPath + " ...")
+			}
+			err = cmd.rollbackRepos(fullReposPath)
+			if err != nil {
+				result = multierror.Append(result, err)
+			}
+			done <- getParallelResult{
+				reposPath: reposPath,
+				status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
+				err:       result,
+			}
+			return
 		}
-		done <- getParallelResult{
-			reposPath: reposPath,
-			status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
-			err:       result,
-		}
-		return
 	}
 
 	// Show old and new revisions: "upgraded ({from}..{to})".
@@ -470,8 +474,18 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 	done <- getParallelResult{
 		reposPath: reposPath,
 		status:    status,
+		reposType: reposType,
 		hash:      toHash,
 	}
+}
+func (*getCmd) detectReposType(fullpath string) (lockjson.ReposType, error) {
+	if pathutil.Exists(filepath.Join(fullpath, ".git")) {
+		if _, err := git.PlainOpen(fullpath); err != nil {
+			return "", err
+		}
+		return lockjson.ReposGitType, nil
+	}
+	return lockjson.ReposStaticType, nil
 }
 
 func (*getCmd) rollbackRepos(fullReposPath string) error {
@@ -604,7 +618,7 @@ func (cmd *getCmd) installPlugconf(reposPath string) error {
 
 // * Add repos to 'repos' if not found
 // * Add repos to 'profiles[]/repos_path' if not found
-func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) bool {
+func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, reposType lockjson.ReposType, version string, profile *lockjson.Profile) bool {
 	repos, err := lockJSON.Repos.FindByPath(reposPath)
 	if err != nil {
 		repos = nil
@@ -616,7 +630,7 @@ func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string,
 		// repos is not found in lock.json
 		// -> previous operation is install
 		repos = &lockjson.Repos{
-			Type:    lockjson.ReposGitType,
+			Type:    reposType,
 			TrxID:   lockJSON.TrxID,
 			Path:    reposPath,
 			Version: version,

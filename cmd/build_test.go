@@ -505,33 +505,33 @@ func init() {
 // but the same repository is cloned only at first time
 // under testdata/voltpath/{testdataName}/repos/<repos>
 func setUpTestdata(t *testing.T, testdataName string, rType reposType, reposPathList []string) {
-	prevVoltpath := os.Getenv("VOLTPATH")
-	voltpath := filepath.Join(testdataDir, "voltpath", testdataName)
+	voltpath := os.Getenv("VOLTPATH")
+	tmpVoltpath := filepath.Join(testdataDir, "voltpath", testdataName)
 	localSrcDir := filepath.Join(testdataDir, "local", testdataName)
-	localDstDir := filepath.Join(voltpath, "repos", "localhost", "local", testdataName)
 	localName := fmt.Sprintf("localhost/local/%s", testdataName)
 	buf := make([]byte, 32*1024)
 
 	for _, reposPath := range reposPathList {
-		testRepos := filepath.Join(voltpath, "repos", reposPath)
+		testRepos := filepath.Join(tmpVoltpath, "repos", reposPath)
 		if !pathutil.Exists(testRepos) {
 			switch rType {
 			case reposGitType:
-				err := os.Setenv("VOLTPATH", voltpath)
+				err := os.Setenv("VOLTPATH", tmpVoltpath)
 				if err != nil {
 					t.Fatal("failed to set VOLTPATH")
 				}
-				defer os.Setenv("VOLTPATH", prevVoltpath)
+				defer os.Setenv("VOLTPATH", voltpath)
 				out, err := testutil.RunVolt("get", reposPath)
 				testutil.SuccessExit(t, out, err)
 			case reposStaticType:
-				err := os.Setenv("VOLTPATH", voltpath)
+				err := os.Setenv("VOLTPATH", tmpVoltpath)
 				if err != nil {
 					t.Fatal("failed to set VOLTPATH")
 				}
-				defer os.Setenv("VOLTPATH", prevVoltpath)
-				if err := fileutil.CopyDir(localSrcDir, localDstDir, buf, 0777, 0); err != nil {
-					t.Fatalf("failed to copy %s to %s", localSrcDir, localDstDir)
+				defer os.Setenv("VOLTPATH", voltpath)
+				os.MkdirAll(filepath.Dir(testRepos), 0777)
+				if err := fileutil.CopyDir(localSrcDir, testRepos, buf, 0777, 0); err != nil {
+					t.Fatalf("failed to copy %s to %s", localSrcDir, testRepos)
 				}
 				out, err := testutil.RunVolt("get", localName)
 				testutil.SuccessExit(t, out, err)
@@ -541,15 +541,15 @@ func setUpTestdata(t *testing.T, testdataName string, rType reposType, reposPath
 		}
 
 		// Copy repository
-		repos := filepath.Join(prevVoltpath, "repos", reposPath)
+		repos := filepath.Join(voltpath, "repos", reposPath)
 		os.MkdirAll(filepath.Dir(repos), 0777)
 		if err := fileutil.CopyDir(testRepos, repos, buf, 0777, os.FileMode(0)); err != nil {
 			t.Fatalf("failed to copy %s to %s", testRepos, repos)
 		}
 
 		// Copy lock.json
-		testLockjsonPath := filepath.Join(voltpath, "lock.json")
-		lockjsonPath := filepath.Join(prevVoltpath, "lock.json")
+		testLockjsonPath := filepath.Join(tmpVoltpath, "lock.json")
+		lockjsonPath := filepath.Join(voltpath, "lock.json")
 		os.MkdirAll(filepath.Dir(lockjsonPath), 0777)
 		if err := fileutil.CopyFile(testLockjsonPath, lockjsonPath, buf, 0777); err != nil {
 			t.Fatalf("failed to copy %s to %s", testLockjsonPath, lockjsonPath)
