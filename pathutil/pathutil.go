@@ -59,8 +59,8 @@ func VoltPath() string {
 	return filepath.Join(HomeDir(), "volt")
 }
 
-func FullReposPathOf(repos string) string {
-	reposList := strings.Split(filepath.ToSlash(repos), "/")
+func FullReposPathOf(reposPath string) string {
+	reposList := strings.Split(filepath.ToSlash(reposPath), "/")
 	paths := make([]string, 0, len(reposList)+2)
 	paths = append(paths, VoltPath())
 	paths = append(paths, "repos")
@@ -68,8 +68,8 @@ func FullReposPathOf(repos string) string {
 	return filepath.Join(paths...)
 }
 
-func CloneURLOf(repos string) string {
-	return "https://" + filepath.ToSlash(repos)
+func CloneURLOf(reposPath string) string {
+	return "https://" + filepath.ToSlash(reposPath)
 }
 
 func PlugconfOf(reposPath string) string {
