@@ -302,10 +302,10 @@ func (cmd *buildCmd) doBuild(full bool) error {
 		return errors.New("could not create " + optDir)
 	}
 
-	// Copy all repositories files to optDir
+	// Copy volt repos files to optDir
 	copyDone, copyCount := cmd.copyReposList(buildReposMap, reposList, optDir)
 
-	// Remove all repositories found in build-info.json, but not in lock.json
+	// Remove vim repos found in lock.json, but not in build-info.json
 	removeDone, removeCount := cmd.removeReposList(buildInfo.Repos, lockJSON.Repos)
 
 	// Wait copy
@@ -510,27 +510,20 @@ func (cmd *buildCmd) copyReposStatic(repos *lockjson.Repos, buildRepos *biRepos,
 	return 0
 }
 
+// Remove vim repos found in lock.json, but not in build-info.json
 func (cmd *buildCmd) removeReposList(buildInfoRepos biReposList, lockReposList lockjson.ReposList) (chan actionReposResult, int) {
-	var removeList []biRepos
-	for i := range buildInfoRepos {
-		if !lockReposList.Contains(buildInfoRepos[i].Path) {
-			removeList = append(removeList, buildInfoRepos[i])
+	removeList := make(lockjson.ReposList, 0, len(lockReposList))
+	for i := range lockReposList {
+		if buildInfoRepos.findByReposPath(lockReposList[i].Path) == nil {
+			removeList = append(removeList, lockReposList[i])
 		}
 	}
 	removeDone := make(chan actionReposResult, len(removeList))
 	for i := range removeList {
-		go func(repos *biRepos) {
-			// Remove directory under $VOLTPATH
-			path := pathutil.FullReposPathOf(repos.Path)
-			err := os.RemoveAll(path)
-			logger.Info("Removing " + string(repos.Type) + " repository " + path + " ... Done.")
-			removeDone <- actionReposResult{
-				err:   err,
-				repos: &lockjson.Repos{Path: repos.Path},
-			}
+		go func(repos *lockjson.Repos) {
 			// Remove directory under vim dir
-			path = pathutil.PackReposPathOf(repos.Path)
-			err = os.RemoveAll(path)
+			path := pathutil.PackReposPathOf(repos.Path)
+			err := os.RemoveAll(path)
 			logger.Info("Removing " + path + " ... Done.")
 			removeDone <- actionReposResult{
 				err:   err,
@@ -538,7 +531,7 @@ func (cmd *buildCmd) removeReposList(buildInfoRepos biReposList, lockReposList l
 			}
 		}(&removeList[i])
 	}
-	return removeDone, len(removeList) * 2
+	return removeDone, len(removeList)
 }
 
 func (*buildCmd) waitCopyRepos(copyDone chan actionReposResult, copyCount int, callback func(*actionReposResult) error) *multierror.Error {
