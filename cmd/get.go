@@ -189,28 +189,21 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 	var updatedLockJSON bool
 	for i := 0; i < getCount; i++ {
 		r := <-done
-		if r.err != nil {
-			if merr, ok := r.err.(*multierror.Error); ok {
-				st := r.status
-				for _, err := range merr.Errors {
-					st += "\n  * " + err.Error()
-				}
-				statusList = append(statusList, st)
-			} else {
-				statusList = append(statusList, fmt.Sprintf("%s\n  * %s)", r.status, r.err.Error()))
-			}
-		} else {
-			statusList = append(statusList, r.status)
-		}
+		status := cmd.formatStatus(&r)
 		// Update repos[]/trx_id, repos[]/version
-		if strings.HasPrefix(r.status, statusPrefixInstalled) ||
-			strings.HasPrefix(r.status, statusPrefixUpgraded) {
-			cmd.updateReposVersion(lockJSON, r.reposPath, r.hash, profile)
+		if strings.HasPrefix(status, statusPrefixInstalled) ||
+			strings.HasPrefix(status, statusPrefixUpgraded) ||
+			strings.HasPrefix(status, statusPrefixNoChange) {
+			addedProfile := cmd.updateReposVersion(lockJSON, r.reposPath, r.hash, profile)
+			if strings.HasPrefix(status, statusPrefixNoChange) && addedProfile {
+				status += " > added to current profile"
+			}
 			updatedLockJSON = true
 		}
-		if strings.HasPrefix(r.status, statusPrefixFailed) {
+		if strings.HasPrefix(status, statusPrefixFailed) {
 			failed = true
 		}
+		statusList = append(statusList, status)
 	}
 
 	// Sort by status
@@ -238,6 +231,25 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 		return errors.New("failed to install some plugins")
 	}
 	return nil
+}
+
+func (*getCmd) formatStatus(r *getParallelResult) string {
+	if r.err == nil {
+		return r.status
+	}
+	var errs []error
+	if merr, ok := r.err.(*multierror.Error); ok {
+		errs = merr.Errors
+	} else {
+		errs = []error{r.err}
+	}
+	buf := make([]byte, 0, 4*1024)
+	buf = append(buf, r.status...)
+	for _, err := range errs {
+		buf = append(buf, "\n  * "...)
+		buf = append(buf, err.Error()...)
+	}
+	return string(buf)
 }
 
 type getParallelResult struct {
@@ -556,31 +568,37 @@ func (cmd *getCmd) installPlugconf(reposPath string) error {
 	return nil
 }
 
-func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) {
+// * Add repos to 'repos' if not found
+// * Add repos to 'profiles[]/repos_path' if not found
+func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) bool {
 	repos, err := lockJSON.Repos.FindByPath(reposPath)
 	if err != nil {
 		repos = nil
 	}
 
 	if repos == nil {
-		// vim plugin is not found in lock.json
+		// repos is not found in lock.json
 		// -> previous operation is install
-
-		// Add repos to 'repos_path'
-		lockJSON.Repos = append(lockJSON.Repos, lockjson.Repos{
+		repos = &lockjson.Repos{
 			Type:    lockjson.ReposGitType,
 			TrxID:   lockJSON.TrxID,
 			Path:    reposPath,
 			Version: version,
-		})
-		if !profile.ReposPath.Contains(reposPath) {
-			// Add repos to 'profiles[]/repos_path'
-			profile.ReposPath = append(profile.ReposPath, reposPath)
 		}
+		// Add repos to 'repos'
+		lockJSON.Repos = append(lockJSON.Repos, *repos)
 	} else {
-		// vim plugin is found in lock.json
+		// repos is found in lock.json
 		// -> previous operation is upgrade
 		repos.TrxID = lockJSON.TrxID
 		repos.Version = version
 	}
+
+	addedProfile := false
+	if !profile.ReposPath.Contains(reposPath) {
+		// Add repos to 'profiles[]/repos_path'
+		profile.ReposPath = append(profile.ReposPath, reposPath)
+		addedProfile = true
+	}
+	return addedProfile
 }
