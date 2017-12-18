@@ -256,6 +256,13 @@ const (
 
 // This function is executed in goroutine of each plugin
 func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
+	const fmtInstallFailed = "%s %s > install failed > %s"
+	const fmtUpgradeFailed = "%s %s > upgrade failed > %s"
+	const fmtNoChange = "%s %s > no change"
+	const fmtAlreadyExists = "%s %s > already exists"
+	const fmtInstalled = "%s %s > installed"
+	const fmtUpgraded = "%s %s > upgraded (%s..%s)"
+
 	// true:upgrade, false:install
 	fullReposPath := pathutil.FullReposPathOf(reposPath)
 	doUpgrade := flags.upgrade && pathutil.Exists(fullReposPath)
@@ -278,7 +285,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+				status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
 				err:       result,
 			}
 			return
@@ -294,7 +301,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 			msg := "-u was specified but repos == nil"
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf("%s %s : upgrade failed : %s", statusPrefixFailed, reposPath, msg),
+				status:    fmt.Sprintf(fmtUpgradeFailed, statusPrefixFailed, reposPath, msg),
 				err:       errors.New("failed to upgrade plugin: " + msg),
 			}
 		}
@@ -318,13 +325,13 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf("%s %s : upgrade failed : %s", statusPrefixFailed, reposPath, err.Error()),
+				status:    fmt.Sprintf(fmtUpgradeFailed, statusPrefixFailed, reposPath, err.Error()),
 				err:       result,
 			}
 			return
 		}
 		if err == git.NoErrAlreadyUpToDate {
-			status = fmt.Sprintf("%s %s : no change", statusPrefixNoChange, reposPath)
+			status = fmt.Sprintf(fmtNoChange, statusPrefixNoChange, reposPath)
 		} else {
 			upgraded = true
 		}
@@ -350,13 +357,13 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+				status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
 				err:       result,
 			}
 			return
 		}
 		if err == errRepoExists {
-			status = fmt.Sprintf("%s %s : no change", statusPrefixNoChange, reposPath)
+			status = fmt.Sprintf(fmtAlreadyExists, statusPrefixNoChange, reposPath)
 		} else {
 			// Install plugconf
 			if flags.verbose {
@@ -378,12 +385,12 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 				}
 				done <- getParallelResult{
 					reposPath: reposPath,
-					status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+					status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
 					err:       result,
 				}
 				return
 			}
-			status = fmt.Sprintf("%s %s : installed", statusPrefixInstalled, reposPath)
+			status = fmt.Sprintf(fmtInstalled, statusPrefixInstalled, reposPath)
 		}
 	}
 
@@ -403,7 +410,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 		}
 		done <- getParallelResult{
 			reposPath: reposPath,
-			status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+			status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
 			err:       result,
 		}
 		return
@@ -411,7 +418,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 
 	// Show old and new revisions: "upgraded ({from}..{to})".
 	if upgraded {
-		status = fmt.Sprintf("%s %s : upgraded (%s..%s)", statusPrefixUpgraded, reposPath, fromHash, toHash)
+		status = fmt.Sprintf(fmtUpgraded, statusPrefixUpgraded, reposPath, fromHash, toHash)
 	}
 
 	done <- getParallelResult{
