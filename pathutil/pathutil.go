@@ -90,9 +90,18 @@ func RCDir(profileName string) string {
 	return filepath.Join([]string{VoltPath(), "rc", profileName}...)
 }
 
+var packer = strings.NewReplacer("_", "__", "/", "_")
+var unpacker1 = strings.NewReplacer("_", "/")
+var unpacker2 = strings.NewReplacer("//", "_")
+
 func PackReposPathOf(reposPath string) string {
-	path := strings.NewReplacer("_", "__", "/", "_").Replace(reposPath)
+	path := packer.Replace(reposPath)
 	return filepath.Join(VimVoltOptDir(), path)
+}
+
+func UnpackPathOf(path string) (reposPath string) {
+	path = filepath.Base(path)
+	return unpacker2.Replace(unpacker1.Replace(path))
 }
 
 func LockJSON() string {
