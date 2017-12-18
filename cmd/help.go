@@ -56,8 +56,8 @@ Command
   rm {repository} [{repository2} ...]
     Uninstall vim plugin and plugconf files
 
-  add {from} {repository}
-    Add local {from} repository as {repository} to lock.json
+  add [{dir} ...]
+    Manage given local directories or git repositories as a vim plugin
 
   enable {repository} [{repository2} ...]
     This is shortcut of:
