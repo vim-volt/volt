@@ -23,8 +23,6 @@ func Main() int {
 		return cmd.Get(os.Args[2:])
 	case "rm":
 		return cmd.Rm(os.Args[2:])
-	case "add":
-		return cmd.Add(os.Args[2:])
 	case "enable":
 		return cmd.Enable(os.Args[2:])
 	case "disable":

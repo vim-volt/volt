@@ -50,14 +50,10 @@ Usage
 
 Command
   get [-l] [-u] [-v] [{repository} ...]
-    Install / Upgrade vim plugin, and fetch plugconf from
-    https://github.com/vim-volt/plugconf-templates
+    Install or upgrade given {repository} list, or add local {repository} list as plugins
 
   rm {repository} [{repository2} ...]
     Uninstall vim plugin and plugconf files
-
-  add [{dir} ...]
-    Manage given local directories or git repositories as a vim plugin
 
   enable {repository} [{repository2} ...]
     This is shortcut of:
