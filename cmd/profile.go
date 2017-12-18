@@ -339,8 +339,15 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 	}
 	defer transaction.Remove()
 
-	// Delete the specified profile
+	// Remove the specified profile
 	lockJSON.Profiles = append(lockJSON.Profiles[:index], lockJSON.Profiles[index+1:]...)
+
+	// Remove $VOLTPATH/rc/{profile} dir
+	rcDir := pathutil.RCDir(profileName)
+	os.RemoveAll(rcDir)
+	if pathutil.Exists(rcDir) {
+		return errors.New("failed to remove " + rcDir)
+	}
 
 	// Write to lock.json
 	err = lockJSON.Write()
