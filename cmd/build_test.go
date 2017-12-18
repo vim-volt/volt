@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -506,7 +507,9 @@ func init() {
 func setUpTestdata(t *testing.T, testdataName string, rType reposType, reposPathList []string) {
 	prevVoltpath := os.Getenv("VOLTPATH")
 	voltpath := filepath.Join(testdataDir, "voltpath", testdataName)
-	localDir := filepath.Join(testdataDir, "local", testdataName)
+	localSrcDir := filepath.Join(testdataDir, "local", testdataName)
+	localDstDir := filepath.Join(voltpath, "repos", "localhost", "local", testdataName)
+	localName := fmt.Sprintf("localhost/local/%s", testdataName)
 	buf := make([]byte, 32*1024)
 
 	for _, reposPath := range reposPathList {
@@ -527,7 +530,10 @@ func setUpTestdata(t *testing.T, testdataName string, rType reposType, reposPath
 					t.Fatal("failed to set VOLTPATH")
 				}
 				defer os.Setenv("VOLTPATH", prevVoltpath)
-				out, err := testutil.RunVolt("add", localDir)
+				if err := fileutil.CopyDir(localSrcDir, localDstDir, buf, 0777, 0); err != nil {
+					t.Fatalf("failed to copy %s to %s", localSrcDir, localDstDir)
+				}
+				out, err := testutil.RunVolt("get", localName)
 				testutil.SuccessExit(t, out, err)
 			default:
 				t.Fatalf("unknown type %q", rType)
