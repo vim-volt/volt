@@ -40,17 +40,57 @@ Usage
   volt get [-help] [-l] [-u] [-v] [{repository} ...]
 
 Quick example
-  $ volt get tyru/caw.vim    # will install tyru/caw.vim plugin
-  $ volt get -u tyru/caw.vim # will upgrade tyru/caw.vim plugin
-  $ volt get -l -u           # will upgrade all installed plugins
-  $ volt get -v tyru/caw.vim # will output verbose git-clone(1) output
+  $ volt get tyru/caw.vim     # will install tyru/caw.vim plugin
+  $ volt get -u tyru/caw.vim  # will upgrade tyru/caw.vim plugin
+  $ volt get -l -u            # will upgrade all installed plugins
+  $ volt get -v tyru/caw.vim  # will output more verbosely
+
+  $ mkdir -p ~/volt/repos/localhost/local/hello/plugin
+  $ echo 'command! Hello echom "hello"' >~/volt/repos/localhost/local/hello/plugin/hello.vim
+  $ volt get localhost/local/hello     # will add the local repository as a plugin
+  $ vim -c Hello                       # will output "hello"
 
 Description
-  Install vim plugin from {repository}, or upgrade vim plugin of {repository} list on current active profile. And fetch skeleton plugconf from:
+  Install or upgrade given {repository} list, or add local {repository} list as plugins.
+
+  And fetch skeleton plugconf from:
     https://github.com/vim-volt/plugconf-templates
   and install it to:
     $VOLTPATH/plugconf/{repository}.vim
 
+  If -v option was specified, output more verbosely.
+
+Repository List
+  {repository} list (=target to perform installing, upgrading, and so on) is determined as followings:
+  * If -l option is specified, all installed vim plugins (regardless current profile) are used
+  * If one or more {repository} arguments are specified, the arguments are used
+
+Action
+  The action (install, upgrade, or add only) is determined as follows:
+    1. If -u option is specified (upgrade):
+      * Upgrade git repositories in {repository} list (static repositories are ignored).
+      * Add {repository} list to lock.json (if not found)
+    2. Or (install):
+      * Fetch {repository} list from remotes
+      * Add {repository} list to lock.json (if not found)
+
+Static repository
+    Volt can manage a local directory as a repository. It's called "static repository".
+    When you have unpublished plugins, or you want to manage ~/.vim/* files as one repository
+    (this is useful when you use profile feature, see "volt help profile" for more details),
+    static repository is useful.
+    All you need is to create a directory in "$VOLTPATH/repos/<repos>".
+
+    When -u was not specified (install) and given repositories exist, volt does not request to clone the repositories.
+    Therefore, "volt get" tries to fetch repositories but skip it because the directory exists.
+    then it adds repositories to lock.json if not found.
+
+      $ mkdir -p ~/volt/repos/localhost/local/hello/plugin
+      $ echo 'command! Hello echom "hello"' >~/volt/repos/localhost/local/hello/plugin/hello.vim
+      $ volt get localhost/local/hello     # will add the local repository as a plugin
+      $ vim -c Hello                       # will output "hello"
+
+Repository path
   {repository}'s format is one of the followings:
 
   1. {user}/{name}
@@ -59,25 +99,14 @@ Description
   3. https://{site}/{user}/{name}
   4. http://{site}/{user}/{name}
 
-  {repository} list is determined as followings:
-
-  * If -l option is specified, all installed vim plugins (regardless current profile) are used
-  * If {repository} arguments are specified, the specified vim plugins are used
-
-  If -u is specified, upgrade given git repositories (static repositories are ignored).
-  If -l option is specified, all installed vim plugins are used for targets to install or upgrade.
-  If -l and -u options were specified together, upgrade all installed vim plugins (static repositories are ignored).
-
-  If -v option was specified, show git-clone(1) output too.
-
 Options`)
 		fs.PrintDefaults()
 		fmt.Println()
 		getFlags.helped = true
 	}
-	fs.BoolVar(&getFlags.lockJSON, "l", false, "from lock.json")
-	fs.BoolVar(&getFlags.upgrade, "u", false, "upgrade installed vim plugin")
-	fs.BoolVar(&getFlags.verbose, "v", false, "show git-clone output")
+	fs.BoolVar(&getFlags.lockJSON, "l", false, "use all installed repositories as targets")
+	fs.BoolVar(&getFlags.upgrade, "u", false, "upgrade repositories")
+	fs.BoolVar(&getFlags.verbose, "v", false, "output more verbosely")
 
 	cmdFlagSet["get"] = fs
 }
@@ -109,11 +138,15 @@ func Get(args []string) int {
 		logger.Error("Could not get repos list: " + err.Error())
 		return 12
 	}
+	if len(reposPathList) == 0 {
+		logger.Error("No repositories are specified")
+		return 13
+	}
 
 	err = cmd.doGet(reposPathList, flags, lockJSON)
 	if err != nil {
 		logger.Error(err.Error())
-		return 13
+		return 20
 	}
 
 	return 0
@@ -169,9 +202,9 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 	defer transaction.Remove()
 	lockJSON.TrxID++
 
-	// Invoke installing / upgrading tasks
 	done := make(chan getParallelResult)
 	getCount := 0
+	// Invoke installing / upgrading tasks
 	for _, reposPath := range reposPathList {
 		repos, err := lockJSON.Repos.FindByPath(reposPath)
 		if err != nil {
@@ -189,28 +222,18 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 	var updatedLockJSON bool
 	for i := 0; i < getCount; i++ {
 		r := <-done
-		if r.err != nil {
-			if merr, ok := r.err.(*multierror.Error); ok {
-				st := r.status
-				for _, err := range merr.Errors {
-					st += "\n  * " + err.Error()
-				}
-				statusList = append(statusList, st)
-			} else {
-				statusList = append(statusList, fmt.Sprintf("%s\n  * %s)", r.status, r.err.Error()))
-			}
-		} else {
-			statusList = append(statusList, r.status)
-		}
+		status := cmd.formatStatus(&r)
 		// Update repos[]/trx_id, repos[]/version
-		if strings.HasPrefix(r.status, statusPrefixInstalled) ||
-			strings.HasPrefix(r.status, statusPrefixUpgraded) {
-			cmd.updateReposVersion(lockJSON, r.reposPath, r.hash, profile)
+		if strings.HasPrefix(status, statusPrefixFailed) {
+			failed = true
+		} else {
+			added := cmd.updateReposVersion(lockJSON, r.reposPath, r.reposType, r.hash, profile)
+			if added && strings.Contains(status, "already exists") {
+				status = fmt.Sprintf(fmtAddedRepos, statusPrefixInstalled, r.reposPath)
+			}
 			updatedLockJSON = true
 		}
-		if strings.HasPrefix(r.status, statusPrefixFailed) {
-			failed = true
-		}
+		statusList = append(statusList, status)
 	}
 
 	// Sort by status
@@ -222,12 +245,12 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 		if err != nil {
 			return errors.New("could not write to lock.json: " + err.Error())
 		}
+	}
 
-		// Build ~/.vim/pack/volt dir
-		err = (&buildCmd{}).doBuild(false)
-		if err != nil {
-			return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
-		}
+	// Build ~/.vim/pack/volt dir
+	err = (&buildCmd{}).doBuild(false)
+	if err != nil {
+		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
 
 	// Show results
@@ -240,10 +263,30 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 	return nil
 }
 
+func (*getCmd) formatStatus(r *getParallelResult) string {
+	if r.err == nil {
+		return r.status
+	}
+	var errs []error
+	if merr, ok := r.err.(*multierror.Error); ok {
+		errs = merr.Errors
+	} else {
+		errs = []error{r.err}
+	}
+	buf := make([]byte, 0, 4*1024)
+	buf = append(buf, r.status...)
+	for _, err := range errs {
+		buf = append(buf, "\n  * "...)
+		buf = append(buf, err.Error()...)
+	}
+	return string(buf)
+}
+
 type getParallelResult struct {
 	reposPath string
 	status    string
 	hash      string
+	reposType lockjson.ReposType
 	err       error
 }
 
@@ -254,8 +297,19 @@ const (
 	statusPrefixUpgraded  = "*"
 )
 
+const (
+	fmtInstallFailed = "%s %s > install failed > %s"
+	fmtUpgradeFailed = "%s %s > upgrade failed > %s"
+	fmtNoChange      = "%s %s > no change"
+	fmtAlreadyExists = "%s %s > already exists"
+	fmtAddedRepos    = "%s %s > added repository to current profile"
+	fmtInstalled     = "%s %s > installed"
+	fmtUpgraded      = "%s %s > upgraded (%s..%s)"
+)
+
 // This function is executed in goroutine of each plugin
 func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *getFlagsType, done chan getParallelResult) {
+
 	// true:upgrade, false:install
 	fullReposPath := pathutil.FullReposPathOf(reposPath)
 	doUpgrade := flags.upgrade && pathutil.Exists(fullReposPath)
@@ -278,7 +332,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+				status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
 				err:       result,
 			}
 			return
@@ -294,7 +348,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 			msg := "-u was specified but repos == nil"
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf("%s %s : upgrade failed : %s", statusPrefixFailed, reposPath, msg),
+				status:    fmt.Sprintf(fmtUpgradeFailed, statusPrefixFailed, reposPath, msg),
 				err:       errors.New("failed to upgrade plugin: " + msg),
 			}
 		}
@@ -318,17 +372,17 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf("%s %s : upgrade failed : %s", statusPrefixFailed, reposPath, err.Error()),
+				status:    fmt.Sprintf(fmtUpgradeFailed, statusPrefixFailed, reposPath, err.Error()),
 				err:       result,
 			}
 			return
 		}
 		if err == git.NoErrAlreadyUpToDate {
-			status = fmt.Sprintf("%s %s : no change", statusPrefixNoChange, reposPath)
+			status = fmt.Sprintf(fmtNoChange, statusPrefixNoChange, reposPath)
 		} else {
 			upgraded = true
 		}
-	} else {
+	} else if !pathutil.Exists(fullReposPath) {
 		// Install plugin
 		if flags.verbose {
 			logger.Info("Installing " + reposPath + " ...")
@@ -350,13 +404,13 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+				status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
 				err:       result,
 			}
 			return
 		}
 		if err == errRepoExists {
-			status = fmt.Sprintf("%s %s : no change", statusPrefixNoChange, reposPath)
+			status = fmt.Sprintf(fmtAlreadyExists, statusPrefixNoChange, reposPath)
 		} else {
 			// Install plugconf
 			if flags.verbose {
@@ -378,47 +432,60 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, flags *g
 				}
 				done <- getParallelResult{
 					reposPath: reposPath,
-					status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
+					status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
 					err:       result,
 				}
 				return
 			}
-			status = fmt.Sprintf("%s %s : installed", statusPrefixInstalled, reposPath)
+			status = fmt.Sprintf(fmtInstalled, statusPrefixInstalled, reposPath)
 		}
 	}
 
-	// Get HEAD hash string
 	var toHash string
-	toHash, err = getReposHEAD(reposPath)
-	if err != nil {
-		result := errors.New("failed to get HEAD commit hash: " + err.Error())
-		if flags.verbose {
-			logger.Info("Rollbacking " + fullReposPath + " ...")
-		} else {
-			logger.Debug("Rollbacking " + fullReposPath + " ...")
-		}
-		err = cmd.rollbackRepos(fullReposPath)
+	reposType, err := cmd.detectReposType(fullReposPath)
+	if err == nil && reposType == lockjson.ReposGitType {
+		// Get HEAD hash string
+		toHash, err = getReposHEAD(reposPath)
 		if err != nil {
-			result = multierror.Append(result, err)
+			result := errors.New("failed to get HEAD commit hash: " + err.Error())
+			if flags.verbose {
+				logger.Info("Rollbacking " + fullReposPath + " ...")
+			} else {
+				logger.Debug("Rollbacking " + fullReposPath + " ...")
+			}
+			err = cmd.rollbackRepos(fullReposPath)
+			if err != nil {
+				result = multierror.Append(result, err)
+			}
+			done <- getParallelResult{
+				reposPath: reposPath,
+				status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
+				err:       result,
+			}
+			return
 		}
-		done <- getParallelResult{
-			reposPath: reposPath,
-			status:    fmt.Sprintf("%s %s : install failed", statusPrefixFailed, reposPath),
-			err:       result,
-		}
-		return
 	}
 
 	// Show old and new revisions: "upgraded ({from}..{to})".
 	if upgraded {
-		status = fmt.Sprintf("%s %s : upgraded (%s..%s)", statusPrefixUpgraded, reposPath, fromHash, toHash)
+		status = fmt.Sprintf(fmtUpgraded, statusPrefixUpgraded, reposPath, fromHash, toHash)
 	}
 
 	done <- getParallelResult{
 		reposPath: reposPath,
 		status:    status,
+		reposType: reposType,
 		hash:      toHash,
 	}
+}
+func (*getCmd) detectReposType(fullpath string) (lockjson.ReposType, error) {
+	if pathutil.Exists(filepath.Join(fullpath, ".git")) {
+		if _, err := git.PlainOpen(fullpath); err != nil {
+			return "", err
+		}
+		return lockjson.ReposGitType, nil
+	}
+	return lockjson.ReposStaticType, nil
 }
 
 func (*getCmd) rollbackRepos(fullReposPath string) error {
@@ -549,31 +616,39 @@ func (cmd *getCmd) installPlugconf(reposPath string) error {
 	return nil
 }
 
-func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, version string, profile *lockjson.Profile) {
+// * Add repos to 'repos' if not found
+// * Add repos to 'profiles[]/repos_path' if not found
+func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, reposType lockjson.ReposType, version string, profile *lockjson.Profile) bool {
 	repos, err := lockJSON.Repos.FindByPath(reposPath)
 	if err != nil {
 		repos = nil
 	}
 
-	if repos == nil {
-		// vim plugin is not found in lock.json
-		// -> previous operation is install
+	added := false
 
-		// Add repos to 'repos_path'
-		lockJSON.Repos = append(lockJSON.Repos, lockjson.Repos{
-			Type:    lockjson.ReposGitType,
+	if repos == nil {
+		// repos is not found in lock.json
+		// -> previous operation is install
+		repos = &lockjson.Repos{
+			Type:    reposType,
 			TrxID:   lockJSON.TrxID,
 			Path:    reposPath,
 			Version: version,
-		})
-		if !profile.ReposPath.Contains(reposPath) {
-			// Add repos to 'profiles[]/repos_path'
-			profile.ReposPath = append(profile.ReposPath, reposPath)
 		}
+		// Add repos to 'repos'
+		lockJSON.Repos = append(lockJSON.Repos, *repos)
+		added = true
 	} else {
-		// vim plugin is found in lock.json
+		// repos is found in lock.json
 		// -> previous operation is upgrade
 		repos.TrxID = lockJSON.TrxID
 		repos.Version = version
 	}
+
+	if !profile.ReposPath.Contains(reposPath) {
+		// Add repos to 'profiles[]/repos_path'
+		profile.ReposPath = append(profile.ReposPath, reposPath)
+		added = true
+	}
+	return added
 }

@@ -50,14 +50,10 @@ Usage
 
 Command
   get [-l] [-u] [-v] [{repository} ...]
-    Install / Upgrade vim plugin, and fetch plugconf from
-    https://github.com/vim-volt/plugconf-templates
+    Install or upgrade given {repository} list, or add local {repository} list as plugins
 
   rm {repository} [{repository2} ...]
     Uninstall vim plugin and plugconf files
-
-  add {from} {repository}
-    Add local {from} repository as {repository} to lock.json
 
   enable {repository} [{repository2} ...]
     This is shortcut of:

@@ -15,9 +15,13 @@ import (
 // * Run `volt profile set <profile>` (`<profile>` is not current profile) (A, B, C)
 // * Run `volt profile set <profile>` (`<profile>` is current profile) (!A, !B, !C)
 func TestVoltProfileSet(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
 	newOut, newErr := testutil.RunVolt("profile", "new", "foo")
 	testutil.SuccessExit(t, newOut, newErr)
+
+	// =============== run =============== //
 
 	// Run `volt profile set <profile>` (`<profile>` is not current profile)
 	profileName := "foo"

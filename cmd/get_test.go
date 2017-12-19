@@ -25,7 +25,12 @@ import (
 
 // Specify one plugin with help (A, B, C, D, E, F, G) / without help (A, B, C, D, E, F, !G)
 func TestVoltGetOnePlugin(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
 	for _, tt := range []struct {
 		withHelp  bool
 		reposPath string
@@ -80,7 +85,11 @@ func TestVoltGetOnePlugin(t *testing.T) {
 
 // Specify two or more plugins without help (A, B, C, D, E, F, !G) / with help (A, B, C, D, E, F, G)
 func TestVoltGetTwoOrMorePlugin(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
 
 	for _, tt := range []struct {
 		withHelp      bool
@@ -138,7 +147,12 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 
 // [error] Specify invalid argument (!A, !B, !C, !D, !E, !F, !G)
 func TestErrVoltGetInvalidArgs(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
 	out, err := testutil.RunVolt("get", "caw.vim")
 	// (!A, !B)
 	testutil.FailExit(t, out, err)
@@ -175,7 +189,12 @@ func TestErrVoltGetInvalidArgs(t *testing.T) {
 
 // [error] Specify plugin which does not exist (!A, !B, !C, !D, !E, !F, !G)
 func TestErrVoltGetNotFound(t *testing.T) {
+	// =============== setup =============== //
+
 	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
 	out, err := testutil.RunVolt("get", "vim-volt/not_found")
 	// (!A, !B)
 	testutil.FailExit(t, out, err)

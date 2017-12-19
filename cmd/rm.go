@@ -17,8 +17,9 @@ import (
 )
 
 type rmFlagsType struct {
-	helped   bool
-	plugconf bool
+	helped     bool
+	rmRepos    bool
+	rmPlugconf bool
 }
 
 var rmFlags rmFlagsType
@@ -29,15 +30,20 @@ func init() {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt rm [-help] [-p] {repository} [{repository2} ...]
+  volt rm [-help] [-r] [-p] {repository} [{repository2} ...]
 
 Quick example
-  $ volt rm tyru/caw.vim    # Uninstall tyru/caw.vim plugin
-  $ volt rm -p tyru/caw.vim # Uninstall tyru/caw.vim plugin and plugconf file
+  $ volt rm tyru/caw.vim    # Remove tyru/caw.vim plugin from lock.json
+  $ volt rm -r tyru/caw.vim # Remove tyru/caw.vim plugin from lock.json, and remove repository directory
+  $ volt rm -p tyru/caw.vim # Remove tyru/caw.vim plugin from lock.json, and remove plugconf
+  $ volt rm -r -p tyru/caw.vim # Remove tyru/caw.vim plugin from lock.json, and remove repository directory, plugconf
 
 Description
-  Uninstall vim plugin of {repository} on every profile.
-  If -p option was given, remove also plugconf files of specified plugins.
+  Uninstall {repository} on every profile.
+  If {repository} is depended by other repositories, this command exits with an error.
+
+  If -r option was given, remove also repository directories of specified repositories.
+  If -p option was given, remove also plugconf files of specified repositories.
 
   {repository} is treated as same format as "volt get" (see "volt get -help").` + "\n\n")
 		//fmt.Println("Options")
@@ -45,7 +51,8 @@ Description
 		fmt.Println()
 		rmFlags.helped = true
 	}
-	fs.BoolVar(&rmFlags.plugconf, "p", false, "remove also plugconf file")
+	fs.BoolVar(&rmFlags.rmRepos, "r", false, "remove also repository directories")
+	fs.BoolVar(&rmFlags.rmPlugconf, "p", false, "remove also plugconf files")
 
 	cmdFlagSet["rm"] = fs
 }
@@ -130,29 +137,35 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 		}
 	}
 
-	// Remove each repository
 	removeCount := 0
 	for _, reposPath := range reposPathList {
-		fullReposPath := pathutil.FullReposPathOf(reposPath)
 		// Remove repository directory
-		if pathutil.Exists(fullReposPath) {
-			if err = cmd.removeRepos(fullReposPath); err != nil {
-				return err
+		if flags.rmRepos {
+			fullReposPath := pathutil.FullReposPathOf(reposPath)
+			if pathutil.Exists(fullReposPath) {
+				if err = cmd.removeRepos(fullReposPath); err != nil {
+					return err
+				}
+				removeCount++
+			} else {
+				logger.Debugf("No repository was installed for '%s' ... skip.", reposPath)
 			}
-			removeCount++
-		} else {
-			logger.Debugf("No repository was installed for '%s' ... skip.", reposPath)
 		}
+
 		// Remove plugconf file
-		if plugconfPath := pathutil.PlugconfOf(reposPath); flags.plugconf && pathutil.Exists(plugconfPath) {
-			if err = cmd.removePlugconf(plugconfPath); err != nil {
-				return err
+		if flags.rmPlugconf {
+			plugconfPath := pathutil.PlugconfOf(reposPath)
+			if pathutil.Exists(plugconfPath) {
+				if err = cmd.removePlugconf(plugconfPath); err != nil {
+					return err
+				}
+				removeCount++
+			} else {
+				logger.Debugf("No plugconf was installed for '%s' ... skip.", reposPath)
 			}
-			removeCount++
-		} else {
-			logger.Debugf("No plugconf was installed for '%s' ... skip.", reposPath)
 		}
-		// Update lockJSON
+
+		// Remove repository from lock.json
 		err = lockJSON.Repos.RemoveAllByPath(reposPath)
 		err2 := lockJSON.Profiles.RemoveAllReposPath(reposPath)
 		if err == nil || err2 == nil {

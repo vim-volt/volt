@@ -59,8 +59,8 @@ func VoltPath() string {
 	return filepath.Join(HomeDir(), "volt")
 }
 
-func FullReposPathOf(repos string) string {
-	reposList := strings.Split(filepath.ToSlash(repos), "/")
+func FullReposPathOf(reposPath string) string {
+	reposList := strings.Split(filepath.ToSlash(reposPath), "/")
 	paths := make([]string, 0, len(reposList)+2)
 	paths = append(paths, VoltPath())
 	paths = append(paths, "repos")
@@ -68,8 +68,8 @@ func FullReposPathOf(repos string) string {
 	return filepath.Join(paths...)
 }
 
-func CloneURLOf(repos string) string {
-	return "https://" + filepath.ToSlash(repos)
+func CloneURLOf(reposPath string) string {
+	return "https://" + filepath.ToSlash(reposPath)
 }
 
 func PlugconfOf(reposPath string) string {
@@ -83,14 +83,25 @@ func PlugconfOf(reposPath string) string {
 
 const ProfileVimrc = "vimrc.vim"
 const ProfileGvimrc = "gvimrc.vim"
+const Vimrc = "vimrc"
+const Gvimrc = "gvimrc"
 
 func RCDir(profileName string) string {
 	return filepath.Join([]string{VoltPath(), "rc", profileName}...)
 }
 
+var packer = strings.NewReplacer("_", "__", "/", "_")
+var unpacker1 = strings.NewReplacer("_", "/")
+var unpacker2 = strings.NewReplacer("//", "_")
+
 func PackReposPathOf(reposPath string) string {
-	path := strings.NewReplacer("_", "__", "/", "_").Replace(reposPath)
+	path := packer.Replace(reposPath)
 	return filepath.Join(VimVoltOptDir(), path)
+}
+
+func UnpackPathOf(path string) (reposPath string) {
+	path = filepath.Base(path)
+	return unpacker2.Replace(unpacker1.Replace(path))
 }
 
 func LockJSON() string {
@@ -154,21 +165,22 @@ func LookUpVimrc() []string {
 	if runtime.GOOS == "windows" {
 		vimrcPaths = []string{
 			filepath.Join(HomeDir(), "_vimrc"),
-			filepath.Join(HomeDir(), "vimfiles", "vimrc"),
+			filepath.Join(VimDir(), "vimrc"),
 		}
 	} else {
 		vimrcPaths = []string{
 			filepath.Join(HomeDir(), ".vimrc"),
-			filepath.Join(HomeDir(), ".vim", "vimrc"),
+			filepath.Join(VimDir(), "vimrc"),
 		}
 	}
-	rclist := make([]string, 0, len(vimrcPaths))
-	for i := range vimrcPaths {
-		if Exists(vimrcPaths[i]) {
-			rclist = append(rclist, vimrcPaths[i])
+	for i := 0; i < len(vimrcPaths); {
+		if !Exists(vimrcPaths[i]) {
+			vimrcPaths = append(vimrcPaths[:i], vimrcPaths[i+1:]...)
+			continue
 		}
+		i++
 	}
-	return rclist
+	return vimrcPaths
 }
 
 func LookUpGvimrc() []string {
@@ -176,24 +188,25 @@ func LookUpGvimrc() []string {
 	if runtime.GOOS == "windows" {
 		gvimrcPaths = []string{
 			filepath.Join(HomeDir(), "_gvimrc"),
-			filepath.Join(HomeDir(), "vimfiles", "gvimrc"),
+			filepath.Join(VimDir(), "gvimrc"),
 		}
 	} else {
 		gvimrcPaths = []string{
 			filepath.Join(HomeDir(), ".gvimrc"),
-			filepath.Join(HomeDir(), ".vim", "gvimrc"),
+			filepath.Join(VimDir(), "gvimrc"),
 		}
 	}
-	rclist := make([]string, 0, len(gvimrcPaths))
-	for i := range gvimrcPaths {
-		if Exists(gvimrcPaths[i]) {
-			rclist = append(rclist, gvimrcPaths[i])
+	for i := 0; i < len(gvimrcPaths); {
+		if !Exists(gvimrcPaths[i]) {
+			gvimrcPaths = append(gvimrcPaths[:i], gvimrcPaths[i+1:]...)
+			continue
 		}
+		i++
 	}
-	return rclist
+	return gvimrcPaths
 }
 
 func Exists(path string) bool {
-	_, err := os.Stat(path)
+	_, err := os.Lstat(path)
 	return !os.IsNotExist(err)
 }
