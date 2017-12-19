@@ -436,8 +436,6 @@ func (cmd *profileCmd) doAdd(args []string) error {
 		profileName = lockJSON.CurrentProfileName
 	}
 
-	var enabled []string
-
 	// Read modified profile and write to lock.json
 	lockJSON, err = cmd.transactProfile(lockJSON, profileName, func(profile *lockjson.Profile) {
 		// Add repositories to profile if the repository does not exist
@@ -446,7 +444,6 @@ func (cmd *profileCmd) doAdd(args []string) error {
 				logger.Warn("repository '" + reposPath + "' is already enabled")
 			} else {
 				profile.ReposPath = append(profile.ReposPath, reposPath)
-				enabled = append(enabled, reposPath)
 				logger.Info("Enabled '" + reposPath + "' on profile '" + profileName + "'")
 			}
 		}
@@ -455,12 +452,10 @@ func (cmd *profileCmd) doAdd(args []string) error {
 		return err
 	}
 
-	if len(enabled) > 0 {
-		// Build ~/.vim/pack/volt dir
-		err = (&buildCmd{}).doBuild(false)
-		if err != nil {
-			return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
-		}
+	// Build ~/.vim/pack/volt dir
+	err = (&buildCmd{}).doBuild(false)
+	if err != nil {
+		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
 
 	return nil
@@ -483,8 +478,6 @@ func (cmd *profileCmd) doRm(args []string) error {
 		profileName = lockJSON.CurrentProfileName
 	}
 
-	var disabled []string
-
 	// Read modified profile and write to lock.json
 	lockJSON, err = cmd.transactProfile(lockJSON, profileName, func(profile *lockjson.Profile) {
 		// Remove repositories from profile if the repository does not exist
@@ -493,7 +486,6 @@ func (cmd *profileCmd) doRm(args []string) error {
 			if index >= 0 {
 				// Remove profile.ReposPath[index]
 				profile.ReposPath = append(profile.ReposPath[:index], profile.ReposPath[index+1:]...)
-				disabled = append(disabled, reposPath)
 				logger.Info("Disabled '" + reposPath + "' from profile '" + profileName + "'")
 			} else {
 				logger.Warn("repository '" + reposPath + "' is already disabled")
@@ -504,12 +496,10 @@ func (cmd *profileCmd) doRm(args []string) error {
 		return err
 	}
 
-	if len(disabled) > 0 {
-		// Build ~/.vim/pack/volt dir
-		err = (&buildCmd{}).doBuild(false)
-		if err != nil {
-			return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
-		}
+	// Build ~/.vim/pack/volt dir
+	err = (&buildCmd{}).doBuild(false)
+	if err != nil {
+		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
 
 	return nil
@@ -647,12 +637,12 @@ func (cmd *profileCmd) doUse(args []string) error {
 		if err != nil {
 			return err
 		}
+	}
 
-		// Build ~/.vim/pack/volt dir
-		err = (&buildCmd{}).doBuild(false)
-		if err != nil {
-			return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
-		}
+	// Build ~/.vim/pack/volt dir
+	err = (&buildCmd{}).doBuild(false)
+	if err != nil {
+		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
 
 	return nil

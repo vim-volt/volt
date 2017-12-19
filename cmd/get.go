@@ -245,12 +245,12 @@ func (cmd *getCmd) doGet(reposPathList []string, flags *getFlagsType, lockJSON *
 		if err != nil {
 			return errors.New("could not write to lock.json: " + err.Error())
 		}
+	}
 
-		// Build ~/.vim/pack/volt dir
-		err = (&buildCmd{}).doBuild(false)
-		if err != nil {
-			return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
-		}
+	// Build ~/.vim/pack/volt dir
+	err = (&buildCmd{}).doBuild(false)
+	if err != nil {
+		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
 
 	// Show results
