@@ -23,21 +23,414 @@ import (
 // (C) Do smart build
 // (D) Do full build
 // (E) `$VOLTPATH/repos/<repos>/` is copied to `~/.vim/pack/volt/<repos>/` (timestamp comparison)
-// (F) vimrc with magic comment is installed
-// (G) gvimrc with magic comment is installed
-// (H) Installed bundled plugconf exists
-// (I) Installed bundled plugconf is syntax OK
+// (F) `~/.vim/vimrc` exists
+// (G) `~/.vim/vimrc` has magic comment
+// (H) `~/.vim/gvimrc` exists
+// (I) `~/.vim/gvimrc` has magic comment
+// (J) Installed bundled plugconf exists
+// (K) Installed bundled plugconf is syntax OK
 
-// * Run `volt build` (repos: exists, vim repos: not exist) (git repository) (A, B, C, E, H, I)
-// * Put `$VOLTPATH/rc/<profile>/vimrc.vim` (F)
-// * Put `$VOLTPATH/rc/<profile>/gvimrc.vim` (G)
+// About vimrc and gvimrc test cases (F, G, H, I)
+//
+// Pre-conditions:
+// (a) profile vimrc exists | profile gvimrc exists
+// (b) user vimrc exists | user gvimrc exists
+// (c) user vimrc has *no* magic comment | user gvimrc has *no* magic comment
+//     (user vimrc or gvimrc is not installed by volt)
+// (c') user vimrc has magic comment | user gvimrc has magic comment
+//     (user vimrc or gvimrc is installed by volt)
+//
+// (case t1) a & !b (expects F,G if profile vimrc exists, expects H,I if profile gvimrc exists)
+//   * if profile vimrc/gvimrc exists, it's installed to `~/.vim/{vimrc,gvimrc}`
+//   * if profile vimrc/gvimrc does not exist, it's removed from `~/.vim/{vimrc,gvimrc}`
+//   * (the case for the users of profile feature)
+// (case t2) b & c (expects F,!G if user vimrc has *no* magic comment, expects H,!I if user gvimrc has *no* magic comment)
+//   * if a & both profile & user vimrc exist: error
+//   * if a & both profile & user gvimrc exist: error
+//   * install profile vimrc/gvimrc if user vimrc/gvimrc does not exist
+//   * user vimrc/gvimrc are not changed if vimrc/gvimrc exists
+//   * (the case for the non-users of profile feature)
+// (case t3) b & c' (expects !F,!H)
+//   * if a: user vimrc/gvimrc are installed to `~/.vim/{vimrc,gvimrc}`
+//   * if !a: user vimrc/gvimrc are removed
+//   * (the case for the users of profile feature)
+// (case t4) !a & !b (expects !F,!H)
+//   * no vimrc/gvimrc are installed to `~/.vim/{vimrc,gvimrc}`
+
+// * (case t1) profile vimrc:exists
+//             profile gvimrc:exists
+//             user vimrc:not exist
+//             user gvimrc:not exist
+//             vimrc magic comment:N/A
+//             gvimrc magic comment:N/A (F, G, H, I)
+func TestVoltBuildT1ProfileVimrcGvimrcExists(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
+	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (F, G, H, I)
+	checkRCInstalled(t, 1, 1, 1, 1)
+}
+
+// * (case t1) profile vimrc:exists
+//             profile gvimrc:not exist
+//             user vimrc:not exist
+//             user gvimrc:not exist
+//             vimrc magic comment:N/A
+//             gvimrc magic comment:N/A (F, G, !H)
+func TestVoltBuildT1ProfileVimrcExists(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (F, G, !H)
+	checkRCInstalled(t, 1, 1, 0, -1)
+}
+
+// * (case t1) profile vimrc:not exist
+//             profile gvimrc:exists
+//             user vimrc:not exist
+//             user gvimrc:not exist
+//             vimrc magic comment:N/A
+//             gvimrc magic comment:N/A (!F, H, I)
+func TestVoltBuildT1ProfileGvimrcExists(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (!F, H, I)
+	checkRCInstalled(t, 0, -1, 1, 1)
+}
+
+// * (case t2) profile vimrc:not exist
+//             profile gvimrc:not exist
+//             user vimrc:exists
+//             user gvimrc:exists
+//             vimrc magic comment:not exist
+//             gvimrc magic comment:not exist (F, !G, H, !I)
+func TestVoltBuildT2UserVimrcGvimrcExists(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installVimRC(t, "vimrc-nomagic.vim", pathutil.Vimrc)
+	installVimRC(t, "gvimrc-nomagic.vim", pathutil.Gvimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (F, !G, H, !I)
+	checkRCInstalled(t, 1, 0, 1, 0)
+}
+
+// * (case t2) profile vimrc:not exist
+//             profile gvimrc:not exist
+//             user vimrc:exists
+//             user gvimrc:not exist
+//             vimrc magic comment:not exist
+//             gvimrc magic comment:N/A (F, !G, !H)
+func TestVoltBuildT2UserVimrcExists(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installVimRC(t, "vimrc-nomagic.vim", pathutil.Vimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (F, !G, !H)
+	checkRCInstalled(t, 1, 0, 0, -1)
+}
+
+// * Run `volt build` (!A, !B)
+// * (case t2) profile vimrc:exists
+//             profile gvimrc:not exist
+//             user vimrc:exists
+//             user gvimrc:not exist
+//             vimrc magic comment:not exist
+//             gvimrc magic comment:N/A (F, !G, !H)
+func TestErrVoltBuildT2CannotOverwriteUserVimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
+	installVimRC(t, "vimrc-nomagic.vim", pathutil.Vimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (!A, !B)
+	testutil.FailExit(t, out, err)
+
+	// (F, !G, !H)
+	checkRCInstalled(t, 1, 0, 0, -1)
+}
+
+// * Run `volt build` (!A, !B)
+// * (case t2) profile vimrc:not exist
+//             profile gvimrc:exists
+//             user vimrc:not exist
+//             user gvimrc:exists
+//             vimrc magic comment:N/A
+//             gvimrc magic comment:not exist (!F, H, !I)
+func TestErrVoltBuildT2CannotOverwriteUserGvimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
+	installVimRC(t, "gvimrc-nomagic.vim", pathutil.Gvimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (!A, !B)
+	testutil.FailExit(t, out, err)
+
+	// (!F, H, !I)
+	checkRCInstalled(t, 0, -1, 1, 0)
+}
+
+// * Run `volt build` (A, B)
+// * (case t2) profile vimrc:exists
+//             profile gvimrc:not exist
+//             user vimrc:not exist
+//             user gvimrc:exists
+//             vimrc magic comment:not exist
+//             gvimrc magic comment:N/A (F, G, H, !I)
+func TestVoltBuildT2CanInstallUserVimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
+	installVimRC(t, "gvimrc-nomagic.vim", pathutil.Gvimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (F, G, H, !I)
+	checkRCInstalled(t, 1, 1, 1, 0)
+}
+
+// * Run `volt build` (A, B)
+// * (case t3) profile vimrc:exists
+//             profile gvimrc:exists
+//             user vimrc:exists
+//             user gvimrc:exists
+//             vimrc magic comment:exists
+//             gvimrc magic comment:exists (F, G, H, I)
+func TestVoltBuildT3OverwriteUserVimrcGvimrcByProfileVimrcGvimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
+	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
+	installVimRC(t, "vimrc-magic.vim", pathutil.Vimrc)
+	installVimRC(t, "gvimrc-magic.vim", pathutil.Gvimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (F, G, H, I)
+	checkRCInstalled(t, 1, 1, 1, 1)
+}
+
+// * Run `volt build` (A, B)
+// * (case t3) profile vimrc:not exist
+//             profile gvimrc:exists
+//             user vimrc:not exist
+//             user gvimrc:exists
+//             vimrc magic comment:N/A
+//             gvimrc magic comment:exists (!F, H, I)
+func TestVoltBuildT3OverwriteUserGvimrcByProfileGvimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
+	installVimRC(t, "gvimrc-magic.vim", pathutil.Gvimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (!F, H, I)
+	checkRCInstalled(t, 0, -1, 1, 1)
+}
+
+// * Run `volt build` (A, B)
+// * (case t3) profile vimrc:exists
+//             profile gvimrc:not exist
+//             user vimrc:exists
+//             user gvimrc:not exist
+//             vimrc magic comment:exists
+//             gvimrc magic comment:N/A (F, G, !H)
+func TestVoltBuildT3OverwriteUserVimrcByProfileVimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
+	installVimRC(t, "vimrc-magic.vim", pathutil.Vimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (F, G, !H)
+	checkRCInstalled(t, 1, 1, 0, -1)
+}
+
+// * Run `volt build` (A, B)
+// * (case t3) profile vimrc:not exist
+//             profile gvimrc:not exist
+//             user vimrc:exists
+//             user gvimrc:exists
+//             vimrc magic comment:exists
+//             gvimrc magic comment:exists (!F, !H)
+func TestVoltBuildT3RemoveUserVimrcGvimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installVimRC(t, "vimrc-magic.vim", pathutil.Vimrc)
+	installVimRC(t, "gvimrc-magic.vim", pathutil.Gvimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (!F, !H)
+	checkRCInstalled(t, 0, -1, 0, -1)
+}
+
+// * Run `volt build` (A, B)
+// * (case t3) profile vimrc:not exist
+//             profile gvimrc:exists
+//             user vimrc:exists
+//             user gvimrc:not exist
+//             vimrc magic comment:exists
+//             gvimrc magic comment:N/A (!F, H, I)
+func TestVoltBuildT3InstallGvimrcAndRemoveUserVimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
+	installVimRC(t, "vimrc-magic.vim", pathutil.Vimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (!F, H, I)
+	checkRCInstalled(t, 0, -1, 1, 1)
+}
+
+// * Run `volt build` (A, B)
+// * (case t3) profile vimrc:exists
+//             profile gvimrc:not exist
+//             user vimrc:not exist
+//             user gvimrc:exists
+//             vimrc magic comment:N/A
+//             gvimrc magic comment:exists (F, G, !H)
+func TestVoltBuildT3InstallVimrcAndRemoveUserGvimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
+	installVimRC(t, "gvimrc-magic.vim", pathutil.Gvimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (F, G, !H)
+	checkRCInstalled(t, 1, 1, 0, -1)
+}
+
+// * Run `volt build` (A, B)
+// * (case t4) profile vimrc:not exist
+//             profile gvimrc:not exist
+//             user vimrc:not exist
+//             user gvimrc:not exist
+//             vimrc magic comment:N/A
+//             gvimrc magic comment:N/A (!F, !H)
+func TestVoltBuildT4NoVimrcGvimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	// (!F, !H)
+	checkRCInstalled(t, 0, -1, 0, -1)
+}
+
+// ===========================================================
+
+// * Run `volt build` (repos: exists, vim repos: not exist) (git repository) (A, B, C, E, !F, !H, J, K)
 func TestVoltBuildGitNoVimRepos(t *testing.T) {
 	voltBuildGitNoVimRepos(t, false)
 }
 
-// * Run `volt build -full` (repos: exists, vim repos: not exist) (git repository) (A, B, D, E, H, I)
-// * Put `$VOLTPATH/rc/<profile>/vimrc.vim` (F)
-// * Put `$VOLTPATH/rc/<profile>/gvimrc.vim` (G)
+// * Run `volt build -full` (repos: exists, vim repos: not exist) (git repository) (A, B, D, E, !F, !H, J, K)
 func TestVoltBuildFullGitNoVimRepos(t *testing.T) {
 	voltBuildGitNoVimRepos(t, true)
 }
@@ -48,7 +441,6 @@ func voltBuildGitNoVimRepos(t *testing.T, full bool) {
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"github.com/tyru/caw.vim"}
 	setUpTestdata(t, "caw.vim", reposGitType, reposPathList)
-	rclist := installRCList(t, true, true, "default")
 
 	// =============== run =============== //
 
@@ -68,29 +460,25 @@ func voltBuildGitNoVimRepos(t *testing.T, full bool) {
 		checkCopied(t, reposPath)
 	}
 
-	// (F, G)
-	checkRCInstalled(t, rclist)
+	// (!F, !H)
+	checkRCInstalled(t, 0, -1, 0, -1)
 
-	// (H)
+	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
 		t.Fatalf("%s does not exist", bundledPlugconf)
 	}
 
-	// (I)
+	// (K)
 	checkSyntax(t, bundledPlugconf)
 }
 
-// * Run `volt build` (repos: newer, vim repos: older) (git repository) (A, B, C, E, H, I)
-// * Put `$VOLTPATH/rc/<profile>/vimrc.vim` (F)
-// * Put *no* `$VOLTPATH/rc/<profile>/gvimrc.vim` (!G)
+// * Run `volt build` (repos: newer, vim repos: older) (git repository) (A, B, C, E, !F, !H, J, K)
 func TestVoltBuildGitVimDirOlder(t *testing.T) {
 	voltBuildGitVimDirOlder(t, false)
 }
 
-// * Run `volt build -full` (repos: newer, vim repos: older) (git repository) (A, B, D, E, H, I)
-// * Put `$VOLTPATH/rc/<profile>/vimrc.vim` (F)
-// * Put *no* `$VOLTPATH/rc/<profile>/gvimrc.vim` (!G)
+// * Run `volt build -full` (repos: newer, vim repos: older) (git repository) (A, B, D, E, !F, !H, J, K)
 func TestVoltBuildFullGitVimDirOlder(t *testing.T) {
 	voltBuildGitVimDirOlder(t, true)
 }
@@ -106,7 +494,6 @@ func voltBuildGitVimDirOlder(t *testing.T, full bool) {
 	for _, reposPath := range reposPathList {
 		touchFiles(t, pathutil.FullReposPathOf(reposPath))
 	}
-	rclist := installRCList(t, true, false, "default")
 
 	// =============== run =============== //
 
@@ -126,29 +513,25 @@ func voltBuildGitVimDirOlder(t *testing.T, full bool) {
 		checkCopied(t, reposPath)
 	}
 
-	// (F, !G)
-	checkRCInstalled(t, rclist)
+	// (!F, !H)
+	checkRCInstalled(t, 0, -1, 0, -1)
 
-	// (H)
+	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
 		t.Fatalf("%s does not exist", bundledPlugconf)
 	}
 
-	// (I)
+	// (K)
 	checkSyntax(t, bundledPlugconf)
 }
 
-// * Run `volt build` (repos: older, vim repos: newer) (git repository) (A, B, C, E, H, I)
-// * Put *no* `$VOLTPATH/rc/<profile>/vimrc.vim` (!F)
-// * Put `$VOLTPATH/rc/<profile>/gvimrc.vim` (G)
+// * Run `volt build` (repos: older, vim repos: newer) (git repository) (A, B, C, E, !F, !H, J, K)
 func TestVoltBuildGitVimDirNewer(t *testing.T) {
 	voltBuildGitVimDirNewer(t, false)
 }
 
-// * Run `volt build -full` (repos: older, vim repos: newer) (git repository) (A, B, D, E, H, I)
-// * Put *no* `$VOLTPATH/rc/<profile>/vimrc.vim` (!F)
-// * Put `$VOLTPATH/rc/<profile>/gvimrc.vim` (G)
+// * Run `volt build -full` (repos: older, vim repos: newer) (git repository) (A, B, D, E, !F, !H, J, K)
 func TestVoltBuildFullGitVimDirNewer(t *testing.T) {
 	voltBuildGitVimDirNewer(t, true)
 }
@@ -164,7 +547,6 @@ func voltBuildGitVimDirNewer(t *testing.T, full bool) {
 	for _, reposPath := range reposPathList {
 		touchFiles(t, pathutil.PackReposPathOf(reposPath))
 	}
-	rclist := installRCList(t, false, true, "default")
 
 	// =============== run =============== //
 
@@ -184,29 +566,25 @@ func voltBuildGitVimDirNewer(t *testing.T, full bool) {
 		checkCopied(t, reposPath)
 	}
 
-	// (!F, G)
-	checkRCInstalled(t, rclist)
+	// (!F, !H)
+	checkRCInstalled(t, 0, -1, 0, -1)
 
-	// (H)
+	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
 		t.Fatalf("%s does not exist", bundledPlugconf)
 	}
 
-	// (I)
+	// (K)
 	checkSyntax(t, bundledPlugconf)
 }
 
-// * Run `volt build` (repos: exists, vim repos: not exist) (static repository) (A, B, C, E, H, I)
-// * Put *no* `$VOLTPATH/rc/<profile>/vimrc.vim` (!F)
-// * Put *no* `$VOLTPATH/rc/<profile>/gvimrc.vim` (!G)
+// * Run `volt build` (repos: exists, vim repos: not exist) (static repository) (A, B, C, E, !F, !H, J, K)
 func TestVoltBuildStaticNoVimRepos(t *testing.T) {
 	voltBuildStaticNoVimRepos(t, false)
 }
 
-// * Run `volt build -full` (repos: exists, vim repos: not exist) (static repository) (A, B, D, E, H, I)
-// * Put *no* `$VOLTPATH/rc/<profile>/vimrc.vim` (!F)
-// * Put *no* `$VOLTPATH/rc/<profile>/gvimrc.vim` (!G)
+// * Run `volt build -full` (repos: exists, vim repos: not exist) (static repository) (A, B, D, E, !F, !H, J, K)
 func TestVoltBuildFullStaticNoVimRepos(t *testing.T) {
 	voltBuildStaticNoVimRepos(t, true)
 }
@@ -217,7 +595,6 @@ func voltBuildStaticNoVimRepos(t *testing.T, full bool) {
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"localhost/local/hello"}
 	setUpTestdata(t, "hello", reposStaticType, reposPathList)
-	rclist := installRCList(t, false, false, "default")
 
 	// =============== run =============== //
 
@@ -237,29 +614,25 @@ func voltBuildStaticNoVimRepos(t *testing.T, full bool) {
 		checkCopied(t, reposPath)
 	}
 
-	// (!F, !G)
-	checkRCInstalled(t, rclist)
+	// (!F, !H)
+	checkRCInstalled(t, 0, -1, 0, -1)
 
-	// (H)
+	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
 		t.Fatalf("%s does not exist", bundledPlugconf)
 	}
 
-	// (I)
+	// (K)
 	checkSyntax(t, bundledPlugconf)
 }
 
-// * Run `volt build` (repos: newer, vim repos: older) (static repository) (A, B, C, E, H, I)
-// * Put *no* `$VOLTPATH/rc/<profile>/vimrc.vim` (!F)
-// * Put *no* `$VOLTPATH/rc/<profile>/gvimrc.vim` (!G)
+// * Run `volt build` (repos: newer, vim repos: older) (static repository) (A, B, C, E, !F, !H, J, K)
 func TestVoltBuildStaticVimDirOlder(t *testing.T) {
 	voltBuildStaticVimDirOlder(t, false)
 }
 
-// * Run `volt build -full` (repos: newer, vim repos: older) (static repository) (A, B, D, E, H, I)
-// * Put *no* `$VOLTPATH/rc/<profile>/vimrc.vim` (!F)
-// * Put *no* `$VOLTPATH/rc/<profile>/gvimrc.vim` (!G)
+// * Run `volt build -full` (repos: newer, vim repos: older) (static repository) (A, B, D, E, !F, !H, J, K)
 func TestVoltBuildFullStaticVimDirOlder(t *testing.T) {
 	voltBuildStaticVimDirOlder(t, true)
 }
@@ -275,7 +648,6 @@ func voltBuildStaticVimDirOlder(t *testing.T, full bool) {
 	for _, reposPath := range reposPathList {
 		touchFiles(t, pathutil.FullReposPathOf(reposPath))
 	}
-	rclist := installRCList(t, false, false, "default")
 
 	// =============== run =============== //
 
@@ -295,29 +667,25 @@ func voltBuildStaticVimDirOlder(t *testing.T, full bool) {
 		checkCopied(t, reposPath)
 	}
 
-	// (!F, !G)
-	checkRCInstalled(t, rclist)
+	// (!F, !H)
+	checkRCInstalled(t, 0, -1, 0, -1)
 
-	// (H)
+	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
 		t.Fatalf("%s does not exist", bundledPlugconf)
 	}
 
-	// (I)
+	// (K)
 	checkSyntax(t, bundledPlugconf)
 }
 
-// * Run `volt build` (repos: older, vim repos: newer) (static repository) (A, B, C, E, H, I)
-// * Put *no* `$VOLTPATH/rc/<profile>/vimrc.vim` (!F)
-// * Put *no* `$VOLTPATH/rc/<profile>/gvimrc.vim` (!G)
+// * Run `volt build` (repos: older, vim repos: newer) (static repository) (A, B, C, E, !F, !H, J, K)
 func TestVoltBuildStaticVimDirNewer(t *testing.T) {
 	voltBuildStaticVimDirNewer(t, false)
 }
 
-// * Run `volt build -full` (repos: older, vim repos: newer) (static repository) (A, B, D, E, H, I)
-// * Put *no* `$VOLTPATH/rc/<profile>/vimrc.vim` (!F)
-// * Put *no* `$VOLTPATH/rc/<profile>/gvimrc.vim` (!G)
+// * Run `volt build -full` (repos: older, vim repos: newer) (static repository) (A, B, D, E, !F, !H, J, K)
 func TestVoltBuildFullStaticVimDirNewer(t *testing.T) {
 	voltBuildStaticVimDirNewer(t, true)
 }
@@ -333,7 +701,6 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool) {
 	for _, reposPath := range reposPathList {
 		touchFiles(t, pathutil.PackReposPathOf(reposPath))
 	}
-	rclist := installRCList(t, false, false, "default")
 
 	// =============== run =============== //
 
@@ -353,139 +720,17 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool) {
 		checkCopied(t, reposPath)
 	}
 
-	// (!F, !G)
-	checkRCInstalled(t, rclist)
+	// (!F, !H)
+	checkRCInstalled(t, 0, -1, 0, -1)
 
-	// (H)
+	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
 		t.Fatalf("%s does not exist", bundledPlugconf)
 	}
 
-	// (I)
+	// (K)
 	checkSyntax(t, bundledPlugconf)
-}
-
-// `~/.vim/vimrc` with no magic comment exists (!A, !B, !E, !F, !G, !H)
-func TestVoltBuildVimrcExists(t *testing.T) {
-	// =============== setup =============== //
-
-	testutil.SetUpEnv(t)
-	reposPathList := []string{"github.com/tyru/caw.vim"}
-	setUpTestdata(t, "caw.vim", reposGitType, reposPathList)
-	rclist := installRCList(t, false, false, "default")
-
-	vimrc := filepath.Join(pathutil.VimDir(), pathutil.Vimrc)
-	os.MkdirAll(filepath.Dir(vimrc), 0777)
-	if err := ioutil.WriteFile(vimrc, []byte("syntax on"), 0777); err != nil {
-		t.Fatalf("cannot create %s: %s", vimrc, err.Error())
-	}
-
-	// =============== run =============== //
-
-	out, err := testutil.RunVolt("build")
-	// (!A, !B)
-	testutil.FailExit(t, out, err)
-
-	for _, reposPath := range reposPathList {
-		// (!E)
-		vimReposDir := pathutil.PackReposPathOf(reposPath)
-		if pathutil.Exists(vimReposDir) {
-			t.Fatalf("vim repos dir was created: %s", vimReposDir)
-		}
-	}
-
-	// (!F, !G)
-	checkRCInstalled(t, rclist)
-
-	// (!H)
-	bundledPlugconf := pathutil.BundledPlugConf()
-	if pathutil.Exists(bundledPlugconf) {
-		t.Fatalf("%s exists", bundledPlugconf)
-	}
-}
-
-// `~/.vim/gvimrc` with no magic comment exists (!A, !B, !E, !F, !G, !H)
-func TestVoltBuildGvimrcExists(t *testing.T) {
-	// =============== setup =============== //
-
-	testutil.SetUpEnv(t)
-	reposPathList := []string{"github.com/tyru/caw.vim"}
-	setUpTestdata(t, "caw.vim", reposGitType, reposPathList)
-	rclist := installRCList(t, false, false, "default")
-
-	gvimrc := filepath.Join(pathutil.VimDir(), pathutil.Gvimrc)
-	os.MkdirAll(filepath.Dir(gvimrc), 0777)
-	if err := ioutil.WriteFile(gvimrc, []byte("syntax on"), 0777); err != nil {
-		t.Fatalf("cannot create %s: %s", gvimrc, err.Error())
-	}
-
-	// =============== run =============== //
-
-	out, err := testutil.RunVolt("build")
-	// (!A, !B)
-	testutil.FailExit(t, out, err)
-
-	for _, reposPath := range reposPathList {
-		// (!E)
-		vimReposDir := pathutil.PackReposPathOf(reposPath)
-		if pathutil.Exists(vimReposDir) {
-			t.Fatalf("vim repos dir was created: %s", vimReposDir)
-		}
-	}
-
-	// (!F, !G)
-	checkRCInstalled(t, rclist)
-
-	// (!H)
-	bundledPlugconf := pathutil.BundledPlugConf()
-	if pathutil.Exists(bundledPlugconf) {
-		t.Fatalf("%s exists", bundledPlugconf)
-	}
-}
-
-// `~/.vim/vimrc` and `~/.vim/gvimrc` with no magic comment exists (!A, !B, !E, !F, !G, !H)
-func TestVoltBuildVimrcAndGvimrcExists(t *testing.T) {
-	// =============== setup =============== //
-
-	testutil.SetUpEnv(t)
-	reposPathList := []string{"github.com/tyru/caw.vim"}
-	setUpTestdata(t, "caw.vim", reposGitType, reposPathList)
-	rclist := installRCList(t, false, false, "default")
-
-	vimrc := filepath.Join(pathutil.VimDir(), pathutil.Vimrc)
-	os.MkdirAll(filepath.Dir(vimrc), 0777)
-	if err := ioutil.WriteFile(vimrc, []byte("syntax on"), 0777); err != nil {
-		t.Fatalf("cannot create %s: %s", vimrc, err.Error())
-	}
-	gvimrc := filepath.Join(pathutil.VimDir(), pathutil.Gvimrc)
-	os.MkdirAll(filepath.Dir(gvimrc), 0777)
-	if err := ioutil.WriteFile(gvimrc, []byte("syntax on"), 0777); err != nil {
-		t.Fatalf("cannot create %s: %s", gvimrc, err.Error())
-	}
-
-	// =============== run =============== //
-
-	out, err := testutil.RunVolt("build")
-	// (!A, !B)
-	testutil.FailExit(t, out, err)
-
-	for _, reposPath := range reposPathList {
-		// (!E)
-		vimReposDir := pathutil.PackReposPathOf(reposPath)
-		if pathutil.Exists(vimReposDir) {
-			t.Fatalf("vim repos dir was created: %s", vimReposDir)
-		}
-	}
-
-	// (!F, !G)
-	checkRCInstalled(t, rclist)
-
-	// (!H)
-	bundledPlugconf := pathutil.BundledPlugConf()
-	if pathutil.Exists(bundledPlugconf) {
-		t.Fatalf("%s exists", bundledPlugconf)
-	}
 }
 
 // ============================================
@@ -554,15 +799,6 @@ func setUpTestdata(t *testing.T, testdataName string, rType reposType, reposPath
 		if err := fileutil.CopyFile(testLockjsonPath, lockjsonPath, buf, 0777); err != nil {
 			t.Fatalf("failed to copy %s to %s", testLockjsonPath, lockjsonPath)
 		}
-	}
-}
-
-func installRC(t *testing.T, file, profileName string) {
-	src := filepath.Join(testdataDir, "rc", file)
-	dst := filepath.Join(pathutil.RCDir(profileName), file)
-	os.MkdirAll(filepath.Dir(dst), 0777)
-	if err := fileutil.CopyFile(src, dst, nil, 0777); err != nil {
-		t.Fatalf("cannot copy %s to %s: %s", src, dst, err.Error())
 	}
 }
 
@@ -657,39 +893,61 @@ func sameFile(t *testing.T, f1, f2 string) bool {
 	return bytes.Equal(b1, b2)
 }
 
-type rcList struct {
-	nameInRC  string
-	nameInVim string
-	installed bool
+func installProfileRC(t *testing.T, profileName, srcName, dstName string) {
+	src := filepath.Join(testdataDir, "rc", srcName)
+	dst := filepath.Join(pathutil.RCDir(profileName), dstName)
+	os.MkdirAll(filepath.Dir(dst), 0777)
+	if err := fileutil.CopyFile(src, dst, nil, 0777); err != nil {
+		t.Fatalf("cannot copy %s to %s: %s", src, dst, err.Error())
+	}
 }
 
-func installRCList(t *testing.T, vimrc, gvimrc bool, profileName string) []rcList {
-	rclist := []rcList{
-		rcList{pathutil.ProfileVimrc, pathutil.Vimrc, vimrc},
-		rcList{pathutil.ProfileGvimrc, pathutil.Gvimrc, gvimrc},
+func installVimRC(t *testing.T, srcName, dstName string) {
+	src := filepath.Join(testdataDir, "rc", srcName)
+	dst := filepath.Join(pathutil.VimDir(), dstName)
+	os.MkdirAll(filepath.Dir(dst), 0777)
+	if err := fileutil.CopyFile(src, dst, nil, 0777); err != nil {
+		t.Fatalf("cannot copy %s to %s: %s", src, dst, err.Error())
 	}
-	for _, rc := range rclist {
-		if rc.installed {
-			installRC(t, rc.nameInRC, profileName)
-		}
-	}
-	return rclist
 }
 
-func checkRCInstalled(t *testing.T, rclist []rcList) {
-	for _, rc := range rclist {
-		path := filepath.Join(pathutil.VimDir(), rc.nameInVim)
-		if rc.installed {
-			if !pathutil.Exists(path) {
-				t.Fatalf("%s was not installed: %s", rc.nameInVim, path)
+func checkRCInstalled(t *testing.T, f, g, h, i int) {
+	userVimrc := filepath.Join(pathutil.VimDir(), pathutil.Vimrc)
+	userGvimrc := filepath.Join(pathutil.VimDir(), pathutil.Gvimrc)
+
+	// (F, H)
+	for _, tt := range []struct {
+		value int
+		path  string
+	}{
+		{f, userVimrc},
+		{h, userGvimrc},
+	} {
+		if tt.value >= 0 {
+			if tt.value == 1 && !pathutil.Exists(tt.path) {
+				t.Fatalf("expected %s was installed but not installed", tt.path)
 			}
-			if err := (&buildCmd{}).shouldHaveMagicComment(path); err != nil {
-				t.Fatalf("%s does not have magic comment: %s", rc.nameInVim, err.Error())
+			if tt.value == 0 && pathutil.Exists(tt.path) {
+				t.Fatalf("expected %s was not installed but installed", tt.path)
 			}
 		}
-		if !rc.installed && pathutil.Exists(path) &&
-			(&buildCmd{}).shouldHaveMagicComment(path) == nil {
-			t.Fatalf("%s was installed: %s", rc.nameInVim, path)
+	}
+
+	// (G, I)
+	for _, tt := range []struct {
+		value int
+		path  string
+	}{
+		{g, userVimrc},
+		{i, userGvimrc},
+	} {
+		if tt.value >= 0 {
+			if tt.value == 1 && !(&buildCmd{}).hasMagicComment(tt.path) {
+				t.Fatalf("expected %s has magic comment but has no magic comment", tt.path)
+			}
+			if tt.value == 0 && (&buildCmd{}).hasMagicComment(tt.path) {
+				t.Fatalf("expected %s was not installed but installed", tt.path)
+			}
 		}
 	}
 }
