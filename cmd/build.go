@@ -285,10 +285,8 @@ func (cmd *buildCmd) doBuild(full bool) error {
 	// Copy volt repos files to optDir
 	copyDone, copyCount := cmd.copyReposList(buildReposMap, reposList, optDir)
 
-	// Remove vim repos like:
-	// * found in lock.json, but not in build-info.json
-	// * found in vim repos, but not in lock.json
-	removeDone, removeCount := cmd.removeReposList(buildInfo.Repos, lockJSON.Repos, reposDirList)
+	// Remove vim repos not found in lock.json current repos list
+	removeDone, removeCount := cmd.removeReposList(reposList, reposDirList)
 
 	// Wait copy
 	var copyModified bool
@@ -546,21 +544,12 @@ func (cmd *buildCmd) copyReposStatic(repos *lockjson.Repos, buildRepos *biRepos,
 	return 0
 }
 
-// Remove vim repos like:
-// * found in lock.json, but not in build-info.json
-// * found in vim repos, but not in lock.json
-func (cmd *buildCmd) removeReposList(buildInfoRepos biReposList, lockReposList lockjson.ReposList, reposDirList []os.FileInfo) (chan actionReposResult, int) {
-	removeList := make([]string, 0, len(lockReposList))
-	// found in lock.json, but not in build-info.json
-	for i := range lockReposList {
-		if buildInfoRepos.findByReposPath(lockReposList[i].Path) == nil {
-			removeList = append(removeList, lockReposList[i].Path)
-		}
-	}
-	// found in vim repos, but not in lock.json
+// Remove vim repos not found in lock.json current repos list
+func (cmd *buildCmd) removeReposList(reposList lockjson.ReposList, reposDirList []os.FileInfo) (chan actionReposResult, int) {
+	removeList := make([]string, 0, len(reposList))
 	for i := range reposDirList {
 		reposPath := pathutil.UnpackPathOf(reposDirList[i].Name())
-		if !lockReposList.Contains(reposPath) {
+		if !reposList.Contains(reposPath) {
 			removeList = append(removeList, reposPath)
 		}
 	}
@@ -656,7 +645,7 @@ func (*buildCmd) waitRemoveRepos(removeDone chan actionReposResult, removeCount 
 	return merr
 }
 
-func (*buildCmd) getCurrentProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, []lockjson.Repos, error) {
+func (*buildCmd) getCurrentProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, lockjson.ReposList, error) {
 	// Find current profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {

@@ -356,8 +356,8 @@ func (reposPathList *profReposPath) IndexOf(reposPath string) int {
 	return -1
 }
 
-func (lockJSON *LockJSON) GetReposListByProfile(profile *Profile) ([]Repos, error) {
-	var reposList []Repos
+func (lockJSON *LockJSON) GetReposListByProfile(profile *Profile) (ReposList, error) {
+	reposList := make(ReposList, 0, len(profile.ReposPath))
 	for _, reposPath := range profile.ReposPath {
 		repos, err := lockJSON.Repos.FindByPath(reposPath)
 		if err != nil {
