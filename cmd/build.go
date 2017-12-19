@@ -262,23 +262,10 @@ func (cmd *buildCmd) doBuild(full bool) error {
 
 	logger.Info("Installing vimrc and gvimrc ...")
 
-	// Install vimrc
-	err = cmd.installRCFile(
-		lockJSON.CurrentProfileName,
-		pathutil.ProfileVimrc,
-		filepath.Join(vimDir, pathutil.Vimrc),
-		profile.UseVimrc,
-	)
-	if err != nil {
-		return err
-	}
-
-	// Install gvimrc
-	err = cmd.installRCFile(
-		lockJSON.CurrentProfileName,
-		pathutil.ProfileGvimrc,
-		filepath.Join(vimDir, pathutil.Gvimrc),
-		profile.UseGvimrc,
+	vimrcPath := filepath.Join(vimDir, pathutil.Vimrc)
+	gvimrcPath := filepath.Join(vimDir, pathutil.Gvimrc)
+	err = cmd.installVimrcAndGvimrc(
+		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath, profile.UseVimrc, profile.UseGvimrc,
 	)
 	if err != nil {
 		return err
@@ -346,6 +333,57 @@ func (cmd *buildCmd) doBuild(full bool) error {
 		}
 	}
 
+	return nil
+}
+
+func (cmd *buildCmd) installVimrcAndGvimrc(profileName, vimrcPath, gvimrcPath string, useVimrc, useGvimrc bool) error {
+	// Save old vimrc file as {vimrc}.bak
+	vimrcInfo, err := os.Stat(vimrcPath)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	vimrcExists := !os.IsNotExist(err)
+	if vimrcExists {
+		err = fileutil.CopyFile(vimrcPath, vimrcPath+".bak", make([]byte, vimrcInfo.Size()), vimrcInfo.Mode())
+		if err != nil {
+			return err
+		}
+	}
+	defer os.Remove(vimrcPath + ".bak")
+
+	// Install vimrc
+	err = cmd.installRCFile(
+		profileName,
+		pathutil.ProfileVimrc,
+		vimrcPath,
+		useVimrc,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Install gvimrc
+	err = cmd.installRCFile(
+		profileName,
+		pathutil.ProfileGvimrc,
+		gvimrcPath,
+		useGvimrc,
+	)
+	if err != nil {
+		// Restore old vimrc
+		if vimrcExists {
+			err2 := os.Rename(vimrcPath+".bak", vimrcPath)
+			if err2 != nil {
+				return multierror.Append(err, err2)
+			}
+		} else {
+			err2 := os.Remove(vimrcPath)
+			if err2 != nil {
+				return multierror.Append(err, err2)
+			}
+		}
+		return err
+	}
 	return nil
 }
 

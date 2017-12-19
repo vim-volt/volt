@@ -224,6 +224,58 @@ func TestErrVoltBuildT2CannotOverwriteUserGvimrc(t *testing.T) {
 	checkRCInstalled(t, 0, -1, 1, 0)
 }
 
+// * Run `volt build` (!A, !B)
+// * (case t2) profile vimrc:exists
+//             profile gvimrc:exists
+//             user vimrc:not exist
+//             user gvimrc:exists
+//             vimrc magic comment:N/A
+//             gvimrc magic comment:not exist (!F, H, !I)
+func TestErrVoltBuildT2DontInstallVimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
+	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
+	installVimRC(t, "gvimrc-nomagic.vim", pathutil.Gvimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (!A, !B)
+	testutil.FailExit(t, out, err)
+
+	// (!F, H, !I)
+	checkRCInstalled(t, 0, -1, 1, 0)
+}
+
+// * Run `volt build` (!A, !B)
+// * (case t2) profile vimrc:exists
+//             profile gvimrc:exists
+//             user vimrc:exists
+//             user gvimrc:not exist
+//             vimrc magic comment:not exist
+//             gvimrc magic comment:N/A (F, !G, !H)
+func TestErrVoltBuildT2DontInstallGvimrc(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
+	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
+	installVimRC(t, "vimrc-nomagic.vim", pathutil.Vimrc)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("build")
+	// (!A, !B)
+	testutil.FailExit(t, out, err)
+
+	// (F, !G, !H)
+	checkRCInstalled(t, 1, 0, 0, -1)
+}
+
 // * Run `volt build` (A, B)
 // * (case t2) profile vimrc:exists
 //             profile gvimrc:not exist
