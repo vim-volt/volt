@@ -4,7 +4,8 @@
 ----
 
 ```
- .----------------.  .----------------.  .----------------.  .----------------. 
+$ volt
+ .----------------.  .----------------.  .----------------.  .----------------.
 | .--------------. || .--------------. || .--------------. || .--------------. |
 | | ____   ____  | || |     ____     | || |   _____      | || |  _________   | |
 | ||_  _| |_  _| | || |   .'    `.   | || |  |_   _|     | || | |  _   _  |  | |
@@ -14,8 +15,90 @@
 | |     \_/      | || |   `.____.'   | || |  |________|  | || |   |_____|    | |
 | |              | || |              | || |              | || |              | |
 | '--------------' || '--------------' || '--------------' || '--------------' |
- '----------------'  '----------------'  '----------------'  '----------------' 
+ '----------------'  '----------------'  '----------------'  '----------------'
+
+Usage
+  volt COMMAND ARGS
+
+Command
+  get [-l] [-u] [-v] [{repository} ...]
+    Install or upgrade given {repository} list, or add local {repository} list as plugins
+
+  rm {repository} [{repository2} ...]
+    Uninstall vim plugin and plugconf files
+
+  enable {repository} [{repository2} ...]
+    This is shortcut of:
+    volt profile add {current profile} {repository} [{repository2} ...]
+
+  list
+    This is shortcut of:
+    volt profile show {current profile}
+
+  disable {repository} [{repository2} ...]
+    This is shortcut of:
+    volt profile rm {current profile} {repository} [{repository2} ...]
+
+  profile set {name}
+    Set profile name
+
+  profile show {name}
+    Show profile info
+
+  profile list
+    List all profiles
+
+  profile new {name}
+    Create new profile
+
+  profile destroy {name}
+    Delete profile
+
+  profile rename {old} {new}
+    Rename profile {old} to {new}
+
+  profile add {name} {repository} [{repository2} ...]
+    Add one or more repositories to profile
+
+  profile rm {name} {repository} [{repository2} ...]
+    Remove one or more repositories to profile
+
+  profile use [-current | {name}] vimrc [true | false]
+  profile use [-current | {name}] gvimrc [true | false]
+    Set vimrc / gvimrc flag to true or false.
+
+  build [-full]
+    Build ~/.vim/pack/volt/ directory
+
+  migrate
+    Convert old version $VOLTPATH/lock.json structure into the latest version
+
+  self-upgrade [-check]
+    Upgrade to the latest volt command, or if -check was given, it only checks the newer version is available
+
+  version
+    Show volt command version
  ```
+
+
+* [What is Volt](#what-is-volt)
+* [Install](#install)
+* [Build Environment](#build-environment)
+* [Self upgrade](#self-upgrade)
+* [Introduction](#introduction)
+  * [VOLTPATH](#voltpath)
+  * [Install plugin(s)](#install-plugins)
+  * [Update plugins](#update-plugins)
+  * [Uninstall plugins](#uninstall-plugins)
+* [How it works](#how-it-works)
+  * [Syncing ~/.vim/pack/volt directory with $VOLTPATH](#syncing-vimpackvolt-directory-with-voltpath)
+* [Features](#features)
+  * [Easy setup](#easy-setup)
+  * [Configuration per plugin ("Plugconf" feature)](#configuration-per-plugin-plugconf-feature)
+  * [Switch set of plugins ("Profile" feature)](#switch-set-of-plugins-profile-feature)
+* [Contribution](#tada-contribution)
+
+
 
 ## What is Volt
 
@@ -43,6 +126,21 @@ Or download binaries from [GitHub releases](https://github.com/vim-volt/volt/rel
 
 * Go 1.9.1 or higher **with [the patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ([#1](https://github.com/vim-volt/go-volt/issues/1))**
 
+## Self upgrade
+
+```
+$ volt self-upgrade
+```
+
+will upgrade current running volt binary to the latest version if the [newer releases](https://github.com/vim-volt/volt/releases) published.
+
+```
+$ volt self-upgrade -check
+```
+
+just checks if the newer releases published.
+It also shows the release note of the latest version.
+
 ## Introduction
 
 ### VOLTPATH
@@ -51,10 +149,6 @@ You can change base directory of volt by `VOLTPATH` environment variable.
 This is `$HOME/volt` by default.
 
 ### Install plugin(s)
-
-```
-$ volt get [repositories ...]
-```
 
 For example, installing [tyru/caw.vim](https://github.com/tyru/caw.vim) plugin:
 
@@ -82,7 +176,7 @@ For example, what `volt get tyru/caw.vim` command does internally is:
 
 ### Update plugins
 
-To update all plugins:
+You can update all plugins as follows:
 
 ```
 $ volt get -l -u
@@ -91,7 +185,7 @@ $ volt get -l -u
 `-l` works like all installed plugins are specified (the repositories list is read from `$VOLTPATH/lock.json`).
 `-u` updates specified plugins.
 
-To update specified plugin only:
+Or, update only specified plugin(s) as follows:
 
 ```
 $ volt get -u tyru/caw.vim
@@ -99,46 +193,33 @@ $ volt get -u tyru/caw.vim
 
 ### Uninstall plugins
 
-```
-$ volt rm [repositories ...]
-```
-
-To uninstall `tyru/caw.vim` like:
+You can uninstall `tyru/caw.vim` as follows:
 
 ```
 $ volt rm tyru/caw.vim   # (sob)
 ```
 
+## How it works
+
 ### Syncing ~/.vim/pack/volt directory with $VOLTPATH
 
 ![volt build](https://raw.githubusercontent.com/vim-volt/volt/master/img/volt-build.png)
 
-`volt build` synchronizes `~/.vim/pack/volt/...` with `$VOLTPATH/...` like:
+`volt build` synchronizes `~/.vim/pack/volt/...` with `$VOLTPATH/rc` (vimrc/gvimrc), `$VOLTPATH/repos` (repositories), `$VOLTPATH/plugconf` (plugconf):
+
 1. Install `$VOLTPATH/rc/<profile>/{vimrc.vim,gvimrc.vim}` to `~/.vim/vimrc` and `~/.vim/gvimrc`
 1. Copy `$VOLTPATH/repos/<repos>` to `~/.vim/pack/volt/opt/<repos>`
   * if `$VOLTPATH/repos/<repos>` has modified/new file(s), copy them to `~/.vim/pack/volt/opt/<repos>`
   * if `$VOLTPATH/repos/<repos>` does not exist, remove `~/.vim/pack/volt/opt/<repos>`
+1. Install bootstrap script to `~/.vim/pack/volt/start/system/plugin/bundled_plugconf.vim` (load plugins & plugconfs)
 
 Users don't have to run `volt build` when running `volt get`, `volt rm`, `volt add`, `volt profile`, ... commands, because those commands invoke `volt build` command internally if the commands modify repositories, plugconf, lock.json.
 But if you edit `$VOLTPATH/rc/<profile>/vimrc.vim` or `$VOLTPATH/rc/<profile>/gvimrc.vim`, you have to run `volt build` to copy them to `~/.vim/vimrc` or `~/.vim/gvimrc`.
 
 `volt build` uses cache for the next running.
-Normally `volt build` synchronizes correctly, but if you met the bug, try `volt build -full` (and please [file an issue](https://github.com/vim-volt/volt/issues/new) as possible :) to ignore the previous cache.
+Normally `volt build` synchronizes correctly, but if you met the bug, try `volt build -full` (or please [file an issue](https://github.com/vim-volt/volt/issues/new) as possible :) to ignore the previous cache.
 
-### Self upgrade
-
-```
-$ volt self-upgrade
-```
-
-will upgrade current running volt binary to the latest version if the [newer releases](https://github.com/vim-volt/volt/releases) published.
-
-```
-$ volt self-upgrade -check
-```
-
-just checks if the newer releases published.
-It also shows the release note of the latest version.
+## Features
 
 ### Easy setup
 
@@ -201,10 +282,31 @@ However, you can also define global functions in plugconf (see [tyru/nextfile.vi
 An example config of [tyru/open-browser-github.vim](https://github.com/tyru/open-browser-github.vim):
 
 ```vim
+" Plugin configuration like the code written in vimrc.
 function! s:config()
   let g:openbrowser_github_always_use_commit_hash = 1
 endfunction
 
+" This function determines when a plugin is loaded.
+"
+" Possible values are:
+" * 'start' (a plugin will be loaded at VimEnter event)
+" * 'filetype=<filetypes>' (a plugin will be loaded at FileType event)
+" * 'excmd=<excmds>' (a plugin will be loaded at CmdUndefined event)
+" <filetypes> and <excmds> can be multiple values separated by comma.
+"
+" This function must contain 'return "<str>"' code.
+" (the argument of :return must be string literal)
+function! s:depends()
+  " this is the default value, you don't have to write this
+  return 'start'
+endfunction
+
+" Dependencies of this plugin.
+" The specified dependencies are loaded after this plugin is loaded.
+"
+" This function must contain 'return [<repos>, ...]' code.
+" (the argument of :return must be list literal, and the elements are string)
 function! s:depends()
   return ['github.com/tyru/open-browser.vim']
 endfunction
@@ -312,17 +414,4 @@ $ make precompile   # this speeds up 'go build'
 $ vim ...           # edit sources
 $ make
 $ bin/volt ...      # run volt command
-```
-
-## How to build release binaries
-
-```
-$ make release
-$ ls -1 dist/
-volt-v0.0.1-alpha-darwin-amd64
-volt-v0.0.1-alpha-darwin-386
-volt-v0.0.1-alpha-linux-amd64
-volt-v0.0.1-alpha-linux-386
-volt-v0.0.1-alpha-windows-amd64.exe
-volt-v0.0.1-alpha-windows-386.exe
 ```
