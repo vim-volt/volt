@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-var voltVersion string = "v0.1.4-alpha"
+var voltVersion string = "v0.2.0"
 
 func Version(args []string) int {
 	fmt.Printf("volt version: %s\n", voltVersion)
