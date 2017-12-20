@@ -304,18 +304,24 @@ func (profs *ProfileList) FindIndexByName(name string) int {
 }
 
 func (profs *ProfileList) RemoveAllReposPath(reposPath string) error {
+	removed := false
 	for i := range *profs {
-		for j := range (*profs)[i].ReposPath {
+		for j := 0; j < len((*profs)[i].ReposPath); {
 			if (*profs)[i].ReposPath[j] == reposPath {
 				(*profs)[i].ReposPath = append(
 					(*profs)[i].ReposPath[:j],
 					(*profs)[i].ReposPath[j+1:]...,
 				)
-				return nil
+				removed = true
+				continue
 			}
+			j++
 		}
 	}
-	return errors.New("no matching profiles[]/repos_path[]: " + reposPath)
+	if !removed {
+		return errors.New("no matching profiles[]/repos_path[]: " + reposPath)
+	}
+	return nil
 }
 
 func (reposList *ReposList) Contains(reposPath string) bool {
