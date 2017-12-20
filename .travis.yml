@@ -1,14 +1,17 @@
 language: go
 
-go:
-  - 1.9.1
-  - tip
-
 matrix:
   include:
     - os: linux
+      go: 1.9.1
+    - os: linux
+      go: tip
     - os: osx
       osx_image: xcode8.3
+      go: 1.9.1
+    - os: osx
+      osx_image: xcode8.3
+      go: tip
 
 script:
   - go vet -v ./...
