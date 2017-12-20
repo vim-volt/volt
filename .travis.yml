@@ -4,6 +4,12 @@ go:
   - 1.9.1
   - tip
 
+matrix:
+  include:
+    - os: linux
+    - os: osx
+      osx_image: xcode8.3
+
 script:
   - go vet -v ./...
   - make test
