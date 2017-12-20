@@ -81,7 +81,7 @@ Static repository
     static repository is useful.
     All you need is to create a directory in "$VOLTPATH/repos/<repos>".
 
-    When -u was not specified (install) and given repositories exist, volt does not request to clone the repositories.
+    When -u was not specified (install) and given repositories exist, volt does not make a request to clone the repositories.
     Therefore, "volt get" tries to fetch repositories but skip it because the directory exists.
     then it adds repositories to lock.json if not found.
 
