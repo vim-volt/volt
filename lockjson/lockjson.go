@@ -173,17 +173,14 @@ func validate(lockJSON *LockJSON) error {
 	}
 
 	// Validate if profiles[]/repos_path[] exists in repos[]/path
+	reposMap := make(map[string]*Repos, len(lockJSON.Repos))
+	for i := range lockJSON.Repos {
+		reposMap[lockJSON.Repos[i].Path] = &lockJSON.Repos[i]
+	}
 	for i := range lockJSON.Profiles {
 		profile := &lockJSON.Profiles[i]
 		for j, reposPath := range profile.ReposPath {
-			found := false
-			for k := range lockJSON.Repos {
-				if reposPath == lockJSON.Repos[k].Path {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if _, exists := reposMap[reposPath]; !exists {
 				return errors.New(
 					"'" + reposPath + "' (profiles[" + strconv.Itoa(i) +
 						"].repos_path[" + strconv.Itoa(j) + "]) doesn't exist in repos")
@@ -304,18 +301,24 @@ func (profs *ProfileList) FindIndexByName(name string) int {
 }
 
 func (profs *ProfileList) RemoveAllReposPath(reposPath string) error {
+	removed := false
 	for i := range *profs {
-		for j := range (*profs)[i].ReposPath {
+		for j := 0; j < len((*profs)[i].ReposPath); {
 			if (*profs)[i].ReposPath[j] == reposPath {
 				(*profs)[i].ReposPath = append(
 					(*profs)[i].ReposPath[:j],
 					(*profs)[i].ReposPath[j+1:]...,
 				)
-				return nil
+				removed = true
+				continue
 			}
+			j++
 		}
 	}
-	return errors.New("no matching profiles[]/repos_path[]: " + reposPath)
+	if !removed {
+		return errors.New("no matching profiles[]/repos_path[]: " + reposPath)
+	}
+	return nil
 }
 
 func (reposList *ReposList) Contains(reposPath string) bool {
