@@ -426,7 +426,7 @@ You can use a arbitrary name as a repository name, but `localhost/{user}/{name}`
 Because if you run `volt get localhost/{user}/{name}` accidentally you only get `connection refused`.
 So it is guaranteed that you won't install a unwanted plugin :)
 
-However, this means you can also manage your `~/.vim/*` files as a vim plugin.
+In other words, this means you can also manage your `~/.vim/*` files as a vim plugin.
 Off cource you can disable/enable it by `volt disable <repos>` and `volt enable <repos>`. 
 
 ```
