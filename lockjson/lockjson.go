@@ -173,17 +173,14 @@ func validate(lockJSON *LockJSON) error {
 	}
 
 	// Validate if profiles[]/repos_path[] exists in repos[]/path
+	reposMap := make(map[string]*Repos, len(lockJSON.Repos))
+	for i := range lockJSON.Repos {
+		reposMap[lockJSON.Repos[i].Path] = &lockJSON.Repos[i]
+	}
 	for i := range lockJSON.Profiles {
 		profile := &lockJSON.Profiles[i]
 		for j, reposPath := range profile.ReposPath {
-			found := false
-			for k := range lockJSON.Repos {
-				if reposPath == lockJSON.Repos[k].Path {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if _, exists := reposMap[reposPath]; !exists {
 				return errors.New(
 					"'" + reposPath + "' (profiles[" + strconv.Itoa(i) +
 						"].repos_path[" + strconv.Itoa(j) + "]) doesn't exist in repos")
