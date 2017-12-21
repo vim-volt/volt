@@ -105,7 +105,7 @@ func (cmd *selfUpgradeCmd) doCleanUp(ppidStr string) error {
 }
 
 func (cmd *selfUpgradeCmd) waitUntilParentExits(pid int) bool {
-	fib := []int{1, 1, 2, 3, 5, 8, 13}
+	fib := []int{1, 1, 2, 3, 5, 8, 13} // 33 second
 	for i := 0; i < len(fib); i++ {
 		if !cmd.processIsAlive(pid) {
 			return true
@@ -151,11 +151,13 @@ func (cmd *selfUpgradeCmd) doSelfUpgrade(flags *selfUpgradeFlagsType, latestURL 
 		return nil
 	}
 	logger.Infof("Found update: %s -> %s", voltVersion, release.TagName)
+
+	// Show release note
+	fmt.Println("---")
+	fmt.Println(release.Body)
+	fmt.Println("---")
+
 	if flags.check {
-		// Show release note only when -check was given
-		fmt.Println("---")
-		fmt.Println(release.Body)
-		fmt.Println("---")
 		return nil
 	}
 
