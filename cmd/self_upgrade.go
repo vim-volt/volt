@@ -166,15 +166,14 @@ func (cmd *selfUpgradeCmd) doSelfUpgrade(flags *selfUpgradeFlagsType, latestURL 
 	if err != nil {
 		return err
 	}
-	{
-		latestFile, err := os.OpenFile(voltExe+".latest", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
-		if err != nil {
-			return err
-		}
-		defer latestFile.Close()
-		if err = cmd.download(latestFile, release); err != nil {
-			return err
-		}
+	latestFile, err := os.OpenFile(voltExe+".latest", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	if err != nil {
+		return err
+	}
+	err = cmd.download(latestFile, release)
+	latestFile.Close()
+	if err != nil {
+		return err
 	}
 
 	// Rename dir/volt[.exe] to dir/volt[.exe].old
