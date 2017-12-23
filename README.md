@@ -125,7 +125,9 @@ Or download binaries from [GitHub releases](https://github.com/vim-volt/volt/rel
 
 ## Build environment
 
-* Go 1.9.1 or higher **with [the patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ([#1](https://github.com/vim-volt/go-volt/issues/1))**
+* Go 1.9 or higher
+  * If you are on WSL (Windows Subsystem Linux), note that you need **[the patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ([#1](https://github.com/vim-volt/go-volt/issues/1))**
+  * But it's a hassle, you can just download linux-386/amd64 binaries from [GitHub releases](https://github.com/vim-volt/volt/releases) :)
 
 ## Self upgrade
 
