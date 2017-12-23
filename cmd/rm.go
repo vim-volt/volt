@@ -16,15 +16,17 @@ import (
 	"github.com/vim-volt/volt/transaction"
 )
 
-type rmFlagsType struct {
+func init() {
+	cmdMap["rm"] = &rmCmd{}
+}
+
+type rmCmd struct {
 	helped     bool
 	rmRepos    bool
 	rmPlugconf bool
 }
 
-var rmFlags rmFlagsType
-
-func init() {
+func (cmd *rmCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -49,20 +51,15 @@ Description
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()
-		rmFlags.helped = true
+		cmd.helped = true
 	}
-	fs.BoolVar(&rmFlags.rmRepos, "r", false, "remove also repository directories")
-	fs.BoolVar(&rmFlags.rmPlugconf, "p", false, "remove also plugconf files")
-
-	cmdFlagSet["rm"] = fs
+	fs.BoolVar(&cmd.rmRepos, "r", false, "remove also repository directories")
+	fs.BoolVar(&cmd.rmPlugconf, "p", false, "remove also plugconf files")
+	return fs
 }
 
-type rmCmd struct{}
-
-func Rm(args []string) int {
-	cmd := rmCmd{}
-
-	reposPathList, flags, err := cmd.parseArgs(args)
+func (cmd *rmCmd) Run(args []string) int {
+	reposPathList, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
 		return 0
 	}
@@ -71,7 +68,7 @@ func Rm(args []string) int {
 		return 10
 	}
 
-	err = cmd.doRemove(reposPathList, flags)
+	err = cmd.doRemove(reposPathList)
 	if err != nil {
 		logger.Error("Failed to remove repository: " + err.Error())
 		return 11
@@ -87,30 +84,30 @@ func Rm(args []string) int {
 	return 0
 }
 
-func (*rmCmd) parseArgs(args []string) ([]string, *rmFlagsType, error) {
-	fs := cmdFlagSet["rm"]
+func (cmd *rmCmd) parseArgs(args []string) ([]string, error) {
+	fs := cmd.FlagSet()
 	fs.Parse(args)
-	if rmFlags.helped {
-		return nil, nil, ErrShowedHelp
+	if cmd.helped {
+		return nil, ErrShowedHelp
 	}
 
 	if len(fs.Args()) == 0 {
 		fs.Usage()
-		return nil, nil, errors.New("repository was not given")
+		return nil, errors.New("repository was not given")
 	}
 
 	var reposPathList []string
 	for _, arg := range fs.Args() {
 		reposPath, err := pathutil.NormalizeRepos(arg)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		reposPathList = append(reposPathList, reposPath)
 	}
-	return reposPathList, &rmFlags, nil
+	return reposPathList, nil
 }
 
-func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
+func (cmd *rmCmd) doRemove(reposPathList []string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -140,7 +137,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 	removeCount := 0
 	for _, reposPath := range reposPathList {
 		// Remove repository directory
-		if flags.rmRepos {
+		if cmd.rmRepos {
 			fullReposPath := pathutil.FullReposPathOf(reposPath)
 			if pathutil.Exists(fullReposPath) {
 				if err = cmd.removeRepos(fullReposPath); err != nil {
@@ -153,7 +150,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string, flags *rmFlagsType) error {
 		}
 
 		// Remove plugconf file
-		if flags.rmPlugconf {
+		if cmd.rmPlugconf {
 			plugconfPath := pathutil.PlugconfOf(reposPath)
 			if pathutil.Exists(plugconfPath) {
 				if err = cmd.removePlugconf(plugconfPath); err != nil {

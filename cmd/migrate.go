@@ -11,13 +11,15 @@ import (
 	"github.com/vim-volt/volt/transaction"
 )
 
-type migrateFlagsType struct {
+func init() {
+	cmdMap["migrate"] = &migrateCmd{}
+}
+
+type migrateCmd struct {
 	helped bool
 }
 
-var migrateFlags migrateFlagsType
-
-func init() {
+func (cmd *migrateCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -32,17 +34,12 @@ Description
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()
-		migrateFlags.helped = true
+		cmd.helped = true
 	}
-
-	cmdFlagSet["migrate"] = fs
+	return fs
 }
 
-type migrateCmd struct{}
-
-func Migrate(args []string) int {
-	cmd := migrateCmd{}
-
+func (cmd *migrateCmd) Run(args []string) int {
 	err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
 		return 0
@@ -61,10 +58,10 @@ func Migrate(args []string) int {
 	return 0
 }
 
-func (*migrateCmd) parseArgs(args []string) error {
-	fs := cmdFlagSet["migrate"]
+func (cmd *migrateCmd) parseArgs(args []string) error {
+	fs := cmd.FlagSet()
 	fs.Parse(args)
-	if migrateFlags.helped {
+	if cmd.helped {
 		return ErrShowedHelp
 	}
 	return nil
