@@ -8,13 +8,15 @@ import (
 	"github.com/vim-volt/volt/logger"
 )
 
-type listFlagsType struct {
+func init() {
+	cmdMap["list"] = &listCmd{}
+}
+
+type listCmd struct {
 	helped bool
 }
 
-var listFlags listFlagsType
-
-func init() {
+func (cmd *listCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -31,15 +33,12 @@ Description
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()
-		listFlags.helped = true
+		cmd.helped = true
 	}
-
-	cmdFlagSet["list"] = fs
+	return fs
 }
 
-type listCmd struct{}
-
-func List(args []string) int {
+func (cmd *listCmd) Run(args []string) int {
 	profCmd := profileCmd{}
 	err := profCmd.doShow(append(
 		[]string{"-current"},

@@ -4,47 +4,36 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/vim-volt/volt/logger"
 )
 
-var cmdFlagSet = make(map[string]*flag.FlagSet)
-
 var ErrShowedHelp = errors.New("already showed help")
 
-func Help(args []string) int {
-	if len(args) == 0 {
-		showHelp()
-		return 0
-	}
-	if args[0] == "help" { // "volt help help"
-		fmt.Println("E478: Don't panic!")
-		return 0
-	}
-
-	if fs, exists := cmdFlagSet[args[0]]; exists {
-		fs.Usage()
-		return 0
-	} else {
-		logger.Errorf("Unknown command '%s'", args[0])
-		return 1
-	}
+func init() {
+	cmdMap["help"] = &helpCmd{}
 }
 
-func showHelp() {
-	fmt.Print(
-		" .----------------.  .----------------.  .----------------.  .----------------.\n" +
-			"| .--------------. || .--------------. || .--------------. || .--------------. |\n" +
-			"| | ____   ____  | || |     ____     | || |   _____      | || |  _________   | |\n" +
-			"| ||_  _| |_  _| | || |   .'    `.   | || |  |_   _|     | || | |  _   _  |  | |\n" +
-			"| |  \\ \\   / /   | || |  /  .--.  \\  | || |    | |       | || | |_/ | | \\_|  | |\n" +
-			"| |   \\ \\ / /    | || |  | |    | |  | || |    | |   _   | || |     | |      | |\n" +
-			"| |    \\ ' /     | || |  \\  `--'  /  | || |   _| |__/ |  | || |    _| |_     | |\n" +
-			"| |     \\_/      | || |   `.____.'   | || |  |________|  | || |   |_____|    | |\n" +
-			"| |              | || |              | || |              | || |              | |\n" +
-			"| '--------------' || '--------------' || '--------------' || '--------------' |\n" +
-			" '----------------'  '----------------'  '----------------'  '----------------'\n" +
-			`
+type helpCmd struct{}
+
+func (cmd *helpCmd) FlagSet() *flag.FlagSet {
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
+	fs.Usage = func() {
+		fmt.Print(
+			" .----------------.  .----------------.  .----------------.  .----------------.\n" +
+				"| .--------------. || .--------------. || .--------------. || .--------------. |\n" +
+				"| | ____   ____  | || |     ____     | || |   _____      | || |  _________   | |\n" +
+				"| ||_  _| |_  _| | || |   .'    `.   | || |  |_   _|     | || | |  _   _  |  | |\n" +
+				"| |  \\ \\   / /   | || |  /  .--.  \\  | || |    | |       | || | |_/ | | \\_|  | |\n" +
+				"| |   \\ \\ / /    | || |  | |    | |  | || |    | |   _   | || |     | |      | |\n" +
+				"| |    \\ ' /     | || |  \\  `--'  /  | || |   _| |__/ |  | || |    _| |_     | |\n" +
+				"| |     \\_/      | || |   `.____.'   | || |  |________|  | || |   |_____|    | |\n" +
+				"| |              | || |              | || |              | || |              | |\n" +
+				"| '--------------' || '--------------' || '--------------' || '--------------' |\n" +
+				" '----------------'  '----------------'  '----------------'  '----------------'\n" +
+				`
 Usage
   volt COMMAND ARGS
 
@@ -106,4 +95,26 @@ Command
 
   version
     Show volt command version` + "\n\n")
+		//cmd.helped = true
+	}
+	return fs
+}
+
+func (cmd *helpCmd) Run(args []string) int {
+	if len(args) == 0 {
+		cmd.FlagSet().Usage()
+		return 0
+	}
+	if args[0] == "help" { // "volt help help"
+		fmt.Println("E478: Don't panic!")
+		return 0
+	}
+
+	if fs, exists := cmdMap[args[0]]; exists {
+		fs.Run([]string{"-help"})
+		return 0
+	} else {
+		logger.Errorf("Unknown command '%s'", args[0])
+		return 1
+	}
 }
