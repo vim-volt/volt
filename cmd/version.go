@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-var voltVersion string = "v0.2.2"
+var voltVersion string = "v0.2.3-beta"
 
 func init() {
 	cmdMap["version"] = &versionCmd{}
