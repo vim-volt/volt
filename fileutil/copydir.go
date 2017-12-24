@@ -10,7 +10,7 @@ import (
 
 // CopyDir recursively copies a directory tree, attempting to preserve permissions.
 // Source directory must exist, destination directory must *not* exist.
-func CopyDir(src, dst string, buf []byte, perm os.FileMode, invalidType os.FileMode) error {
+func CopyDir(src, dst string, buf []byte, perm os.FileMode, ignoreType os.FileMode) error {
 	if err := os.MkdirAll(dst, perm); err != nil {
 		return err
 	}
@@ -26,15 +26,15 @@ func CopyDir(src, dst string, buf []byte, perm os.FileMode, invalidType os.FileM
 	}
 
 	for i := range entries {
-		if entries[i].Mode()&invalidType != 0 {
-			return newInvalidType(entries[i].Name())
+		if entries[i].Mode()&ignoreType != 0 {
+			continue
 		}
 
 		srcPath := filepath.Join(src, entries[i].Name())
 		dstPath := filepath.Join(dst, entries[i].Name())
 
 		if entries[i].IsDir() {
-			if err = CopyDir(srcPath, dstPath, buf, entries[i].Mode(), invalidType); err != nil {
+			if err = CopyDir(srcPath, dstPath, buf, entries[i].Mode(), ignoreType); err != nil {
 				return err
 			}
 		} else {

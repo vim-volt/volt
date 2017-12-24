@@ -13,28 +13,17 @@ import (
 	"github.com/vim-volt/volt/transaction"
 )
 
-type profileFlagsType struct {
+type profileCmd struct {
 	helped bool
 }
-
-var profileFlags profileFlagsType
-
-type profileCmd struct{}
 
 var profileSubCmd = make(map[string]func([]string) error)
 
 func init() {
-	cmd := profileCmd{}
-	profileSubCmd["set"] = cmd.doSet
-	profileSubCmd["show"] = cmd.doShow
-	profileSubCmd["list"] = cmd.doList
-	profileSubCmd["new"] = cmd.doNew
-	profileSubCmd["destroy"] = cmd.doDestroy
-	profileSubCmd["rename"] = cmd.doRename
-	profileSubCmd["add"] = cmd.doAdd
-	profileSubCmd["rm"] = cmd.doRm
-	profileSubCmd["use"] = cmd.doUse
+	cmdMap["profile"] = &profileCmd{}
+}
 
+func (cmd *profileCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -93,15 +82,12 @@ Quick example
 
   $ volt profile use -current vimrc false   # Disable installing vimrc on current profile on "volt build"
   $ volt profile use default gvimrc true   # Enable installing gvimrc on profile default on "volt build"` + "\n\n")
-		profileFlags.helped = true
+		cmd.helped = true
 	}
-
-	cmdFlagSet["profile"] = fs
+	return fs
 }
 
-func Profile(args []string) int {
-	cmd := profileCmd{}
-
+func (cmd *profileCmd) Run(args []string) int {
 	// Parse args
 	args, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
@@ -112,31 +98,48 @@ func Profile(args []string) int {
 		return 10
 	}
 
-	if fn, exists := profileSubCmd[args[0]]; exists {
-		err = fn(args[1:])
-		if err != nil {
-			logger.Error(err.Error())
-			return 11
-		}
+	subCmd := args[0]
+	switch subCmd {
+	case "set":
+		err = cmd.doSet(args[1:])
+	case "show":
+		err = cmd.doShow(args[1:])
+	case "list":
+		err = cmd.doList(args[1:])
+	case "new":
+		err = cmd.doNew(args[1:])
+	case "destroy":
+		err = cmd.doDestroy(args[1:])
+	case "rename":
+		err = cmd.doRename(args[1:])
+	case "add":
+		err = cmd.doAdd(args[1:])
+	case "rm":
+		err = cmd.doRm(args[1:])
+	case "use":
+		err = cmd.doUse(args[1:])
+	default:
+		logger.Error("unknown subcommand: " + subCmd)
+		return 11
+	}
+
+	if err != nil {
+		logger.Error(err.Error())
+		return 20
 	}
 
 	return 0
 }
 
 func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
-	fs := cmdFlagSet["profile"]
+	fs := cmd.FlagSet()
 	fs.Parse(args)
-	if profileFlags.helped {
+	if cmd.helped {
 		return nil, ErrShowedHelp
 	}
 
 	if len(fs.Args()) == 0 {
 		return nil, errors.New("must specify subcommand: volt profile")
-	}
-
-	subCmd := fs.Args()[0]
-	if _, exists := profileSubCmd[subCmd]; !exists {
-		return nil, errors.New("unknown subcommand: " + subCmd)
 	}
 	return fs.Args(), nil
 }
@@ -151,7 +154,7 @@ func (*profileCmd) getCurrentProfile() (string, error) {
 
 func (cmd *profileCmd) doSet(args []string) error {
 	if len(args) == 0 {
-		cmdFlagSet["profile"].Usage()
+		cmd.FlagSet().Usage()
 		logger.Error("'volt profile set' receives profile name.")
 		return nil
 	}
@@ -203,7 +206,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 
 func (cmd *profileCmd) doShow(args []string) error {
 	if len(args) == 0 {
-		cmdFlagSet["profile"].Usage()
+		cmd.FlagSet().Usage()
 		logger.Error("'volt profile show' receives profile name.")
 		return nil
 	}
@@ -263,7 +266,7 @@ func (cmd *profileCmd) doList(args []string) error {
 
 func (cmd *profileCmd) doNew(args []string) error {
 	if len(args) == 0 {
-		cmdFlagSet["profile"].Usage()
+		cmd.FlagSet().Usage()
 		logger.Error("'volt profile new' receives profile name.")
 		return nil
 	}
@@ -309,7 +312,7 @@ func (cmd *profileCmd) doNew(args []string) error {
 
 func (cmd *profileCmd) doDestroy(args []string) error {
 	if len(args) == 0 {
-		cmdFlagSet["profile"].Usage()
+		cmd.FlagSet().Usage()
 		logger.Error("'volt profile destroy' receives profile name.")
 		return nil
 	}
@@ -362,7 +365,7 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 
 func (cmd *profileCmd) doRename(args []string) error {
 	if len(args) != 2 {
-		cmdFlagSet["profile"].Usage()
+		cmd.FlagSet().Usage()
 		logger.Error("'volt profile rename' receives profile name.")
 		return nil
 	}
@@ -507,7 +510,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 
 func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, args []string) (string, []string, error) {
 	if len(args) == 0 {
-		cmdFlagSet["profile"].Usage()
+		cmd.FlagSet().Usage()
 		logger.Errorf("'volt profile %s' receives profile name and one or more repositories.", subCmd)
 		return "", nil, nil
 	}
@@ -561,17 +564,17 @@ func (*profileCmd) transactProfile(lockJSON *lockjson.LockJSON, profileName stri
 func (cmd *profileCmd) doUse(args []string) error {
 	// Validate arguments
 	if len(args) != 3 {
-		cmdFlagSet["profile"].Usage()
+		cmd.FlagSet().Usage()
 		logger.Error("'volt profile use' receives profile name, rc name, value.")
 		return nil
 	}
 	if args[1] != "vimrc" && args[1] != "gvimrc" {
-		cmdFlagSet["profile"].Usage()
+		cmd.FlagSet().Usage()
 		logger.Error("volt profile use: Please specify \"vimrc\" or \"gvimrc\" to the 2nd argument")
 		return nil
 	}
 	if args[2] != "true" && args[2] != "false" {
-		cmdFlagSet["profile"].Usage()
+		cmd.FlagSet().Usage()
 		logger.Error("volt profile use: Please specify \"true\" or \"false\" to the 3rd argument")
 		return nil
 	}

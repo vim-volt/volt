@@ -10,13 +10,15 @@ import (
 	"github.com/vim-volt/volt/pathutil"
 )
 
-type disableFlagsType struct {
+func init() {
+	cmdMap["disable"] = &disableCmd{}
+}
+
+type disableCmd struct {
 	helped bool
 }
 
-var disableFlags disableFlagsType
-
-func init() {
+func (cmd *disableCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -33,17 +35,12 @@ Description
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()
-		disableFlags.helped = true
+		cmd.helped = true
 	}
-
-	cmdFlagSet["disable"] = fs
+	return fs
 }
 
-type disableCmd struct{}
-
-func Disable(args []string) int {
-	cmd := disableCmd{}
-
+func (cmd *disableCmd) Run(args []string) int {
 	reposPathList, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
 		return 0
@@ -66,10 +63,10 @@ func Disable(args []string) int {
 	return 0
 }
 
-func (*disableCmd) parseArgs(args []string) ([]string, error) {
-	fs := cmdFlagSet["disable"]
+func (cmd *disableCmd) parseArgs(args []string) ([]string, error) {
+	fs := cmd.FlagSet()
 	fs.Parse(args)
-	if disableFlags.helped {
+	if cmd.helped {
 		return nil, ErrShowedHelp
 	}
 

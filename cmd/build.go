@@ -26,17 +26,18 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
-type buildFlagsType struct {
+var BuildModeInvalidType = os.ModeSymlink | os.ModeNamedPipe | os.ModeSocket | os.ModeDevice
+
+func init() {
+	cmdMap["build"] = &buildCmd{}
+}
+
+type buildCmd struct {
 	helped bool
 	full   bool
 }
 
-var buildFlags buildFlagsType
-
-var BuildModeInvalidType = os.ModeSymlink | os.ModeNamedPipe | os.ModeSocket | os.ModeDevice
-var ErrBuildModeType = "does not allow symlink, named pipe, socket, device"
-
-func init() {
+func (cmd *buildCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -62,22 +63,17 @@ Description
 		fmt.Println("Options")
 		fs.PrintDefaults()
 		fmt.Println()
-		buildFlags.helped = true
+		cmd.helped = true
 	}
-	fs.BoolVar(&buildFlags.full, "full", false, "full build")
-
-	cmdFlagSet["build"] = fs
+	fs.BoolVar(&cmd.full, "full", false, "full build")
+	return fs
 }
 
-type buildCmd struct{}
-
-func Build(args []string) int {
-	cmd := buildCmd{}
-
+func (cmd *buildCmd) Run(args []string) int {
 	// Parse args
-	fs := cmdFlagSet["build"]
+	fs := cmd.FlagSet()
 	fs.Parse(args)
-	if buildFlags.helped {
+	if cmd.helped {
 		return 0
 	}
 
@@ -89,7 +85,7 @@ func Build(args []string) int {
 	}
 	defer transaction.Remove()
 
-	err = cmd.doBuild(buildFlags.full)
+	err = cmd.doBuild(cmd.full)
 	if err != nil {
 		logger.Error("Failed to build:", err.Error())
 		return 12
@@ -799,12 +795,8 @@ func (cmd *buildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string, r
 			continue
 		}
 		if file.Mode()&BuildModeInvalidType != 0 {
-			abspath := filepath.Join(src, file.Name())
-			done <- actionReposResult{
-				err:   errors.New(ErrBuildModeType + ": " + abspath),
-				repos: repos,
-			}
-			return
+			// Currenly skip the invalid files...
+			continue
 		}
 		if !created[dst] {
 			os.MkdirAll(dst, 0755)

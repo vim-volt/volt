@@ -19,14 +19,16 @@ import (
 	"github.com/vim-volt/volt/logger"
 )
 
-type selfUpgradeFlagsType struct {
+func init() {
+	cmdMap["self-upgrade"] = &selfUpgradeCmd{}
+}
+
+type selfUpgradeCmd struct {
 	helped bool
 	check  bool
 }
 
-var selfUpgradeFlags selfUpgradeFlagsType
-
-func init() {
+func (cmd *selfUpgradeCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -39,19 +41,14 @@ Description
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()
-		selfUpgradeFlags.helped = true
+		cmd.helped = true
 	}
-	fs.BoolVar(&selfUpgradeFlags.check, "check", false, "only checks the newer version is available")
-
-	cmdFlagSet["self-upgrade"] = fs
+	fs.BoolVar(&cmd.check, "check", false, "only checks the newer version is available")
+	return fs
 }
 
-type selfUpgradeCmd struct{}
-
-func SelfUpgrade(args []string) int {
-	cmd := selfUpgradeCmd{}
-
-	flags, err := cmd.parseArgs(args)
+func (cmd *selfUpgradeCmd) Run(args []string) int {
+	err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
 		return 0
 	}
@@ -67,7 +64,7 @@ func SelfUpgrade(args []string) int {
 		}
 	} else {
 		latestURL := "https://api.github.com/repos/vim-volt/volt/releases/latest"
-		if err = cmd.doSelfUpgrade(flags, latestURL); err != nil {
+		if err = cmd.doSelfUpgrade(latestURL); err != nil {
 			logger.Error("Failed to self-upgrade: " + err.Error())
 			return 12
 		}
@@ -76,13 +73,13 @@ func SelfUpgrade(args []string) int {
 	return 0
 }
 
-func (*selfUpgradeCmd) parseArgs(args []string) (*selfUpgradeFlagsType, error) {
-	fs := cmdFlagSet["self-upgrade"]
+func (cmd *selfUpgradeCmd) parseArgs(args []string) error {
+	fs := cmd.FlagSet()
 	fs.Parse(args)
-	if selfUpgradeFlags.helped {
-		return nil, ErrShowedHelp
+	if cmd.helped {
+		return ErrShowedHelp
 	}
-	return &selfUpgradeFlags, nil
+	return nil
 }
 
 func (cmd *selfUpgradeCmd) doCleanUp(ppidStr string) error {
@@ -135,9 +132,9 @@ type releaseAsset struct {
 	Name               string `json:"name"`
 }
 
-func (cmd *selfUpgradeCmd) doSelfUpgrade(flags *selfUpgradeFlagsType, latestURL string) error {
-	// Check the latest binary
-	release, err := cmd.check(latestURL)
+func (cmd *selfUpgradeCmd) doSelfUpgrade(latestURL string) error {
+	// Check the latest binary info
+	release, err := cmd.checkLatest(latestURL)
 	if err != nil {
 		return err
 	}
@@ -157,7 +154,7 @@ func (cmd *selfUpgradeCmd) doSelfUpgrade(flags *selfUpgradeFlagsType, latestURL 
 	fmt.Println(release.Body)
 	fmt.Println("---")
 
-	if flags.check {
+	if cmd.check {
 		return nil
 	}
 
@@ -166,15 +163,14 @@ func (cmd *selfUpgradeCmd) doSelfUpgrade(flags *selfUpgradeFlagsType, latestURL 
 	if err != nil {
 		return err
 	}
-	{
-		latestFile, err := os.OpenFile(voltExe+".latest", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
-		if err != nil {
-			return err
-		}
-		defer latestFile.Close()
-		if err = cmd.download(latestFile, release); err != nil {
-			return err
-		}
+	latestFile, err := os.OpenFile(voltExe+".latest", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	if err != nil {
+		return err
+	}
+	err = cmd.download(latestFile, release)
+	latestFile.Close()
+	if err != nil {
+		return err
 	}
 
 	// Rename dir/volt[.exe] to dir/volt[.exe].old
@@ -204,7 +200,7 @@ func (*selfUpgradeCmd) getExecutablePath() (string, error) {
 	return filepath.EvalSymlinks(exe)
 }
 
-func (*selfUpgradeCmd) check(url string) (*latestRelease, error) {
+func (*selfUpgradeCmd) checkLatest(url string) (*latestRelease, error) {
 	content, err := httputil.GetContent(url)
 	if err != nil {
 		return nil, err

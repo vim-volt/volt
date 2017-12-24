@@ -2,16 +2,49 @@ package cmd
 
 import (
 	"errors"
+	"flag"
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 )
 
-var voltVersion string = "v0.2.1"
+var voltVersion string = "v0.2.2"
 
-func Version(args []string) int {
+func init() {
+	cmdMap["version"] = &versionCmd{}
+}
+
+type versionCmd struct {
+	helped bool
+}
+
+func (cmd *versionCmd) FlagSet() *flag.FlagSet {
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
+	fs.Usage = func() {
+		fmt.Print(`
+Usage
+  volt version [-help]
+
+Description
+  Show current version of volt.` + "\n\n")
+		//fmt.Println("Options")
+		//fs.PrintDefaults()
+		fmt.Println()
+		cmd.helped = true
+	}
+	return fs
+}
+
+func (cmd *versionCmd) Run(args []string) int {
+	fs := cmd.FlagSet()
+	fs.Parse(args)
+	if cmd.helped {
+		return 0
+	}
+
 	fmt.Printf("volt version: %s\n", voltVersion)
-
 	return 0
 }
 

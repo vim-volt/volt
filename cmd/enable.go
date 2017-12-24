@@ -10,13 +10,15 @@ import (
 	"github.com/vim-volt/volt/pathutil"
 )
 
-type enableFlagsType struct {
+func init() {
+	cmdMap["enable"] = &enableCmd{}
+}
+
+type enableCmd struct {
 	helped bool
 }
 
-var enableFlags enableFlagsType
-
-func init() {
+func (cmd *enableCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
@@ -33,17 +35,12 @@ Description
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()
-		enableFlags.helped = true
+		cmd.helped = true
 	}
-
-	cmdFlagSet["enable"] = fs
+	return fs
 }
 
-type enableCmd struct{}
-
-func Enable(args []string) int {
-	cmd := enableCmd{}
-
+func (cmd *enableCmd) Run(args []string) int {
 	reposPathList, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
 		return 0
@@ -66,10 +63,10 @@ func Enable(args []string) int {
 	return 0
 }
 
-func (*enableCmd) parseArgs(args []string) ([]string, error) {
-	fs := cmdFlagSet["enable"]
+func (cmd *enableCmd) parseArgs(args []string) ([]string, error) {
+	fs := cmd.FlagSet()
 	fs.Parse(args)
-	if enableFlags.helped {
+	if cmd.helped {
 		return nil, ErrShowedHelp
 	}
 
