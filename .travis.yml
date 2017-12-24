@@ -16,6 +16,10 @@ matrix:
 script:
   - go vet -v ./...
   - make test
+  # we must update docs manually by `make update-doc`
+  # (fail if changes are detected)
+  - make update-doc
+  - git diff --exit-code
 
 notifications:
   email:

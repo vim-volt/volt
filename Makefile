@@ -45,5 +45,8 @@ release: $(BIN_DIR)/$(NAME)
 		done; \
 	done
 
+update-doc: all
+	go run _scripts/update-readme.go README.md
+	go run _scripts/update-cmdref.go CMDREF.md
 
-.PHONY: all precompile install-dep test release
+.PHONY: all precompile install-dep test release update-doc
