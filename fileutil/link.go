@@ -8,7 +8,7 @@ import (
 
 // TryLinkDir recursively copies a directory tree, attempting to preserve permissions.
 // Source directory must exist, destination directory must *not* exist.
-func TryLinkDir(src, dst string, buf []byte, perm os.FileMode, invalidType os.FileMode) error {
+func TryLinkDir(src, dst string, buf []byte, perm os.FileMode, ignoreType os.FileMode) error {
 	if err := os.MkdirAll(dst, perm); err != nil {
 		return err
 	}
@@ -23,15 +23,15 @@ func TryLinkDir(src, dst string, buf []byte, perm os.FileMode, invalidType os.Fi
 	}
 
 	for i := range entries {
-		if entries[i].Mode()&invalidType != 0 {
-			return newInvalidType(entries[i].Name())
+		if entries[i].Mode()&ignoreType != 0 {
+			continue
 		}
 
 		srcPath := filepath.Join(src, entries[i].Name())
 		dstPath := filepath.Join(dst, entries[i].Name())
 
 		if entries[i].IsDir() {
-			if err = TryLinkDir(srcPath, dstPath, buf, entries[i].Mode(), invalidType); err != nil {
+			if err = TryLinkDir(srcPath, dstPath, buf, entries[i].Mode(), ignoreType); err != nil {
 				return err
 			}
 		} else {
