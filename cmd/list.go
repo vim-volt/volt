@@ -39,6 +39,12 @@ Description
 }
 
 func (cmd *listCmd) Run(args []string) int {
+	fs := cmd.FlagSet()
+	fs.Parse(args)
+	if cmd.helped {
+		return 0
+	}
+
 	profCmd := profileCmd{}
 	err := profCmd.doShow(append(
 		[]string{"-current"},
