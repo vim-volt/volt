@@ -27,7 +27,6 @@ import (
 )
 
 var BuildModeInvalidType = os.ModeSymlink | os.ModeNamedPipe | os.ModeSocket | os.ModeDevice
-var ErrBuildModeType = "does not allow symlink, named pipe, socket, device"
 
 func init() {
 	cmdMap["build"] = &buildCmd{}
@@ -796,12 +795,8 @@ func (cmd *buildCmd) updateNonBareGitRepos(r *git.Repository, src, dst string, r
 			continue
 		}
 		if file.Mode()&BuildModeInvalidType != 0 {
-			abspath := filepath.Join(src, file.Name())
-			done <- actionReposResult{
-				err:   errors.New(ErrBuildModeType + ": " + abspath),
-				repos: repos,
-			}
-			return
+			// Currenly skip the invalid files...
+			continue
 		}
 		if !created[dst] {
 			os.MkdirAll(dst, 0755)
