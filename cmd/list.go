@@ -22,7 +22,7 @@ func (cmd *listCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt list
+  volt list [-help]
 
 Quick example
   $ volt list # will list installed plugins

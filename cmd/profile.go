@@ -29,6 +29,9 @@ func (cmd *profileCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
+  profile [-help] {command}
+
+Command
   profile set {name}
     Set profile name to {name}.
 

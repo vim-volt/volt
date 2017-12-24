@@ -34,7 +34,7 @@ func (cmd *selfUpgradeCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt self-upgrade [-check]
+  volt self-upgrade [-help] [-check]
 
 Description
     Upgrade to the latest volt command, or if -check was given, it only checks the newer version is available.` + "\n\n")
