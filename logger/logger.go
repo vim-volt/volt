@@ -6,6 +6,9 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 )
 
 type LogLevel int
@@ -17,6 +20,27 @@ const (
 	DebugLevel LogLevel = 4
 )
 
+var (
+	errorLabel string
+	warnLabel  string
+	infoLabel  string
+	debugLabel string
+)
+
+func init() {
+	if isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd()) {
+		errorLabel = "[" + color.New(color.FgRed).Sprint("ERROR") + "]"
+		warnLabel = "[" + color.New(color.FgYellow).Sprint("WARN") + "]"
+		infoLabel = "[" + color.New(color.FgCyan).Sprint("INFO") + "]"
+		debugLabel = "[" + color.New(color.FgMagenta).Sprint("DEBUG") + "]"
+	} else {
+		errorLabel = "[ERROR]"
+		warnLabel = "[WARN]"
+		infoLabel = "[INFO]"
+		debugLabel = "[DEBUG]"
+	}
+}
+
 var logLevel = InfoLevel
 
 func Errorf(format string, msgs ...interface{}) {
@@ -24,7 +48,7 @@ func Errorf(format string, msgs ...interface{}) {
 		return
 	}
 	msgs = append([]interface{}{getDebugPrefix()}, msgs...)
-	fmt.Fprintf(os.Stderr, "[ERROR]%s "+format+"\n", msgs...)
+	fmt.Fprintf(os.Stderr, errorLabel+"%s "+format+"\n", msgs...)
 }
 
 func Error(msgs ...interface{}) {
@@ -32,7 +56,7 @@ func Error(msgs ...interface{}) {
 		return
 	}
 	cmsg := getDebugPrefix()
-	msgs = append([]interface{}{"[ERROR]" + cmsg}, msgs...)
+	msgs = append([]interface{}{errorLabel + cmsg}, msgs...)
 	fmt.Fprintln(os.Stderr, msgs...)
 }
 
@@ -41,7 +65,7 @@ func Warnf(format string, msgs ...interface{}) {
 		return
 	}
 	msgs = append([]interface{}{getDebugPrefix()}, msgs...)
-	fmt.Printf("[WARN]%s "+format+"\n", msgs...)
+	fmt.Printf(warnLabel+"%s "+format+"\n", msgs...)
 }
 
 func Warn(msgs ...interface{}) {
@@ -49,7 +73,7 @@ func Warn(msgs ...interface{}) {
 		return
 	}
 	cmsg := getDebugPrefix()
-	msgs = append([]interface{}{"[WARN]" + cmsg}, msgs...)
+	msgs = append([]interface{}{warnLabel + cmsg}, msgs...)
 	fmt.Println(msgs...)
 }
 
@@ -58,7 +82,7 @@ func Infof(format string, msgs ...interface{}) {
 		return
 	}
 	msgs = append([]interface{}{getDebugPrefix()}, msgs...)
-	fmt.Printf("[INFO]%s "+format+"\n", msgs...)
+	fmt.Printf(infoLabel+"%s "+format+"\n", msgs...)
 }
 
 func Info(msgs ...interface{}) {
@@ -66,7 +90,7 @@ func Info(msgs ...interface{}) {
 		return
 	}
 	cmsg := getDebugPrefix()
-	msgs = append([]interface{}{"[INFO]" + cmsg}, msgs...)
+	msgs = append([]interface{}{infoLabel + cmsg}, msgs...)
 	fmt.Println(msgs...)
 }
 
@@ -75,7 +99,7 @@ func Debugf(format string, msgs ...interface{}) {
 		return
 	}
 	msgs = append([]interface{}{getDebugPrefix()}, msgs...)
-	fmt.Printf("[DEBUG]%s "+format+"\n", msgs...)
+	fmt.Printf(debugLabel+"%s "+format+"\n", msgs...)
 }
 
 func Debug(msgs ...interface{}) {
@@ -83,7 +107,7 @@ func Debug(msgs ...interface{}) {
 		return
 	}
 	cmsg := getDebugPrefix()
-	msgs = append([]interface{}{"[DEBUG]" + cmsg}, msgs...)
+	msgs = append([]interface{}{debugLabel + cmsg}, msgs...)
 	fmt.Println(msgs...)
 }
 
