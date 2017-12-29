@@ -1,12 +1,15 @@
 package testutil
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -75,4 +78,35 @@ func getCallerMsg() string {
 		fn = fn[idx+len(voltDirName):]
 	}
 	return fmt.Sprintf("[%s:%d]", fn, line)
+}
+
+// Return sorted list of command names list
+func GetCmdList() ([]string, error) {
+	out, err := RunVolt("help")
+	if err != nil {
+		return nil, err
+	}
+	outstr := string(out)
+	lines := strings.Split(outstr, "\n")
+	cmdidx := -1
+	for i := range lines {
+		if lines[i] == "Command" {
+			cmdidx = i + 1
+			break
+		}
+	}
+	if cmdidx < 0 {
+		return nil, errors.New("not found 'Command' line in 'volt help'")
+	}
+	dup := make(map[string]bool, 20)
+	cmdList := make([]string, 0, 20)
+	re := regexp.MustCompile(`^  (\S+)`)
+	for i := cmdidx; i < len(lines); i++ {
+		if m := re.FindStringSubmatch(lines[i]); len(m) != 0 && !dup[m[1]] {
+			cmdList = append(cmdList, m[1])
+			dup[m[1]] = true
+		}
+	}
+	sort.Strings(cmdList)
+	return cmdList, nil
 }
