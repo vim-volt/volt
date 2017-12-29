@@ -2,11 +2,9 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +12,7 @@ import (
 	"github.com/haya14busa/go-vimlparser"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/internal/testutil"
+	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
 )
 
@@ -492,7 +491,7 @@ func voltBuildGitNoVimRepos(t *testing.T, full bool) {
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"github.com/tyru/caw.vim"}
-	setUpTestdata(t, "caw.vim", reposGitType, reposPathList)
+	testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
 
 	// =============== run =============== //
 
@@ -540,7 +539,7 @@ func voltBuildGitVimDirOlder(t *testing.T, full bool) {
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"github.com/tyru/caw.vim"}
-	setUpTestdata(t, "caw.vim", reposGitType, reposPathList)
+	testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
@@ -593,7 +592,7 @@ func voltBuildGitVimDirNewer(t *testing.T, full bool) {
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"github.com/tyru/caw.vim"}
-	setUpTestdata(t, "caw.vim", reposGitType, reposPathList)
+	testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
@@ -646,7 +645,7 @@ func voltBuildStaticNoVimRepos(t *testing.T, full bool) {
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"localhost/local/hello"}
-	setUpTestdata(t, "hello", reposStaticType, reposPathList)
+	testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList)
 
 	// =============== run =============== //
 
@@ -694,7 +693,7 @@ func voltBuildStaticVimDirOlder(t *testing.T, full bool) {
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"localhost/local/hello"}
-	setUpTestdata(t, "hello", reposStaticType, reposPathList)
+	testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList)
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
@@ -747,7 +746,7 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool) {
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"localhost/local/hello"}
-	setUpTestdata(t, "hello", reposStaticType, reposPathList)
+	testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList)
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
@@ -786,73 +785,6 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool) {
 }
 
 // ============================================
-
-var testdataDir string
-
-func init() {
-	const thisFile = "cmd/build_test.go"
-	_, fn, _, _ := runtime.Caller(0)
-	dir := strings.TrimSuffix(fn, thisFile)
-	testdataDir = filepath.Join(dir, "testdata")
-
-	os.RemoveAll(filepath.Join(testdataDir, "voltpath"))
-}
-
-// Set up $VOLTPATH after "volt get <repos>"
-// but the same repository is cloned only at first time
-// under testdata/voltpath/{testdataName}/repos/<repos>
-func setUpTestdata(t *testing.T, testdataName string, rType reposType, reposPathList []string) {
-	voltpath := os.Getenv("VOLTPATH")
-	tmpVoltpath := filepath.Join(testdataDir, "voltpath", testdataName)
-	localSrcDir := filepath.Join(testdataDir, "local", testdataName)
-	localName := fmt.Sprintf("localhost/local/%s", testdataName)
-	buf := make([]byte, 32*1024)
-
-	for _, reposPath := range reposPathList {
-		testRepos := filepath.Join(tmpVoltpath, "repos", reposPath)
-		if !pathutil.Exists(testRepos) {
-			switch rType {
-			case reposGitType:
-				err := os.Setenv("VOLTPATH", tmpVoltpath)
-				if err != nil {
-					t.Fatal("failed to set VOLTPATH")
-				}
-				defer os.Setenv("VOLTPATH", voltpath)
-				out, err := testutil.RunVolt("get", reposPath)
-				testutil.SuccessExit(t, out, err)
-			case reposStaticType:
-				err := os.Setenv("VOLTPATH", tmpVoltpath)
-				if err != nil {
-					t.Fatal("failed to set VOLTPATH")
-				}
-				defer os.Setenv("VOLTPATH", voltpath)
-				os.MkdirAll(filepath.Dir(testRepos), 0777)
-				if err := fileutil.CopyDir(localSrcDir, testRepos, buf, 0777, 0); err != nil {
-					t.Fatalf("failed to copy %s to %s", localSrcDir, testRepos)
-				}
-				out, err := testutil.RunVolt("get", localName)
-				testutil.SuccessExit(t, out, err)
-			default:
-				t.Fatalf("unknown type %q", rType)
-			}
-		}
-
-		// Copy repository
-		repos := filepath.Join(voltpath, "repos", reposPath)
-		os.MkdirAll(filepath.Dir(repos), 0777)
-		if err := fileutil.CopyDir(testRepos, repos, buf, 0777, os.FileMode(0)); err != nil {
-			t.Fatalf("failed to copy %s to %s", testRepos, repos)
-		}
-
-		// Copy lock.json
-		testLockjsonPath := filepath.Join(tmpVoltpath, "lock.json")
-		lockjsonPath := filepath.Join(voltpath, "lock.json")
-		os.MkdirAll(filepath.Dir(lockjsonPath), 0777)
-		if err := fileutil.CopyFile(testLockjsonPath, lockjsonPath, buf, 0777); err != nil {
-			t.Fatalf("failed to copy %s to %s", testLockjsonPath, lockjsonPath)
-		}
-	}
-}
 
 func touchFiles(t *testing.T, fullpath string) {
 	filepath.Walk(fullpath, func(path string, fi os.FileInfo, err error) error {
@@ -946,7 +878,7 @@ func sameFile(t *testing.T, f1, f2 string) bool {
 }
 
 func installProfileRC(t *testing.T, profileName, srcName, dstName string) {
-	src := filepath.Join(testdataDir, "rc", srcName)
+	src := filepath.Join(testutil.TestdataDir(), "rc", srcName)
 	dst := filepath.Join(pathutil.RCDir(profileName), dstName)
 	os.MkdirAll(filepath.Dir(dst), 0777)
 	if err := fileutil.CopyFile(src, dst, nil, 0777); err != nil {
@@ -955,7 +887,7 @@ func installProfileRC(t *testing.T, profileName, srcName, dstName string) {
 }
 
 func installVimRC(t *testing.T, srcName, dstName string) {
-	src := filepath.Join(testdataDir, "rc", srcName)
+	src := filepath.Join(testutil.TestdataDir(), "rc", srcName)
 	dst := filepath.Join(pathutil.VimDir(), dstName)
 	os.MkdirAll(filepath.Dir(dst), 0777)
 	if err := fileutil.CopyFile(src, dst, nil, 0777); err != nil {

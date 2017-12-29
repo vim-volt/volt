@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -11,19 +12,32 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/vim-volt/volt/fileutil"
+	"github.com/vim-volt/volt/lockjson"
+	"github.com/vim-volt/volt/pathutil"
 )
 
 var voltCommand string
+var testdataDir string
 
 func init() {
 	const thisFile = "internal/testutil/testutil.go"
 	_, fn, _, _ := runtime.Caller(0)
 	dir := strings.TrimSuffix(fn, thisFile)
+
 	if runtime.GOOS == "windows" {
 		voltCommand = filepath.Join(dir, "bin", "volt.exe")
 	} else {
 		voltCommand = filepath.Join(dir, "bin", "volt")
 	}
+
+	testdataDir = filepath.Join(dir, "testdata")
+	os.RemoveAll(filepath.Join(testdataDir, "voltpath"))
+}
+
+func TestdataDir() string {
+	return testdataDir
 }
 
 func SetUpEnv(t *testing.T) {
@@ -100,4 +114,60 @@ func GetCmdList() ([]string, error) {
 	}
 	sort.Strings(cmdList)
 	return cmdList, nil
+}
+
+// Set up $VOLTPATH after "volt get <repos>"
+// but the same repository is cloned only at first time
+// under testdata/voltpath/{testdataName}/repos/<repos>
+func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, reposPathList []string) {
+	voltpath := os.Getenv("VOLTPATH")
+	tmpVoltpath := filepath.Join(testdataDir, "voltpath", testdataName)
+	localSrcDir := filepath.Join(testdataDir, "local", testdataName)
+	localName := fmt.Sprintf("localhost/local/%s", testdataName)
+	buf := make([]byte, 32*1024)
+
+	for _, reposPath := range reposPathList {
+		testRepos := filepath.Join(tmpVoltpath, "repos", reposPath)
+		if !pathutil.Exists(testRepos) {
+			switch rType {
+			case lockjson.ReposGitType:
+				err := os.Setenv("VOLTPATH", tmpVoltpath)
+				if err != nil {
+					t.Fatal("failed to set VOLTPATH")
+				}
+				defer os.Setenv("VOLTPATH", voltpath)
+				out, err := RunVolt("get", reposPath)
+				SuccessExit(t, out, err)
+			case lockjson.ReposStaticType:
+				err := os.Setenv("VOLTPATH", tmpVoltpath)
+				if err != nil {
+					t.Fatal("failed to set VOLTPATH")
+				}
+				defer os.Setenv("VOLTPATH", voltpath)
+				os.MkdirAll(filepath.Dir(testRepos), 0777)
+				if err := fileutil.CopyDir(localSrcDir, testRepos, buf, 0777, 0); err != nil {
+					t.Fatalf("failed to copy %s to %s", localSrcDir, testRepos)
+				}
+				out, err := RunVolt("get", localName)
+				SuccessExit(t, out, err)
+			default:
+				t.Fatalf("unknown type %q", rType)
+			}
+		}
+
+		// Copy repository
+		repos := filepath.Join(voltpath, "repos", reposPath)
+		os.MkdirAll(filepath.Dir(repos), 0777)
+		if err := fileutil.CopyDir(testRepos, repos, buf, 0777, os.FileMode(0)); err != nil {
+			t.Fatalf("failed to copy %s to %s", testRepos, repos)
+		}
+
+		// Copy lock.json
+		testLockjsonPath := filepath.Join(tmpVoltpath, "lock.json")
+		lockjsonPath := filepath.Join(voltpath, "lock.json")
+		os.MkdirAll(filepath.Dir(lockjsonPath), 0777)
+		if err := fileutil.CopyFile(testLockjsonPath, lockjsonPath, buf, 0777); err != nil {
+			t.Fatalf("failed to copy %s to %s", testLockjsonPath, lockjsonPath)
+		}
+	}
 }
