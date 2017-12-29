@@ -29,15 +29,15 @@ Command
 
   enable {repository} [{repository2} ...]
     This is shortcut of:
-    volt profile add {current profile} {repository} [{repository2} ...]
+    volt profile add -current {repository} [{repository2} ...]
 
   list
     This is shortcut of:
-    volt profile show {current profile}
+    volt profile show -current
 
   disable {repository} [{repository2} ...]
     This is shortcut of:
-    volt profile rm {current profile} {repository} [{repository2} ...]
+    volt profile rm -current {repository} [{repository2} ...]
 
   profile set {name}
     Set profile name
