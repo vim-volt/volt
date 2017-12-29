@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -51,9 +50,10 @@ func RunVolt(args ...string) ([]byte, error) {
 }
 
 func SuccessExit(t *testing.T, out []byte, err error) {
+	t.Helper()
 	outstr := string(out)
 	if strings.Contains(outstr, "[WARN]") || strings.Contains(outstr, "[ERROR]") {
-		t.Fatalf("expected no error but has error at %s: %s", getCallerMsg(), outstr)
+		t.Fatalf("expected no error but has error: %s", outstr)
 	}
 	if err != nil {
 		t.Fatal("expected success exit but exited with failure: " + err.Error())
@@ -61,23 +61,14 @@ func SuccessExit(t *testing.T, out []byte, err error) {
 }
 
 func FailExit(t *testing.T, out []byte, err error) {
+	t.Helper()
 	outstr := string(out)
 	if !strings.Contains(outstr, "[WARN]") && !strings.Contains(outstr, "[ERROR]") {
-		t.Fatalf("expected error but no error at %s: %s", getCallerMsg(), outstr)
+		t.Fatalf("expected error but no error: %s", outstr)
 	}
 	if err == nil {
 		t.Fatal("expected failure exit but exited with success")
 	}
-}
-
-func getCallerMsg() string {
-	const voltDirName = "github.com/vim-volt/volt/"
-	_, fn, line, _ := runtime.Caller(2)
-	idx := strings.Index(fn, voltDirName)
-	if idx >= 0 {
-		fn = fn[idx+len(voltDirName):]
-	}
-	return fmt.Sprintf("[%s:%d]", fn, line)
 }
 
 // Return sorted list of command names list
