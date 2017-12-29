@@ -104,20 +104,12 @@ type buildInfoType struct {
 type biReposList []biRepos
 
 type biRepos struct {
-	Type          reposType `json:"type"`
-	Path          string    `json:"path"`
-	Version       string    `json:"version"`
-	Files         biFileMap `json:"files,omitempty"`
-	DirtyWorktree bool      `json:"dirty_worktree,omitempty"`
+	Type          lockjson.ReposType `json:"type"`
+	Path          string             `json:"path"`
+	Version       string             `json:"version"`
+	Files         biFileMap          `json:"files,omitempty"`
+	DirtyWorktree bool               `json:"dirty_worktree,omitempty"`
 }
-
-type reposType string
-
-const (
-	reposGitType    reposType = "git"
-	reposStaticType reposType = "static"
-	reposSystemType reposType = "system"
-)
 
 // key: filepath, value: version
 type biFileMap map[string]string
@@ -593,7 +585,7 @@ func (*buildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRepo
 			buildInfo.Repos = append(
 				buildInfo.Repos,
 				biRepos{
-					Type:    reposGitType,
+					Type:    lockjson.ReposGitType,
 					Path:    result.repos.Path,
 					Version: result.repos.Version,
 					Files:   result.files,
@@ -609,7 +601,7 @@ func (*buildCmd) constructBuildInfo(buildInfo *buildInfoType, result *actionRepo
 			buildInfo.Repos = append(
 				buildInfo.Repos,
 				biRepos{
-					Type:    reposStaticType,
+					Type:    lockjson.ReposStaticType,
 					Path:    result.repos.Path,
 					Version: time.Now().Format(time.RFC3339),
 					Files:   result.files,
