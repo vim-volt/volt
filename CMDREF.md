@@ -158,7 +158,7 @@ Usage
   profile [-help] {command}
 
 Command
-  profile set {name}
+  profile set [-n] {name}
     Set profile name to {name}.
 
   profile show [-current | {name}]

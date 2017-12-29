@@ -32,7 +32,7 @@ Usage
   profile [-help] {command}
 
 Command
-  profile set {name}
+  profile set [-n] {name}
     Set profile name to {name}.
 
   profile show [-current | {name}]
@@ -156,6 +156,12 @@ func (*profileCmd) getCurrentProfile() (string, error) {
 }
 
 func (cmd *profileCmd) doSet(args []string) error {
+	// Parse args
+	createProfile := false
+	if len(args) > 0 && args[0] == "-n" {
+		createProfile = true
+		args = args[1:]
+	}
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile set' receives profile name.")
@@ -174,18 +180,30 @@ func (cmd *profileCmd) doSet(args []string) error {
 		return fmt.Errorf("'%s' is current profile", profileName)
 	}
 
+	// Create given profile unless the profile exists
+	if _, err = lockJSON.Profiles.FindByName(profileName); err != nil {
+		if !createProfile {
+			return err
+		}
+		if err = cmd.doNew([]string{profileName}); err != nil {
+			return err
+		}
+		// Read lock.json again
+		lockJSON, err = lockjson.Read()
+		if err != nil {
+			return errors.New("failed to read lock.json: " + err.Error())
+		}
+		if _, err = lockJSON.Profiles.FindByName(profileName); err != nil {
+			return err
+		}
+	}
+
 	// Begin transaction
 	err = transaction.Create()
 	if err != nil {
 		return err
 	}
 	defer transaction.Remove()
-
-	// Return error if profiles[]/name does not match profileName
-	_, err = lockJSON.Profiles.FindByName(profileName)
-	if err != nil {
-		return err
-	}
 
 	// Set profile name
 	lockJSON.CurrentProfileName = profileName
