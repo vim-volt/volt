@@ -29,6 +29,7 @@ type ReposType string
 const (
 	ReposGitType    ReposType = "git"
 	ReposStaticType ReposType = "static"
+	ReposSystemType ReposType = "system"
 )
 
 type Repos struct {

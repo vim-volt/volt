@@ -436,6 +436,7 @@ func TestErrVoltRmNotFound(t *testing.T) {
 }
 
 func testReposPathWereRemoved(t *testing.T, reposPath string) {
+	t.Helper()
 	lockJSON, err := lockjson.Read()
 	if err != nil {
 		t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
