@@ -45,24 +45,24 @@ func TestVoltGetOnePlugin(t *testing.T) {
 		// (C)
 		reposDir := pathutil.FullReposPathOf(tt.reposPath)
 		if !pathutil.Exists(reposDir) {
-			t.Fatal("repos does not exist: " + reposDir)
+			t.Error("repos does not exist: " + reposDir)
 		}
 		_, err = git.PlainOpen(reposDir)
 		if err != nil {
-			t.Fatal("not git repository: " + reposDir)
+			t.Error("not git repository: " + reposDir)
 		}
 
 		// (D)
 		plugconf := pathutil.PlugconfOf(tt.reposPath)
 		if !pathutil.Exists(plugconf) {
-			t.Fatal("plugconf does not exist: " + plugconf)
+			t.Error("plugconf does not exist: " + plugconf)
 		}
 		// TODO: check plugconf has s:config(), s:loaded_on(), depends()
 
 		// (E)
 		vimReposDir := pathutil.PackReposPathOf(tt.reposPath)
 		if !pathutil.Exists(vimReposDir) {
-			t.Fatal("vim repos does not exist: " + vimReposDir)
+			t.Error("vim repos does not exist: " + vimReposDir)
 		}
 
 		// (F)
@@ -72,12 +72,12 @@ func TestVoltGetOnePlugin(t *testing.T) {
 		if tt.withHelp {
 			// (G)
 			if !pathutil.Exists(tags) {
-				t.Fatal("doc/tags was not created: " + tags)
+				t.Error("doc/tags was not created: " + tags)
 			}
 		} else {
 			// (!G)
 			if pathutil.Exists(tags) {
-				t.Fatal("doc/tags was created: " + tags)
+				t.Error("doc/tags was created: " + tags)
 			}
 		}
 	}
@@ -107,24 +107,24 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 			// (C)
 			reposDir := pathutil.FullReposPathOf(reposPath)
 			if !pathutil.Exists(reposDir) {
-				t.Fatal("repos does not exist: " + reposDir)
+				t.Error("repos does not exist: " + reposDir)
 			}
 			_, err := git.PlainOpen(reposDir)
 			if err != nil {
-				t.Fatal("not git repository: " + reposDir)
+				t.Error("not git repository: " + reposDir)
 			}
 
 			// (D)
 			plugconf := pathutil.PlugconfOf(reposPath)
 			if !pathutil.Exists(plugconf) {
-				t.Fatal("plugconf does not exist: " + plugconf)
+				t.Error("plugconf does not exist: " + plugconf)
 			}
 			// TODO: check plugconf has s:config(), s:loaded_on(), depends()
 
 			// (E)
 			vimReposDir := pathutil.PackReposPathOf(reposPath)
 			if !pathutil.Exists(vimReposDir) {
-				t.Fatal("vim repos does not exist: " + vimReposDir)
+				t.Error("vim repos does not exist: " + vimReposDir)
 			}
 
 			// (F)
@@ -134,11 +134,11 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 			tags := filepath.Join(vimReposDir, "doc", "tags")
 			if tt.withHelp {
 				if !pathutil.Exists(tags) {
-					t.Fatal("doc/tags was not created: " + tags)
+					t.Error("doc/tags was not created: " + tags)
 				}
 			} else {
 				if pathutil.Exists(tags) {
-					t.Fatal("doc/tags was created: " + tags)
+					t.Error("doc/tags was created: " + tags)
 				}
 			}
 		}
@@ -161,19 +161,19 @@ func TestErrVoltGetInvalidArgs(t *testing.T) {
 		// (!C)
 		reposDir := pathutil.FullReposPathOf(reposPath)
 		if pathutil.Exists(reposDir) {
-			t.Fatal("repos exists: " + reposDir)
+			t.Error("repos exists: " + reposDir)
 		}
 
 		// (!D)
 		plugconf := pathutil.PlugconfOf(reposPath)
 		if pathutil.Exists(plugconf) {
-			t.Fatal("plugconf exists: " + plugconf)
+			t.Error("plugconf exists: " + plugconf)
 		}
 
 		// (!E)
 		vimReposDir := pathutil.PackReposPathOf(reposPath)
 		if pathutil.Exists(vimReposDir) {
-			t.Fatal("vim repos exists: " + vimReposDir)
+			t.Error("vim repos exists: " + vimReposDir)
 		}
 
 		// (!F)
@@ -182,7 +182,7 @@ func TestErrVoltGetInvalidArgs(t *testing.T) {
 		// (!G)
 		tags := filepath.Join(vimReposDir, "doc", "tags")
 		if pathutil.Exists(tags) {
-			t.Fatal("doc/tags was created: " + tags)
+			t.Error("doc/tags was created: " + tags)
 		}
 	}
 }
@@ -203,19 +203,19 @@ func TestErrVoltGetNotFound(t *testing.T) {
 	// (!C)
 	reposDir := pathutil.FullReposPathOf(reposPath)
 	if pathutil.Exists(reposDir) {
-		t.Fatal("repos exists: " + reposDir)
+		t.Error("repos exists: " + reposDir)
 	}
 
 	// (!D)
 	plugconf := pathutil.PlugconfOf(reposPath)
 	if pathutil.Exists(plugconf) {
-		t.Fatal("plugconf exists: " + plugconf)
+		t.Error("plugconf exists: " + plugconf)
 	}
 
 	// (!E)
 	vimReposDir := pathutil.PackReposPathOf(reposPath)
 	if pathutil.Exists(vimReposDir) {
-		t.Fatal("vim repos exists: " + vimReposDir)
+		t.Error("vim repos exists: " + vimReposDir)
 	}
 
 	// (!F)
@@ -224,21 +224,21 @@ func TestErrVoltGetNotFound(t *testing.T) {
 	// (!G)
 	tags := filepath.Join(vimReposDir, "doc", "tags")
 	if pathutil.Exists(tags) {
-		t.Fatal("doc/tags was created: " + tags)
+		t.Error("doc/tags was created: " + tags)
 	}
 }
 
 func testReposPathWereAdded(t *testing.T, reposPath string) {
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+		t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 	}
 	if !lockJSON.Repos.Contains(reposPath) {
-		t.Fatal("repos was not added to lock.json/repos: " + reposPath)
+		t.Error("repos was not added to lock.json/repos: " + reposPath)
 	}
 	for i := range lockJSON.Profiles {
 		if !lockJSON.Profiles[i].ReposPath.Contains(reposPath) {
-			t.Fatal("repos was not added to lock.json/profiles/repos_path: " + reposPath)
+			t.Error("repos was not added to lock.json/profiles/repos_path: " + reposPath)
 		}
 	}
 }
@@ -246,14 +246,14 @@ func testReposPathWereAdded(t *testing.T, reposPath string) {
 func testReposPathWereNotAdded(t *testing.T, reposPath string) {
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+		t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 	}
 	if lockJSON.Repos.Contains(reposPath) {
-		t.Fatal("repos was added to lock.json/repos: " + reposPath)
+		t.Error("repos was added to lock.json/repos: " + reposPath)
 	}
 	for i := range lockJSON.Profiles {
 		if lockJSON.Profiles[i].ReposPath.Contains(reposPath) {
-			t.Fatal("repos was added to lock.json/profiles/repos_path: " + reposPath)
+			t.Error("repos was added to lock.json/profiles/repos_path: " + reposPath)
 		}
 	}
 }

@@ -517,7 +517,7 @@ func voltBuildGitNoVimRepos(t *testing.T, full bool) {
 	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
-		t.Fatalf("%s does not exist", bundledPlugconf)
+		t.Errorf("%s does not exist", bundledPlugconf)
 	}
 
 	// (K)
@@ -570,7 +570,7 @@ func voltBuildGitVimDirOlder(t *testing.T, full bool) {
 	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
-		t.Fatalf("%s does not exist", bundledPlugconf)
+		t.Errorf("%s does not exist", bundledPlugconf)
 	}
 
 	// (K)
@@ -623,7 +623,7 @@ func voltBuildGitVimDirNewer(t *testing.T, full bool) {
 	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
-		t.Fatalf("%s does not exist", bundledPlugconf)
+		t.Errorf("%s does not exist", bundledPlugconf)
 	}
 
 	// (K)
@@ -671,7 +671,7 @@ func voltBuildStaticNoVimRepos(t *testing.T, full bool) {
 	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
-		t.Fatalf("%s does not exist", bundledPlugconf)
+		t.Errorf("%s does not exist", bundledPlugconf)
 	}
 
 	// (K)
@@ -724,7 +724,7 @@ func voltBuildStaticVimDirOlder(t *testing.T, full bool) {
 	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
-		t.Fatalf("%s does not exist", bundledPlugconf)
+		t.Errorf("%s does not exist", bundledPlugconf)
 	}
 
 	// (K)
@@ -777,7 +777,7 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool) {
 	// (J)
 	bundledPlugconf := pathutil.BundledPlugConf()
 	if !pathutil.Exists(bundledPlugconf) {
-		t.Fatalf("%s does not exist", bundledPlugconf)
+		t.Errorf("%s does not exist", bundledPlugconf)
 	}
 
 	// (K)
@@ -793,13 +793,13 @@ func touchFiles(t *testing.T, fullpath string) {
 		}
 		var mtime time.Time
 		if st, err := os.Lstat(path); err != nil {
-			t.Fatalf("os.Lstat(%q) failed: %s", path, err.Error())
+			t.Errorf("os.Lstat(%q) failed: %s", path, err.Error())
 		} else {
 			mtime = st.ModTime()
 		}
 		atime := mtime
 		if err = os.Chtimes(path, atime, mtime); err != nil {
-			t.Fatalf("failed to change timestamp %q: %s", path, err.Error())
+			t.Errorf("failed to change timestamp %q: %s", path, err.Error())
 		}
 		return nil
 	})
@@ -809,9 +809,9 @@ func checkBuildOutput(t *testing.T, full bool, out []byte) {
 	outstr := string(out)
 	contains := strings.Contains(outstr, "Full building")
 	if !full && contains {
-		t.Fatal("expected smart build but done by full build: " + outstr)
+		t.Error("expected smart build but done by full build: " + outstr)
 	} else if full && !contains {
-		t.Fatal("expected full build but done by smart build: " + outstr)
+		t.Error("expected full build but done by smart build: " + outstr)
 	}
 }
 
@@ -829,11 +829,11 @@ func checkCopied(t *testing.T, reposPath string) {
 
 		// symlinks should not be copied
 		if fi.Mode()&os.ModeSymlink != 0 {
-			t.Fatal("symlinks are copied: " + path)
+			t.Error("symlinks are copied: " + path)
 		}
 		rel, err := filepath.Rel(vimReposDir, path)
 		if err != nil {
-			t.Fatalf("failed to get relative path of %s: %s", rel, err.Error())
+			t.Errorf("failed to get relative path of %s: %s", rel, err.Error())
 		}
 		// doc/tags is created after copy
 		if rel == tagsFile {
@@ -841,12 +841,12 @@ func checkCopied(t *testing.T, reposPath string) {
 		}
 		// .git, .gitignore should not be copied
 		if rel == ".git" || rel == ".gitignore" {
-			t.Fatal(".git or .gitignore are copied: " + rel)
+			t.Error(".git or .gitignore are copied: " + rel)
 		}
 
 		reposFile := filepath.Join(reposDir, rel)
 		if !sameFile(t, path, reposFile) {
-			t.Fatalf("%s and %s are not same", rel, reposFile)
+			t.Errorf("%s and %s are not same", rel, reposFile)
 		}
 		return nil
 	})
@@ -855,11 +855,11 @@ func checkCopied(t *testing.T, reposPath string) {
 func sameFile(t *testing.T, f1, f2 string) bool {
 	fi1, err := os.Lstat(f1)
 	if err != nil {
-		t.Fatalf("os.Lstat(%q) returned error: %s", f1, err.Error())
+		t.Errorf("os.Lstat(%q) returned error: %s", f1, err.Error())
 	}
 	fi2, err := os.Lstat(f2)
 	if err != nil {
-		t.Fatalf("os.Lstat(%q) returned error: %s", f2, err.Error())
+		t.Errorf("os.Lstat(%q) returned error: %s", f2, err.Error())
 	}
 	// Compare metadata
 	if os.SameFile(fi1, fi2) {
@@ -868,11 +868,11 @@ func sameFile(t *testing.T, f1, f2 string) bool {
 	// Compare content
 	b1, err := ioutil.ReadFile(f1)
 	if err != nil {
-		t.Fatalf("cannot read %s: %s", f1, err.Error())
+		t.Errorf("cannot read %s: %s", f1, err.Error())
 	}
 	b2, err := ioutil.ReadFile(f2)
 	if err != nil {
-		t.Fatalf("cannot read %s: %s", f2, err.Error())
+		t.Errorf("cannot read %s: %s", f2, err.Error())
 	}
 	return bytes.Equal(b1, b2)
 }
@@ -882,7 +882,7 @@ func installProfileRC(t *testing.T, profileName, srcName, dstName string) {
 	dst := filepath.Join(pathutil.RCDir(profileName), dstName)
 	os.MkdirAll(filepath.Dir(dst), 0777)
 	if err := fileutil.CopyFile(src, dst, nil, 0777); err != nil {
-		t.Fatalf("cannot copy %s to %s: %s", src, dst, err.Error())
+		t.Errorf("cannot copy %s to %s: %s", src, dst, err.Error())
 	}
 }
 
@@ -891,7 +891,7 @@ func installVimRC(t *testing.T, srcName, dstName string) {
 	dst := filepath.Join(pathutil.VimDir(), dstName)
 	os.MkdirAll(filepath.Dir(dst), 0777)
 	if err := fileutil.CopyFile(src, dst, nil, 0777); err != nil {
-		t.Fatalf("cannot copy %s to %s: %s", src, dst, err.Error())
+		t.Errorf("cannot copy %s to %s: %s", src, dst, err.Error())
 	}
 }
 
@@ -909,10 +909,10 @@ func checkRCInstalled(t *testing.T, f, g, h, i int) {
 	} {
 		if tt.value >= 0 {
 			if tt.value == 1 && !pathutil.Exists(tt.path) {
-				t.Fatalf("expected %s was installed but not installed", tt.path)
+				t.Errorf("expected %s was installed but not installed", tt.path)
 			}
 			if tt.value == 0 && pathutil.Exists(tt.path) {
-				t.Fatalf("expected %s was not installed but installed", tt.path)
+				t.Errorf("expected %s was not installed but installed", tt.path)
 			}
 		}
 	}
@@ -927,10 +927,10 @@ func checkRCInstalled(t *testing.T, f, g, h, i int) {
 	} {
 		if tt.value >= 0 {
 			if tt.value == 1 && !(&buildCmd{}).hasMagicComment(tt.path) {
-				t.Fatalf("expected %s has magic comment but has no magic comment", tt.path)
+				t.Errorf("expected %s has magic comment but has no magic comment", tt.path)
 			}
 			if tt.value == 0 && (&buildCmd{}).hasMagicComment(tt.path) {
-				t.Fatalf("expected %s was not installed but installed", tt.path)
+				t.Errorf("expected %s was not installed but installed", tt.path)
 			}
 		}
 	}
@@ -939,10 +939,10 @@ func checkRCInstalled(t *testing.T, f, g, h, i int) {
 func checkSyntax(t *testing.T, bundledPlugconf string) {
 	r, err := os.Open(bundledPlugconf)
 	if err != nil {
-		t.Fatalf("failed to open %s: %s", bundledPlugconf, err.Error())
+		t.Errorf("failed to open %s: %s", bundledPlugconf, err.Error())
 	}
 	_, err = vimlparser.ParseFile(r, bundledPlugconf, nil)
 	if err != nil {
-		t.Fatalf("failed to parse %s: %s", bundledPlugconf, err.Error())
+		t.Errorf("failed to parse %s: %s", bundledPlugconf, err.Error())
 	}
 }

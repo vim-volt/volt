@@ -47,17 +47,17 @@ func TestVoltProfileSet(t *testing.T) {
 		// (a)
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		if lockJSON.CurrentProfileName != profileName {
-			t.Fatalf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
+			t.Errorf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
 		}
 
 		// (b)
 		for _, reposPath := range reposPathList {
 			vimReposDir := pathutil.PackReposPathOf(reposPath)
 			if !pathutil.Exists(vimReposDir) {
-				t.Fatal("vim repos does not exist: " + vimReposDir)
+				t.Error("vim repos does not exist: " + vimReposDir)
 			}
 		}
 	})
@@ -77,10 +77,10 @@ func TestVoltProfileSet(t *testing.T) {
 		// (!a)
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		if lockJSON.CurrentProfileName != profileName {
-			t.Fatalf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
+			t.Errorf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
 		}
 	})
 
@@ -99,10 +99,10 @@ func TestVoltProfileSet(t *testing.T) {
 		// (a)
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		if lockJSON.CurrentProfileName != profileName {
-			t.Fatalf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
+			t.Errorf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
 		}
 	})
 }
@@ -131,16 +131,16 @@ func TestVoltProfileShow(t *testing.T) {
 		// (a, b, c, d)
 		outstr := string(out)
 		if !strings.Contains(outstr, "name: default\n") {
-			t.Fatalf("Expected 'name: default' line, but got: %s", outstr)
+			t.Errorf("Expected 'name: default' line, but got: %s", outstr)
 		}
 		if !strings.Contains(outstr, "use vimrc: true\n") {
-			t.Fatalf("Expected 'use vimrc: true' line, but got: %s", outstr)
+			t.Errorf("Expected 'use vimrc: true' line, but got: %s", outstr)
 		}
 		if !strings.Contains(outstr, "use gvimrc: true\n") {
-			t.Fatalf("Expected 'use gvimrc: true' line, but got: %s", outstr)
+			t.Errorf("Expected 'use gvimrc: true' line, but got: %s", outstr)
 		}
 		if !strings.Contains(outstr, "repos path:\n") {
-			t.Fatalf("Expected 'repos path:' line, but got: %s", outstr)
+			t.Errorf("Expected 'repos path:' line, but got: %s", outstr)
 		}
 	})
 
@@ -158,16 +158,16 @@ func TestVoltProfileShow(t *testing.T) {
 		// (a, b, c, d)
 		outstr := string(out)
 		if !strings.Contains(outstr, "name: default\n") {
-			t.Fatalf("Expected 'name: default' line, but got: %s", outstr)
+			t.Errorf("Expected 'name: default' line, but got: %s", outstr)
 		}
 		if !strings.Contains(outstr, "use vimrc: true\n") {
-			t.Fatalf("Expected 'use vimrc: true' line, but got: %s", outstr)
+			t.Errorf("Expected 'use vimrc: true' line, but got: %s", outstr)
 		}
 		if !strings.Contains(outstr, "use gvimrc: true\n") {
-			t.Fatalf("Expected 'use gvimrc: true' line, but got: %s", outstr)
+			t.Errorf("Expected 'use gvimrc: true' line, but got: %s", outstr)
 		}
 		if !strings.Contains(outstr, "repos path:\n") {
-			t.Fatalf("Expected 'repos path:' line, but got: %s", outstr)
+			t.Errorf("Expected 'repos path:' line, but got: %s", outstr)
 		}
 	})
 
@@ -186,7 +186,7 @@ func TestVoltProfileShow(t *testing.T) {
 		outstr := string(out)
 		expected := "[ERROR] profile 'bar' does not exist"
 		if strings.Trim(outstr, " \t\r\n") != expected {
-			t.Fatalf("Expected '%s' line, but got: '%s'", expected, outstr)
+			t.Errorf("Expected '%s' line, but got: '%s'", expected, outstr)
 		}
 	})
 }
@@ -212,7 +212,7 @@ func TestVoltProfileList(t *testing.T) {
 		outstr := strings.Trim(string(out), " \t\r\n")
 		expected := "* default"
 		if outstr != expected {
-			t.Fatalf("Expected '%s' output, but got: '%s'", expected, outstr)
+			t.Errorf("Expected '%s' output, but got: '%s'", expected, outstr)
 		}
 	})
 
@@ -232,7 +232,7 @@ func TestVoltProfileList(t *testing.T) {
 		outstr := strings.Trim(string(out), " \t\r\n")
 		expected := "* default\n  foo"
 		if outstr != expected {
-			t.Fatalf("Expected '%s' output, but got: '%s'", expected, outstr)
+			t.Errorf("Expected '%s' output, but got: '%s'", expected, outstr)
 		}
 	})
 }
@@ -258,15 +258,15 @@ func TestVoltProfileNew(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		// (a)
 		if lockJSON.Profiles.FindIndexByName("foo") == -1 {
-			t.Fatalf("expected profile '%s' exists, but does not exist", "foo")
+			t.Errorf("expected profile '%s' exists, but does not exist", "foo")
 		}
 		// (b)
 		if lockJSON.CurrentProfileName != "default" {
-			t.Fatalf("expected current profile is '%s', but got: %s", "default", lockJSON.CurrentProfileName)
+			t.Errorf("expected current profile is '%s', but got: %s", "default", lockJSON.CurrentProfileName)
 		}
 	})
 
@@ -283,15 +283,15 @@ func TestVoltProfileNew(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		// (a)
 		if lockJSON.Profiles.FindIndexByName("default") == -1 {
-			t.Fatalf("expected profile '%s' exists, but does not exist", "default")
+			t.Errorf("expected profile '%s' exists, but does not exist", "default")
 		}
 		// (b)
 		if lockJSON.CurrentProfileName != "default" {
-			t.Fatalf("expected current profile is '%s', but got: %s", "default", lockJSON.CurrentProfileName)
+			t.Errorf("expected current profile is '%s', but got: %s", "default", lockJSON.CurrentProfileName)
 		}
 	})
 
@@ -310,15 +310,15 @@ func TestVoltProfileNew(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		// (a)
 		if lockJSON.Profiles.FindIndexByName("bar") == -1 {
-			t.Fatalf("expected profile '%s' exists, but does not exist", "bar")
+			t.Errorf("expected profile '%s' exists, but does not exist", "bar")
 		}
 		// (b)
 		if lockJSON.CurrentProfileName != "default" {
-			t.Fatalf("expected current profile is '%s', but got: %s", "default", lockJSON.CurrentProfileName)
+			t.Errorf("expected current profile is '%s', but got: %s", "default", lockJSON.CurrentProfileName)
 		}
 	})
 }
@@ -346,11 +346,11 @@ func TestVoltProfileDestroy(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		// (a)
 		if lockJSON.Profiles.FindIndexByName("foo") != -1 {
-			t.Fatalf("expected profile '%s' does not exist, but does exist", "foo")
+			t.Errorf("expected profile '%s' does not exist, but does exist", "foo")
 		}
 	})
 
@@ -367,11 +367,11 @@ func TestVoltProfileDestroy(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		// (!a)
 		if lockJSON.Profiles.FindIndexByName("default") == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", "default")
+			t.Errorf("expected profile '%s' does exist, but does not exist", "default")
 		}
 	})
 
@@ -410,7 +410,7 @@ func TestVoltProfileRename(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -422,20 +422,20 @@ func TestVoltProfileRename(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// (!a)
 		if lockJSON.Profiles.FindIndexByName(src) != -1 {
-			t.Fatalf("expected profile '%s' does not exist, but does exist", src)
+			t.Errorf("expected profile '%s' does not exist, but does exist", src)
 		}
 		// (b)
 		if lockJSON.Profiles.FindIndexByName(dst) == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", dst)
+			t.Errorf("expected profile '%s' does exist, but does not exist", dst)
 		}
 		// (!c)
 		if lockJSON.CurrentProfileName != oldLockJSON.CurrentProfileName {
-			t.Fatalf("expected current profile did not change but changed: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
+			t.Errorf("expected current profile did not change but changed: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
 		}
 	})
 
@@ -445,7 +445,7 @@ func TestVoltProfileRename(t *testing.T) {
 		testutil.SetUpEnv(t)
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -457,24 +457,24 @@ func TestVoltProfileRename(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// (!a)
 		if lockJSON.Profiles.FindIndexByName(src) != -1 {
-			t.Fatalf("expected profile '%s' does not exist, but does exist", src)
+			t.Errorf("expected profile '%s' does not exist, but does exist", src)
 		}
 		// (b)
 		if lockJSON.Profiles.FindIndexByName(dst) == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", dst)
+			t.Errorf("expected profile '%s' does exist, but does not exist", dst)
 		}
 		// (c)
 		if lockJSON.CurrentProfileName == oldLockJSON.CurrentProfileName {
-			t.Fatalf("expected current profile changed but did not change: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
+			t.Errorf("expected current profile changed but did not change: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
 		}
 		// (d)
 		if lockJSON.CurrentProfileName != dst {
-			t.Fatalf("expected current profile was changed to %q but got: %q", dst, lockJSON.CurrentProfileName)
+			t.Errorf("expected current profile was changed to %q but got: %q", dst, lockJSON.CurrentProfileName)
 		}
 	})
 
@@ -489,7 +489,7 @@ func TestVoltProfileRename(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -501,20 +501,20 @@ func TestVoltProfileRename(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// (a)
 		if lockJSON.Profiles.FindIndexByName(src) == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", src)
+			t.Errorf("expected profile '%s' does exist, but does not exist", src)
 		}
 		// (b)
 		if lockJSON.Profiles.FindIndexByName(dst) == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", dst)
+			t.Errorf("expected profile '%s' does exist, but does not exist", dst)
 		}
 		// (!c)
 		if lockJSON.CurrentProfileName != oldLockJSON.CurrentProfileName {
-			t.Fatalf("expected current profile did not change but changed: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
+			t.Errorf("expected current profile did not change but changed: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
 		}
 	})
 
@@ -527,7 +527,7 @@ func TestVoltProfileRename(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -539,20 +539,20 @@ func TestVoltProfileRename(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// (a)
 		if lockJSON.Profiles.FindIndexByName(src) == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", src)
+			t.Errorf("expected profile '%s' does exist, but does not exist", src)
 		}
 		// (b)
 		if lockJSON.Profiles.FindIndexByName(dst) == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", dst)
+			t.Errorf("expected profile '%s' does exist, but does not exist", dst)
 		}
 		// (!c)
 		if lockJSON.CurrentProfileName != oldLockJSON.CurrentProfileName {
-			t.Fatalf("expected current profile did not change but changed: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
+			t.Errorf("expected current profile did not change but changed: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
 		}
 	})
 
@@ -565,7 +565,7 @@ func TestVoltProfileRename(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -577,20 +577,20 @@ func TestVoltProfileRename(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// (!a)
 		if lockJSON.Profiles.FindIndexByName(src) != -1 {
-			t.Fatalf("expected profile '%s' does not exist, but does exist", src)
+			t.Errorf("expected profile '%s' does not exist, but does exist", src)
 		}
 		// (b)
 		if lockJSON.Profiles.FindIndexByName(dst) == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", dst)
+			t.Errorf("expected profile '%s' does exist, but does not exist", dst)
 		}
 		// (!c)
 		if lockJSON.CurrentProfileName != oldLockJSON.CurrentProfileName {
-			t.Fatalf("expected current profile did not change but changed: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
+			t.Errorf("expected current profile did not change but changed: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
 		}
 	})
 
@@ -601,7 +601,7 @@ func TestVoltProfileRename(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -613,20 +613,20 @@ func TestVoltProfileRename(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// (!a)
 		if lockJSON.Profiles.FindIndexByName(src) != -1 {
-			t.Fatalf("expected profile '%s' does not exist, but does exist", src)
+			t.Errorf("expected profile '%s' does not exist, but does exist", src)
 		}
 		// (!b)
 		if lockJSON.Profiles.FindIndexByName(dst) != -1 {
-			t.Fatalf("expected profile '%s' does not exist, but does exist", dst)
+			t.Errorf("expected profile '%s' does not exist, but does exist", dst)
 		}
 		// (!c)
 		if lockJSON.CurrentProfileName != oldLockJSON.CurrentProfileName {
-			t.Fatalf("expected current profile did not change but changed: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
+			t.Errorf("expected current profile did not change but changed: %s -> %s", oldLockJSON.CurrentProfileName, lockJSON.CurrentProfileName)
 		}
 	})
 }
@@ -656,7 +656,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -668,19 +668,19 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		reposList := getReposList(t, lockJSON, "empty")
 
 		// (a)
 		if !reposList.Contains(reposPath) {
-			t.Fatalf("expected '%s' is added to profile '%s', but not added", reposPath, "empty")
+			t.Errorf("expected '%s' is added to profile '%s', but not added", reposPath, "empty")
 		}
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "empty")
 		// (c)
 		if lockJSON.Profiles.FindIndexByName("empty") == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", "empty")
+			t.Errorf("expected profile '%s' does exist, but does not exist", "empty")
 		}
 	})
 
@@ -697,7 +697,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -709,21 +709,21 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		reposList := getReposList(t, lockJSON, "empty")
 
 		// (a)
 		for _, reposPath := range reposPathList {
 			if !reposList.Contains(reposPath) {
-				t.Fatalf("expected '%s' is added to profile '%s', but not added", reposPath, "empty")
+				t.Errorf("expected '%s' is added to profile '%s', but not added", reposPath, "empty")
 			}
 		}
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "empty")
 		// (c)
 		if lockJSON.Profiles.FindIndexByName("empty") == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", "empty")
+			t.Errorf("expected profile '%s' does exist, but does not exist", "empty")
 		}
 	})
 
@@ -740,7 +740,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -752,19 +752,19 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		reposList := getReposList(t, lockJSON, lockJSON.CurrentProfileName)
 
 		// (a)
 		if !reposList.Contains(reposPath) {
-			t.Fatalf("expected '%s' is added to profile '%s', but not added", reposPath, lockJSON.CurrentProfileName)
+			t.Errorf("expected '%s' is added to profile '%s', but not added", reposPath, lockJSON.CurrentProfileName)
 		}
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, lockJSON.CurrentProfileName)
 		// (c)
 		if lockJSON.Profiles.FindIndexByName(lockJSON.CurrentProfileName) == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", lockJSON.CurrentProfileName)
+			t.Errorf("expected profile '%s' does exist, but does not exist", lockJSON.CurrentProfileName)
 		}
 	})
 
@@ -778,7 +778,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -790,14 +790,14 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
 		// (!c)
 		if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
-			t.Fatalf("expected profile '%s' does not exist, but does exist", "not_existing_profile")
+			t.Errorf("expected profile '%s' does not exist, but does exist", "not_existing_profile")
 		}
 	})
 
@@ -811,7 +811,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -823,19 +823,19 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		reposList := getReposList(t, lockJSON, "empty")
 
 		// (!a)
 		if reposList.Contains(reposPath) {
-			t.Fatalf("expected '%s' is not added to profile '%s', but added", reposPath, "empty")
+			t.Errorf("expected '%s' is not added to profile '%s', but added", reposPath, "empty")
 		}
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "empty")
 		// (c)
 		if lockJSON.Profiles.FindIndexByName("empty") == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", "empty")
+			t.Errorf("expected profile '%s' does exist, but does not exist", "empty")
 		}
 	})
 
@@ -846,7 +846,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -858,14 +858,14 @@ func TestVoltProfileAdd(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
 		// (!c)
 		if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
-			t.Fatalf("expected profile '%s' does not exist, but does exist", "empty")
+			t.Errorf("expected profile '%s' does not exist, but does exist", "empty")
 		}
 	})
 }
@@ -892,7 +892,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -904,19 +904,19 @@ func TestVoltProfileRm(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		reposList := getReposList(t, lockJSON, "default")
 
 		// (a)
 		if reposList.Contains(reposPath) {
-			t.Fatalf("expected '%s' is removed from profile '%s', but not removed", reposPath, "default")
+			t.Errorf("expected '%s' is removed from profile '%s', but not removed", reposPath, "default")
 		}
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "default")
 		// (c)
 		if lockJSON.Profiles.FindIndexByName("default") == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", "default")
+			t.Errorf("expected profile '%s' does exist, but does not exist", "default")
 		}
 	})
 
@@ -930,7 +930,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -942,21 +942,21 @@ func TestVoltProfileRm(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		reposList := getReposList(t, lockJSON, "default")
 
 		// (a)
 		for _, reposPath := range reposPathList {
 			if reposList.Contains(reposPath) {
-				t.Fatalf("expected '%s' is removed from profile '%s', but not removed", reposPath, "default")
+				t.Errorf("expected '%s' is removed from profile '%s', but not removed", reposPath, "default")
 			}
 		}
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "default")
 		// (c)
 		if lockJSON.Profiles.FindIndexByName("default") == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", "default")
+			t.Errorf("expected profile '%s' does exist, but does not exist", "default")
 		}
 	})
 
@@ -970,7 +970,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -982,19 +982,19 @@ func TestVoltProfileRm(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		reposList := getReposList(t, lockJSON, lockJSON.CurrentProfileName)
 
 		// (a)
 		if reposList.Contains(reposPath) {
-			t.Fatalf("expected '%s' is removed from profile '%s', but not removed", reposPath, lockJSON.CurrentProfileName)
+			t.Errorf("expected '%s' is removed from profile '%s', but not removed", reposPath, lockJSON.CurrentProfileName)
 		}
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, lockJSON.CurrentProfileName)
 		// (c)
 		if lockJSON.Profiles.FindIndexByName(lockJSON.CurrentProfileName) == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", lockJSON.CurrentProfileName)
+			t.Errorf("expected profile '%s' does exist, but does not exist", lockJSON.CurrentProfileName)
 		}
 	})
 
@@ -1008,7 +1008,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -1020,14 +1020,14 @@ func TestVoltProfileRm(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
 		// (!c)
 		if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
-			t.Fatalf("expected profile '%s' does not exist, but does exist", "not_existing_profile")
+			t.Errorf("expected profile '%s' does not exist, but does exist", "not_existing_profile")
 		}
 	})
 
@@ -1038,7 +1038,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -1050,19 +1050,19 @@ func TestVoltProfileRm(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 		reposList := getReposList(t, lockJSON, "default")
 
 		// (a)
 		if reposList.Contains(reposPath) {
-			t.Fatalf("expected '%s' does not exist on profile '%s', but appears", reposPath, "default")
+			t.Errorf("expected '%s' does not exist on profile '%s', but appears", reposPath, "default")
 		}
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "default")
 		// (c)
 		if lockJSON.Profiles.FindIndexByName("default") == -1 {
-			t.Fatalf("expected profile '%s' does exist, but does not exist", "default")
+			t.Errorf("expected profile '%s' does exist, but does not exist", "default")
 		}
 	})
 
@@ -1073,7 +1073,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// =============== run =============== //
@@ -1085,14 +1085,14 @@ func TestVoltProfileRm(t *testing.T) {
 
 		lockJSON, err := lockjson.Read()
 		if err != nil {
-			t.Fatal("lockjson.Read() returned non-nil error: " + err.Error())
+			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 		}
 
 		// (b)
 		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
 		// (!c)
 		if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
-			t.Fatalf("expected profile '%s' does not exist, but does exist", "default")
+			t.Errorf("expected profile '%s' does not exist, but does exist", "default")
 		}
 	})
 }
@@ -1102,11 +1102,11 @@ func TestVoltProfileRm(t *testing.T) {
 func getReposList(t *testing.T, lockJSON *lockjson.LockJSON, profileName string) lockjson.ReposList {
 	currentProfile, err := lockJSON.Profiles.FindByName(profileName)
 	if err != nil {
-		t.Fatal("lockJSON.Profiles.FindByName() returned non-nil error: " + err.Error())
+		t.Error("lockJSON.Profiles.FindByName() returned non-nil error: " + err.Error())
 	}
 	reposList, err := lockJSON.GetReposListByProfile(currentProfile)
 	if err != nil {
-		t.Fatal("lockJSON.GetReposListByProfile() returned non-nil error: " + err.Error())
+		t.Error("lockJSON.GetReposListByProfile() returned non-nil error: " + err.Error())
 	}
 	return reposList
 }
@@ -1117,7 +1117,7 @@ func testNotChangedProfileExcept(t *testing.T, oldLockJSON *lockjson.LockJSON, n
 	t.Helper()
 
 	if len(oldLockJSON.Profiles) != len(newLockJSON.Profiles) {
-		t.Fatalf("expected same profiles number but got: old=%d, new=%d", len(oldLockJSON.Profiles), len(newLockJSON.Profiles))
+		t.Errorf("expected same profiles number but got: old=%d, new=%d", len(oldLockJSON.Profiles), len(newLockJSON.Profiles))
 	}
 
 	for i := range newLockJSON.Profiles {
@@ -1128,24 +1128,24 @@ func testNotChangedProfileExcept(t *testing.T, oldLockJSON *lockjson.LockJSON, n
 
 		var newStr string
 		if b, err := json.Marshal(newProfile); err != nil {
-			t.Fatal("json.Marshal() returned non-nil error: " + err.Error())
+			t.Error("json.Marshal() returned non-nil error: " + err.Error())
 		} else {
 			newStr = string(b)
 		}
 
 		oldProfile, err := oldLockJSON.Profiles.FindByName(newProfile.Name)
 		if err != nil {
-			t.Fatal("oldLockJSON.Profiles.FindByName() returned non-nil error: " + err.Error())
+			t.Error("oldLockJSON.Profiles.FindByName() returned non-nil error: " + err.Error())
 		}
 		var oldStr string
 		if b, err := json.Marshal(oldProfile); err != nil {
-			t.Fatal("json.Marshal() returned non-nil error: " + err.Error())
+			t.Error("json.Marshal() returned non-nil error: " + err.Error())
 		} else {
 			oldStr = string(b)
 		}
 
 		if oldStr != newStr {
-			t.Fatalf("expected old/new profiles are same but got:\n  old = %s\n  new = %s", oldStr, newStr)
+			t.Errorf("expected old/new profiles are same but got:\n  old = %s\n  new = %s", oldStr, newStr)
 		}
 	}
 }
