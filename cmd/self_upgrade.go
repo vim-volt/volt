@@ -143,7 +143,7 @@ func (cmd *selfUpgradeCmd) doSelfUpgrade(latestURL string) error {
 	if err != nil {
 		return err
 	}
-	if compareVersion(tagNameVer, voltVersionInfo) <= 0 {
+	if compareVersion(tagNameVer, voltVersionInfo()) <= 0 {
 		logger.Info("No updates were found.")
 		return nil
 	}

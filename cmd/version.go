@@ -58,14 +58,14 @@ const (
 )
 
 var rxVersion = regexp.MustCompile(`^v?([0-9]+)\.([0-9]+)(?:\.([0-9]+))?(-alpha|-beta)?`)
-var voltVersionInfo versionInfo
 
-func init() {
-	var err error
-	voltVersionInfo, err = parseVersion(voltVersion)
+func voltVersionInfo() versionInfo {
+	// parseVersion(voltVersionInfo) must not return non-nil error!
+	voltVersionInfo, err := parseVersion(voltVersion)
 	if err != nil {
 		panic(err)
 	}
+	return voltVersionInfo
 }
 
 func compareVersion(v1, v2 versionInfo) int {
