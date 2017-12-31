@@ -101,9 +101,13 @@ func (cmd *buildCmd) doBuild(full bool) error {
 		return err
 	}
 
-	// Do full build when build-info.json's version or strategy is different
+	// Do full build when:
+	// * build-info.json's version is different with current version
+	// * build-info.json's strategy is different with config
+	// * config strategy is symlink
 	if buildInfo.Version != currentBuildInfoVersion ||
-		buildInfo.Strategy != cfg.Build.Strategy {
+		buildInfo.Strategy != cfg.Build.Strategy ||
+		cfg.Build.Strategy == config.SymlinkBuilder {
 		full = true
 	}
 	buildInfo.Version = currentBuildInfoVersion
