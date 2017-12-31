@@ -25,7 +25,8 @@ type copyBuilder struct {
 
 func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[string]*buildinfo.Repos) error {
 	// Exit if vim executable was not found in PATH
-	if _, err := pathutil.VimExecutable(); err != nil {
+	vimExePath, err := pathutil.VimExecutable()
+	if err != nil {
 		return err
 	}
 
@@ -66,7 +67,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	}
 
 	// Copy volt repos files to optDir
-	copyDone, copyCount := builder.copyReposList(buildReposMap, reposList, optDir)
+	copyDone, copyCount := builder.copyReposList(buildReposMap, reposList, optDir, vimExePath)
 
 	// Remove vim repos not found in lock.json current repos list
 	removeDone, removeCount := builder.removeReposList(reposList, reposDirList)
@@ -117,12 +118,12 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	return nil
 }
 
-func (builder *copyBuilder) copyReposList(buildReposMap map[string]*buildinfo.Repos, reposList []lockjson.Repos, optDir string) (chan actionReposResult, int) {
+func (builder *copyBuilder) copyReposList(buildReposMap map[string]*buildinfo.Repos, reposList []lockjson.Repos, optDir, vimExePath string) (chan actionReposResult, int) {
 	copyDone := make(chan actionReposResult, len(reposList))
 	copyCount := 0
 	for i := range reposList {
 		if reposList[i].Type == lockjson.ReposGitType {
-			n, err := builder.copyReposGit(&reposList[i], buildReposMap[reposList[i].Path], copyDone)
+			n, err := builder.copyReposGit(&reposList[i], buildReposMap[reposList[i].Path], vimExePath, copyDone)
 			if err != nil {
 				copyDone <- actionReposResult{
 					err:   errors.New("failed to copy " + string(reposList[i].Type) + " repos: " + err.Error()),
@@ -131,7 +132,7 @@ func (builder *copyBuilder) copyReposList(buildReposMap map[string]*buildinfo.Re
 			}
 			copyCount += n
 		} else if reposList[i].Type == lockjson.ReposStaticType {
-			copyCount += builder.copyReposStatic(&reposList[i], buildReposMap[reposList[i].Path], optDir, copyDone)
+			copyCount += builder.copyReposStatic(&reposList[i], buildReposMap[reposList[i].Path], optDir, vimExePath, copyDone)
 		} else {
 			copyDone <- actionReposResult{
 				err:   errors.New("invalid repository type: " + string(reposList[i].Type)),
@@ -142,7 +143,7 @@ func (builder *copyBuilder) copyReposList(buildReposMap map[string]*buildinfo.Re
 	return copyDone, copyCount
 }
 
-func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buildinfo.Repos, done chan actionReposResult) (int, error) {
+func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buildinfo.Repos, vimExePath string, done chan actionReposResult) (int, error) {
 	// Open ~/volt/repos/{repos}
 	src := pathutil.FullReposPathOf(repos.Path)
 	r, err := git.PlainOpen(src)
@@ -167,15 +168,15 @@ func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buil
 		// * bare repository
 		// * or worktree is clean
 		copyFromGitObjects := cfg.Core.IsBare || isClean
-		go builder.updateGitRepos(repos, r, copyFromGitObjects, done)
+		go builder.updateGitRepos(repos, r, copyFromGitObjects, vimExePath, done)
 		return 1, nil
 	}
 	return 0, nil
 }
 
-func (builder *copyBuilder) copyReposStatic(repos *lockjson.Repos, buildRepos *buildinfo.Repos, optDir string, done chan actionReposResult) int {
+func (builder *copyBuilder) copyReposStatic(repos *lockjson.Repos, buildRepos *buildinfo.Repos, optDir, vimExePath string, done chan actionReposResult) int {
 	if builder.hasChangedStaticRepos(repos, buildRepos, optDir) {
-		go builder.updateStaticRepos(repos, done)
+		go builder.updateStaticRepos(repos, vimExePath, done)
 		return 1
 	}
 	return 0
@@ -314,7 +315,7 @@ func (*copyBuilder) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *buildi
 }
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
-func (builder *copyBuilder) updateGitRepos(repos *lockjson.Repos, r *git.Repository, copyFromGitObjects bool, done chan actionReposResult) {
+func (builder *copyBuilder) updateGitRepos(repos *lockjson.Repos, r *git.Repository, copyFromGitObjects bool, vimExePath string, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
 
@@ -331,14 +332,14 @@ func (builder *copyBuilder) updateGitRepos(repos *lockjson.Repos, r *git.Reposit
 
 	if copyFromGitObjects {
 		logger.Debug("Copy from git objects: " + repos.Path)
-		builder.updateBareGitRepos(r, src, dst, repos, done)
+		builder.updateBareGitRepos(r, src, dst, repos, vimExePath, done)
 	} else {
 		logger.Debug("Copy from filesystem: " + repos.Path)
-		builder.updateNonBareGitRepos(r, src, dst, repos, done)
+		builder.updateNonBareGitRepos(r, src, dst, repos, vimExePath, done)
 	}
 }
 
-func (builder *copyBuilder) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
+func (builder *copyBuilder) updateBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
 	// Get locked commit hash
 	commit := plumbing.NewHash(repos.Version)
 	commitObj, err := r.CommitObject(commit)
@@ -389,7 +390,7 @@ func (builder *copyBuilder) updateBareGitRepos(r *git.Repository, src, dst strin
 	}
 
 	// Run ":helptags" to generate tags file
-	err = builder.helptags(repos.Path)
+	err = builder.helptags(repos.Path, vimExePath)
 	if err != nil {
 		done <- actionReposResult{
 			err:   err,
@@ -407,7 +408,7 @@ func (builder *copyBuilder) updateBareGitRepos(r *git.Repository, src, dst strin
 
 var BuildModeInvalidType = os.ModeSymlink | os.ModeNamedPipe | os.ModeSocket | os.ModeDevice
 
-func (builder *copyBuilder) updateNonBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, done chan actionReposResult) {
+func (builder *copyBuilder) updateNonBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
 	files, err := ioutil.ReadDir(src)
 	if err != nil {
 		done <- actionReposResult{
@@ -450,7 +451,7 @@ func (builder *copyBuilder) updateNonBareGitRepos(r *git.Repository, src, dst st
 	}
 
 	// Run ":helptags" to generate tags file
-	err = builder.helptags(repos.Path)
+	err = builder.helptags(repos.Path, vimExePath)
 	if err != nil {
 		done <- actionReposResult{
 			err:   err,
@@ -497,7 +498,7 @@ func (builder *copyBuilder) hasChangedStaticRepos(repos *lockjson.Repos, buildRe
 }
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
-func (builder *copyBuilder) updateStaticRepos(repos *lockjson.Repos, done chan actionReposResult) {
+func (builder *copyBuilder) updateStaticRepos(repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
 
@@ -539,7 +540,7 @@ func (builder *copyBuilder) updateStaticRepos(repos *lockjson.Repos, done chan a
 	}
 
 	// Run ":helptags" to generate tags file
-	err = builder.helptags(repos.Path)
+	err = builder.helptags(repos.Path, vimExePath)
 	if err != nil {
 		done <- actionReposResult{
 			err:   err,

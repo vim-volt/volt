@@ -56,51 +56,30 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 		return errors.New("could not create " + optDir)
 	}
 
+	vimExePath, err := pathutil.VimExecutable()
+	if err != nil {
+		return err
+	}
+
 	buildInfo.Repos = make([]buildinfo.Repos, 0, len(reposList))
-	copyBuilder := &copyBuilder{}
+	done := make(chan actionReposResult, len(reposList))
 	for i := range reposList {
-		src := pathutil.FullReposPathOf(reposList[i].Path)
-		dst := pathutil.PackReposPathOf(reposList[i].Path)
-		copied := false
-		if reposList[i].Type == lockjson.ReposGitType {
-			// Open a repository to determine it is bare repository or not
-			r, err := git.PlainOpen(src)
-			if err != nil {
-				return fmt.Errorf("repository %q: %s", src, err.Error())
-			}
-			cfg, err := r.Config()
-			if err != nil {
-				return fmt.Errorf("failed to get repository config of %q: %s", src, err.Error())
-			}
-			if cfg.Core.IsBare {
-				// * Copy files from git objects under vim dir
-				// * Run ":helptags" to generate tags file
-				done := make(chan actionReposResult)
-				copyBuilder.updateBareGitRepos(r, src, dst, &reposList[i], done)
-				result := <-done
-				if result.err != nil {
-					return result.err
-				}
-				copied = true
-			}
-		}
-		if !copied {
-			// Make symlinks under vim dir
-			if err := os.Symlink(src, dst); err != nil {
-				return err
-			}
-			// Run ":helptags" to generate tags file
-			if err = builder.helptags(reposList[i].Path); err != nil {
-				return err
-			}
-		}
-		logger.Debug("Installing " + string(reposList[i].Type) + " repository " + reposList[i].Path + " ... Done.")
+		go builder.installRepos(&reposList[i], vimExePath, done)
 		// Make build-info.json data
 		buildInfo.Repos = append(buildInfo.Repos, buildinfo.Repos{
 			Type:    reposList[i].Type,
 			Path:    reposList[i].Path,
 			Version: reposList[i].Version,
 		})
+	}
+	for i := 0; i < len(reposList); i++ {
+		result := <-done
+		if result.err != nil {
+			return err
+		}
+		if result.repos != nil {
+			logger.Debug("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
+		}
 	}
 
 	// Write bundled plugconf file
@@ -117,4 +96,52 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 
 	// Write build-info.json
 	return buildInfo.Write()
+}
+
+func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
+	src := pathutil.FullReposPathOf(repos.Path)
+	dst := pathutil.PackReposPathOf(repos.Path)
+	copied := false
+	if repos.Type == lockjson.ReposGitType {
+		// Open a repository to determine it is bare repository or not
+		r, err := git.PlainOpen(src)
+		if err != nil {
+			done <- actionReposResult{
+				err: fmt.Errorf("repository %q: %s", src, err.Error()),
+			}
+			return
+		}
+		cfg, err := r.Config()
+		if err != nil {
+			done <- actionReposResult{
+				err: fmt.Errorf("failed to get repository config of %q: %s", src, err.Error()),
+			}
+			return
+		}
+		if cfg.Core.IsBare {
+			// * Copy files from git objects under vim dir
+			// * Run ":helptags" to generate tags file
+			updateDone := make(chan actionReposResult)
+			(&copyBuilder{}).updateBareGitRepos(r, src, dst, repos, vimExePath, updateDone)
+			result := <-updateDone
+			if result.err != nil {
+				done <- actionReposResult{err: result.err}
+				return
+			}
+			copied = true
+		}
+	}
+	if !copied {
+		// Make symlinks under vim dir
+		if err := os.Symlink(src, dst); err != nil {
+			done <- actionReposResult{err: err}
+			return
+		}
+		// Run ":helptags" to generate tags file
+		if err := builder.helptags(repos.Path, vimExePath); err != nil {
+			done <- actionReposResult{err: err}
+			return
+		}
+	}
+	done <- actionReposResult{repos: repos}
 }

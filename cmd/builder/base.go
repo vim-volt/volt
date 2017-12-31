@@ -178,28 +178,16 @@ func (builder *BaseBuilder) getCurrentProfileAndReposList(lockJSON *lockjson.Loc
 	return profile, reposList, err
 }
 
-func (builder *BaseBuilder) helptags(reposPath string) error {
+func (builder *BaseBuilder) helptags(reposPath, vimExePath string) error {
 	// Do nothing if <reposPath>/doc directory doesn't exist
 	docdir := filepath.Join(pathutil.PackReposPathOf(reposPath), "doc")
 	if !pathutil.Exists(docdir) {
 		return nil
 	}
-	// Do not invoke vim if not installed
-	_, err := exec.LookPath("vim")
-	if err != nil {
-		return errors.New("vim command is not in PATH: " + err.Error())
-	}
-
-	// Find vim executable from PATH
-	vimExe, err := pathutil.VimExecutable()
-	if err != nil {
-		return err
-	}
-	vimArgs := builder.makeVimArgs(reposPath)
-
 	// Execute ":helptags doc" in reposPath
-	logger.Debugf("Executing '%s %s' ...", vimExe, strings.Join(vimArgs, " "))
-	err = exec.Command(vimExe, vimArgs...).Run()
+	vimArgs := builder.makeVimArgs(reposPath)
+	logger.Debugf("Executing '%s %s' ...", vimExePath, strings.Join(vimArgs, " "))
+	err := exec.Command(vimExePath, vimArgs...).Run()
 	if err != nil {
 		return errors.New("failed to make tags file: " + err.Error())
 	}
@@ -207,10 +195,12 @@ func (builder *BaseBuilder) helptags(reposPath string) error {
 }
 
 func (*BaseBuilder) makeVimArgs(reposPath string) []string {
+	path := pathutil.PackReposPathOf(reposPath)
 	return []string{
-		"-u", "NONE", "-N",
-		"-c", "cd " + pathutil.PackReposPathOf(reposPath),
-		"-c", "set rtp+=" + pathutil.PackReposPathOf(reposPath),
-		"-c", "helptags doc", "-c", "quit",
+		"-u", "NONE", "-i", "NONE", "-N",
+		"--cmd", "cd " + path,
+		"--cmd", "set rtp+=" + path,
+		"--cmd", "helptags doc",
+		"--cmd", "quit",
 	}
 }
