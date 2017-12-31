@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
@@ -25,12 +27,6 @@ import (
 
 // Specify one plugin with help (A, B, C, D, E, F, G) / without help (A, B, C, D, E, F, !G)
 func TestVoltGetOnePlugin(t *testing.T) {
-	// =============== setup =============== //
-
-	testutil.SetUpEnv(t)
-
-	// =============== run =============== //
-
 	for _, tt := range []struct {
 		withHelp  bool
 		reposPath string
@@ -38,59 +34,64 @@ func TestVoltGetOnePlugin(t *testing.T) {
 		{true, "github.com/tyru/caw.vim"},
 		{false, "github.com/tyru/dummy"},
 	} {
-		out, err := testutil.RunVolt("get", tt.reposPath)
-		// (A, B)
-		testutil.SuccessExit(t, out, err)
+		t.Run(fmt.Sprintf("with help=%v", tt.withHelp), func(t *testing.T) {
+			testGetMatrix(t, func(t *testing.T, strategy string) {
+				// =============== setup =============== //
 
-		// (C)
-		reposDir := pathutil.FullReposPathOf(tt.reposPath)
-		if !pathutil.Exists(reposDir) {
-			t.Error("repos does not exist: " + reposDir)
-		}
-		_, err = git.PlainOpen(reposDir)
-		if err != nil {
-			t.Error("not git repository: " + reposDir)
-		}
+				testutil.SetUpEnv(t)
+				testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		// (D)
-		plugconf := pathutil.PlugconfOf(tt.reposPath)
-		if !pathutil.Exists(plugconf) {
-			t.Error("plugconf does not exist: " + plugconf)
-		}
-		// TODO: check plugconf has s:config(), s:loaded_on(), depends()
+				// =============== run =============== //
 
-		// (E)
-		vimReposDir := pathutil.PackReposPathOf(tt.reposPath)
-		if !pathutil.Exists(vimReposDir) {
-			t.Error("vim repos does not exist: " + vimReposDir)
-		}
+				out, err := testutil.RunVolt("get", tt.reposPath)
+				// (A, B)
+				testutil.SuccessExit(t, out, err)
 
-		// (F)
-		testReposPathWereAdded(t, tt.reposPath)
+				// (C)
+				reposDir := pathutil.FullReposPathOf(tt.reposPath)
+				if !pathutil.Exists(reposDir) {
+					t.Error("repos does not exist: " + reposDir)
+				}
+				_, err = git.PlainOpen(reposDir)
+				if err != nil {
+					t.Error("not git repository: " + reposDir)
+				}
 
-		tags := filepath.Join(vimReposDir, "doc", "tags")
-		if tt.withHelp {
-			// (G)
-			if !pathutil.Exists(tags) {
-				t.Error("doc/tags was not created: " + tags)
-			}
-		} else {
-			// (!G)
-			if pathutil.Exists(tags) {
-				t.Error("doc/tags was created: " + tags)
-			}
-		}
+				// (D)
+				plugconf := pathutil.PlugconfOf(tt.reposPath)
+				if !pathutil.Exists(plugconf) {
+					t.Error("plugconf does not exist: " + plugconf)
+				}
+				// TODO: check plugconf has s:config(), s:loaded_on(), depends()
+
+				// (E)
+				vimReposDir := pathutil.PackReposPathOf(tt.reposPath)
+				if !pathutil.Exists(vimReposDir) {
+					t.Error("vim repos does not exist: " + vimReposDir)
+				}
+
+				// (F)
+				testReposPathWereAdded(t, tt.reposPath)
+
+				tags := filepath.Join(vimReposDir, "doc", "tags")
+				if tt.withHelp {
+					// (G)
+					if !pathutil.Exists(tags) {
+						t.Error("doc/tags was not created: " + tags)
+					}
+				} else {
+					// (!G)
+					if pathutil.Exists(tags) {
+						t.Error("doc/tags was created: " + tags)
+					}
+				}
+			})
+		})
 	}
 }
 
 // Specify two or more plugins without help (A, B, C, D, E, F, !G) / with help (A, B, C, D, E, F, G)
 func TestVoltGetTwoOrMorePlugin(t *testing.T) {
-	// =============== setup =============== //
-
-	testutil.SetUpEnv(t)
-
-	// =============== run =============== //
-
 	for _, tt := range []struct {
 		withHelp      bool
 		reposPathList []string
@@ -98,50 +99,61 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 		{true, []string{"github.com/tyru/caw.vim", "github.com/tyru/capture.vim"}},
 		{false, []string{"github.com/tyru/dummy", "github.com/tyru/dummy2"}},
 	} {
-		// (A, B)
-		args := append([]string{"get"}, tt.reposPathList...)
-		out, err := testutil.RunVolt(args...)
-		testutil.SuccessExit(t, out, err)
+		t.Run(fmt.Sprintf("with help=%v", tt.withHelp), func(t *testing.T) {
+			testGetMatrix(t, func(t *testing.T, strategy string) {
+				// =============== setup =============== //
 
-		for _, reposPath := range tt.reposPathList {
-			// (C)
-			reposDir := pathutil.FullReposPathOf(reposPath)
-			if !pathutil.Exists(reposDir) {
-				t.Error("repos does not exist: " + reposDir)
-			}
-			_, err := git.PlainOpen(reposDir)
-			if err != nil {
-				t.Error("not git repository: " + reposDir)
-			}
+				testutil.SetUpEnv(t)
+				testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-			// (D)
-			plugconf := pathutil.PlugconfOf(reposPath)
-			if !pathutil.Exists(plugconf) {
-				t.Error("plugconf does not exist: " + plugconf)
-			}
-			// TODO: check plugconf has s:config(), s:loaded_on(), depends()
+				// =============== run =============== //
 
-			// (E)
-			vimReposDir := pathutil.PackReposPathOf(reposPath)
-			if !pathutil.Exists(vimReposDir) {
-				t.Error("vim repos does not exist: " + vimReposDir)
-			}
+				// (A, B)
+				args := append([]string{"get"}, tt.reposPathList...)
+				out, err := testutil.RunVolt(args...)
+				testutil.SuccessExit(t, out, err)
 
-			// (F)
-			testReposPathWereAdded(t, reposPath)
+				for _, reposPath := range tt.reposPathList {
+					// (C)
+					reposDir := pathutil.FullReposPathOf(reposPath)
+					if !pathutil.Exists(reposDir) {
+						t.Error("repos does not exist: " + reposDir)
+					}
+					_, err := git.PlainOpen(reposDir)
+					if err != nil {
+						t.Error("not git repository: " + reposDir)
+					}
 
-			// (G) and (!G)
-			tags := filepath.Join(vimReposDir, "doc", "tags")
-			if tt.withHelp {
-				if !pathutil.Exists(tags) {
-					t.Error("doc/tags was not created: " + tags)
+					// (D)
+					plugconf := pathutil.PlugconfOf(reposPath)
+					if !pathutil.Exists(plugconf) {
+						t.Error("plugconf does not exist: " + plugconf)
+					}
+					// TODO: check plugconf has s:config(), s:loaded_on(), depends()
+
+					// (E)
+					vimReposDir := pathutil.PackReposPathOf(reposPath)
+					if !pathutil.Exists(vimReposDir) {
+						t.Error("vim repos does not exist: " + vimReposDir)
+					}
+
+					// (F)
+					testReposPathWereAdded(t, reposPath)
+
+					// (G) and (!G)
+					tags := filepath.Join(vimReposDir, "doc", "tags")
+					if tt.withHelp {
+						if !pathutil.Exists(tags) {
+							t.Error("doc/tags was not created: " + tags)
+						}
+					} else {
+						if pathutil.Exists(tags) {
+							t.Error("doc/tags was created: " + tags)
+						}
+					}
 				}
-			} else {
-				if pathutil.Exists(tags) {
-					t.Error("doc/tags was created: " + tags)
-				}
-			}
-		}
+			})
+		})
 	}
 }
 
@@ -229,6 +241,7 @@ func TestErrVoltGetNotFound(t *testing.T) {
 }
 
 func testReposPathWereAdded(t *testing.T, reposPath string) {
+	t.Helper()
 	lockJSON, err := lockjson.Read()
 	if err != nil {
 		t.Error("lockjson.Read() returned non-nil error: " + err.Error())
@@ -244,6 +257,7 @@ func testReposPathWereAdded(t *testing.T, reposPath string) {
 }
 
 func testReposPathWereNotAdded(t *testing.T, reposPath string) {
+	t.Helper()
 	lockJSON, err := lockjson.Read()
 	if err != nil {
 		t.Error("lockjson.Read() returned non-nil error: " + err.Error())
@@ -255,5 +269,13 @@ func testReposPathWereNotAdded(t *testing.T, reposPath string) {
 		if lockJSON.Profiles[i].ReposPath.Contains(reposPath) {
 			t.Error("repos was added to lock.json/profiles/repos_path: " + reposPath)
 		}
+	}
+}
+
+func testGetMatrix(t *testing.T, f func(*testing.T, string)) {
+	for _, strategy := range []string{config.SymlinkBuilder, config.CopyBuilder} {
+		t.Run(fmt.Sprintf("strategy=%v", strategy), func(t *testing.T) {
+			f(t, strategy)
+		})
 	}
 }

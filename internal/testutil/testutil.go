@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
@@ -67,10 +68,10 @@ func SuccessExit(t *testing.T, out []byte, err error) {
 	t.Helper()
 	outstr := string(out)
 	if strings.Contains(outstr, "[WARN]") || strings.Contains(outstr, "[ERROR]") {
-		t.Fatalf("expected no error but has error: %s", outstr)
+		t.Errorf("expected no error but has error: %s", outstr)
 	}
 	if err != nil {
-		t.Fatal("expected success exit but exited with failure: " + err.Error())
+		t.Error("expected success exit but exited with failure: " + err.Error())
 	}
 }
 
@@ -78,10 +79,10 @@ func FailExit(t *testing.T, out []byte, err error) {
 	t.Helper()
 	outstr := string(out)
 	if !strings.Contains(outstr, "[WARN]") && !strings.Contains(outstr, "[ERROR]") {
-		t.Fatalf("expected error but no error: %s", outstr)
+		t.Errorf("expected error but no error: %s", outstr)
 	}
 	if err == nil {
-		t.Fatal("expected failure exit but exited with success")
+		t.Error("expected failure exit but exited with success")
 	}
 }
 
@@ -119,7 +120,7 @@ func GetCmdList() ([]string, error) {
 // Set up $VOLTPATH after "volt get <repos>"
 // but the same repository is cloned only at first time
 // under testdata/voltpath/{testdataName}/repos/<repos>
-func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, reposPathList []string) {
+func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, reposPathList []string, strategy string) func() {
 	voltpath := os.Getenv("VOLTPATH")
 	tmpVoltpath := filepath.Join(testdataDir, "voltpath", testdataName)
 	localSrcDir := filepath.Join(testdataDir, "local", testdataName)
@@ -131,8 +132,16 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 		if !pathutil.Exists(testRepos) {
 			switch rType {
 			case lockjson.ReposGitType:
-				err := os.Setenv("VOLTPATH", tmpVoltpath)
+				home := os.Getenv("HOME")
+				tmpHome, err := ioutil.TempDir("", "volt-test-home-")
 				if err != nil {
+					t.Fatal("failed to create temp dir")
+				}
+				if err := os.Setenv("HOME", tmpHome); err != nil {
+					t.Fatal("failed to set VOLTPATH")
+				}
+				defer os.Setenv("HOME", home)
+				if err := os.Setenv("VOLTPATH", tmpVoltpath); err != nil {
 					t.Fatal("failed to set VOLTPATH")
 				}
 				defer os.Setenv("VOLTPATH", voltpath)
@@ -169,5 +178,46 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 		if err := fileutil.CopyFile(testLockjsonPath, lockjsonPath, buf, 0777); err != nil {
 			t.Fatalf("failed to copy %s to %s", testLockjsonPath, lockjsonPath)
 		}
+	}
+	if strategy == config.SymlinkBuilder {
+		return func() {
+			for _, reposPath := range reposPathList {
+				dir := filepath.Join(tmpVoltpath, "repos", reposPath, "doc")
+				for _, name := range []string{"tags", "tags-ja"} {
+					path := filepath.Join(dir, name)
+					os.Remove(path)
+					if pathutil.Exists(path) {
+						t.Fatal("could not remove " + path)
+					}
+				}
+			}
+		}
+	}
+	return func() {}
+}
+
+func InstallConfig(t *testing.T, filename string) {
+	configFile := filepath.Join(testdataDir, "config", filename)
+	voltpath := os.Getenv("VOLTPATH")
+	dst := filepath.Join(voltpath, "config.toml")
+	os.MkdirAll(filepath.Dir(dst), 0777)
+	if err := fileutil.CopyFile(configFile, dst, nil, 0777); err != nil {
+		t.Fatalf("failed to copy %s to %s", configFile, dst)
+	}
+}
+
+func DefaultMatrix(t *testing.T, f func(*testing.T, bool, string)) {
+	for _, tt := range []struct {
+		full     bool
+		strategy string
+	}{
+		{false, config.SymlinkBuilder},
+		{false, config.CopyBuilder},
+		{true, config.SymlinkBuilder},
+		{true, config.CopyBuilder},
+	} {
+		t.Run(fmt.Sprintf("full=%v,strategy=%v", tt.full, tt.strategy), func(t *testing.T) {
+			f(t, tt.full, tt.strategy)
+		})
 	}
 }
