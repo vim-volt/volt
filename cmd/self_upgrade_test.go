@@ -3,14 +3,13 @@ package cmd
 import (
 	"io/ioutil"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 )
 
 func TestVoltSelfUpgrade(t *testing.T) {
-	if runtime.Version() != "go1.9" {
+	if os.Getenv("DO_TEST_SELF_UPGRADE") == "" {
 		t.Skip("skip tests of self-upgrade due to rate limit of GitHub API")
 	}
 	// Calling subtests serially to control execution order.
