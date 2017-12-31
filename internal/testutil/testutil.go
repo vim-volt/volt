@@ -221,3 +221,7 @@ func DefaultMatrix(t *testing.T, f func(*testing.T, bool, string)) {
 		})
 	}
 }
+
+func AvailableStrategies() []string {
+	return []string{config.SymlinkBuilder, config.CopyBuilder}
+}

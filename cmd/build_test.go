@@ -780,18 +780,12 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool, strategy string) {
 // ============================================
 
 func testBuildMatrix(t *testing.T, f func(*testing.T, bool, string)) {
-	for _, tt := range []struct {
-		full     bool
-		strategy string
-	}{
-		{false, config.SymlinkBuilder},
-		{false, config.CopyBuilder},
-		{true, config.SymlinkBuilder},
-		{true, config.CopyBuilder},
-	} {
-		t.Run(fmt.Sprintf("full=%v,strategy=%v", tt.full, tt.strategy), func(t *testing.T) {
-			f(t, tt.full, tt.strategy)
-		})
+	for _, strategy := range testutil.AvailableStrategies() {
+		for _, full := range []bool{false, true} {
+			t.Run(fmt.Sprintf("full=%v,strategy=%v", full, strategy), func(t *testing.T) {
+				f(t, full, strategy)
+			})
+		}
 	}
 }
 

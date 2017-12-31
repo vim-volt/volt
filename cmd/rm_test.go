@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
@@ -498,7 +497,7 @@ func testReposPathWereRemoved(t *testing.T, reposPath string) {
 }
 
 func testRmMatrix(t *testing.T, f func(*testing.T, string)) {
-	for _, strategy := range []string{config.SymlinkBuilder, config.CopyBuilder} {
+	for _, strategy := range testutil.AvailableStrategies() {
 		t.Run(fmt.Sprintf("strategy=%v", strategy), func(t *testing.T) {
 			f(t, strategy)
 		})

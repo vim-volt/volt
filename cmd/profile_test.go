@@ -1207,7 +1207,7 @@ func testNotChangedProfileExcept(t *testing.T, oldLockJSON *lockjson.LockJSON, n
 }
 
 func testProfileMatrix(t *testing.T, f func(*testing.T, string)) {
-	for _, strategy := range []string{config.SymlinkBuilder, config.CopyBuilder} {
+	for _, strategy := range testutil.AvailableStrategies() {
 		t.Run(fmt.Sprintf("strategy=%v", strategy), func(t *testing.T) {
 			f(t, strategy)
 		})
