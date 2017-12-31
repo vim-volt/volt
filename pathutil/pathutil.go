@@ -108,6 +108,10 @@ func LockJSON() string {
 	return filepath.Join(VoltPath(), "lock.json")
 }
 
+func ConfigTOML() string {
+	return filepath.Join(VoltPath(), "config.toml")
+}
+
 func TrxLock() string {
 	return filepath.Join(VoltPath(), "trx.lock")
 }
