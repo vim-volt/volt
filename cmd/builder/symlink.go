@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"gopkg.in/src-d/go-git.v4"
+
 	"github.com/vim-volt/volt/cmd/buildinfo"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -17,6 +19,7 @@ type symlinkBuilder struct {
 	baseBuilder
 }
 
+// TODO: rollback when return err (!= nil)
 func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[string]*buildinfo.Repos) error {
 	// Exit if vim executable was not found in PATH
 	if _, err := pathutil.VimExecutable(); err != nil {
@@ -60,12 +63,37 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	}
 
 	buildInfo.Repos = make([]buildinfo.Repos, 0, len(reposList))
+	copyBuilder := &copyBuilder{}
 	for i := range reposList {
-		// Make symlinks under vim dir
 		src := pathutil.FullReposPathOf(reposList[i].Path)
 		dst := pathutil.PackReposPathOf(reposList[i].Path)
-		if err := os.Symlink(src, dst); err != nil {
-			return err
+		// Open a repository to determine it is bare repository or not
+		r, err := git.PlainOpen(src)
+		if err != nil {
+			return errors.New("failed to open repository: " + err.Error())
+		}
+		cfg, err := r.Config()
+		if err != nil {
+			return errors.New("failed to get repository config: " + err.Error())
+		}
+		if reposList[i].Type == lockjson.ReposGitType && cfg.Core.IsBare {
+			// * Copy files from git objects under vim dir
+			// * Run ":helptags" to generate tags file
+			done := make(chan actionReposResult)
+			copyBuilder.updateBareGitRepos(r, src, dst, &reposList[i], done)
+			result := <-done
+			if result.err != nil {
+				return result.err
+			}
+		} else {
+			// Make symlinks under vim dir
+			if err := os.Symlink(src, dst); err != nil {
+				return err
+			}
+			// Run ":helptags" to generate tags file
+			if err = builder.helptags(reposList[i].Path); err != nil {
+				return err
+			}
 		}
 		logger.Debug("Installing " + string(reposList[i].Type) + " repository " + reposList[i].Path + " ... Done.")
 		// Make build-info.json data
