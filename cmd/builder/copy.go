@@ -20,7 +20,7 @@ import (
 )
 
 type copyBuilder struct {
-	baseBuilder
+	BaseBuilder
 }
 
 func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[string]*buildinfo.Repos) error {
@@ -388,7 +388,7 @@ func (builder *copyBuilder) updateBareGitRepos(r *git.Repository, src, dst strin
 		return
 	}
 
-	// Do ":helptags" to generate tags file
+	// Run ":helptags" to generate tags file
 	err = builder.helptags(repos.Path)
 	if err != nil {
 		done <- actionReposResult{
@@ -449,6 +449,7 @@ func (builder *copyBuilder) updateNonBareGitRepos(r *git.Repository, src, dst st
 		}
 	}
 
+	// Run ":helptags" to generate tags file
 	err = builder.helptags(repos.Path)
 	if err != nil {
 		done <- actionReposResult{
@@ -537,7 +538,7 @@ func (builder *copyBuilder) updateStaticRepos(repos *lockjson.Repos, done chan a
 		return
 	}
 
-	// Do ":helptags" to generate tags file
+	// Run ":helptags" to generate tags file
 	err = builder.helptags(repos.Path)
 	if err != nil {
 		done <- actionReposResult{

@@ -2,6 +2,7 @@ package builder
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,7 +17,7 @@ import (
 )
 
 type symlinkBuilder struct {
-	baseBuilder
+	BaseBuilder
 }
 
 // TODO: rollback when return err (!= nil)
@@ -24,13 +25,6 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	// Exit if vim executable was not found in PATH
 	if _, err := pathutil.VimExecutable(); err != nil {
 		return err
-	}
-
-	// Remove vim volt dir every times
-	vimVoltDir := pathutil.VimVoltDir()
-	os.RemoveAll(vimVoltDir)
-	if pathutil.Exists(vimVoltDir) {
-		return errors.New("failed to remove " + vimVoltDir)
 	}
 
 	// Get current profile's repos list
@@ -67,25 +61,30 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	for i := range reposList {
 		src := pathutil.FullReposPathOf(reposList[i].Path)
 		dst := pathutil.PackReposPathOf(reposList[i].Path)
-		// Open a repository to determine it is bare repository or not
-		r, err := git.PlainOpen(src)
-		if err != nil {
-			return errors.New("failed to open repository: " + err.Error())
-		}
-		cfg, err := r.Config()
-		if err != nil {
-			return errors.New("failed to get repository config: " + err.Error())
-		}
-		if reposList[i].Type == lockjson.ReposGitType && cfg.Core.IsBare {
-			// * Copy files from git objects under vim dir
-			// * Run ":helptags" to generate tags file
-			done := make(chan actionReposResult)
-			copyBuilder.updateBareGitRepos(r, src, dst, &reposList[i], done)
-			result := <-done
-			if result.err != nil {
-				return result.err
+		copied := false
+		if reposList[i].Type == lockjson.ReposGitType {
+			// Open a repository to determine it is bare repository or not
+			r, err := git.PlainOpen(src)
+			if err != nil {
+				return fmt.Errorf("repository %q: %s", src, err.Error())
 			}
-		} else {
+			cfg, err := r.Config()
+			if err != nil {
+				return fmt.Errorf("failed to get repository config of %q: %s", src, err.Error())
+			}
+			if cfg.Core.IsBare {
+				// * Copy files from git objects under vim dir
+				// * Run ":helptags" to generate tags file
+				done := make(chan actionReposResult)
+				copyBuilder.updateBareGitRepos(r, src, dst, &reposList[i], done)
+				result := <-done
+				if result.err != nil {
+					return result.err
+				}
+				copied = true
+			}
+		}
+		if !copied {
 			// Make symlinks under vim dir
 			if err := os.Symlink(src, dst); err != nil {
 				return err
