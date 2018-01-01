@@ -25,7 +25,7 @@ func (cmd *migrateCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt migrate
+  volt migrate [-help]
 
 Description
     Perform migration of $VOLTPATH/lock.json, which means volt converts old version lock.json structure into the latest version. This is always done automatically when reading lock.json content. For example, 'volt get <repos>' will install plugin, and migrate lock.json structure, and write it to lock.json after all. so the migrated content is written to lock.json automatically.

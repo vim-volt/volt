@@ -24,7 +24,7 @@ func (cmd *disableCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt disable {repository} [{repository2} ...]
+  volt disable [-help] {repository} [{repository2} ...]
 
 Quick example
   $ volt disable tyru/caw.vim # will disable tyru/caw.vim plugin in current profile

@@ -24,7 +24,7 @@ func (cmd *enableCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt enable {repository} [{repository2} ...]
+  volt enable [-help] {repository} [{repository2} ...]
 
 Quick example
   $ volt enable tyru/caw.vim # will enable tyru/caw.vim plugin in current profile

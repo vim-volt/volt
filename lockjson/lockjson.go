@@ -29,6 +29,7 @@ type ReposType string
 const (
 	ReposGitType    ReposType = "git"
 	ReposStaticType ReposType = "static"
+	ReposSystemType ReposType = "system"
 )
 
 type Repos struct {
@@ -49,7 +50,7 @@ type Profile struct {
 
 const lockJSONVersion = 2
 
-func InitialLockJSON() *LockJSON {
+func initialLockJSON() *LockJSON {
 	return &LockJSON{
 		Version:            lockJSONVersion,
 		TrxID:              1,
@@ -78,7 +79,7 @@ func read(doLog bool) (*LockJSON, error) {
 	// Return initial lock.json struct if lockfile does not exist
 	lockfile := pathutil.LockJSON()
 	if !pathutil.Exists(lockfile) {
-		return InitialLockJSON(), nil
+		return initialLockJSON(), nil
 	}
 
 	// Read lock.json

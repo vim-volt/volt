@@ -1,27 +1,44 @@
 package testutil
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
+
+	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/fileutil"
+	"github.com/vim-volt/volt/lockjson"
+	"github.com/vim-volt/volt/pathutil"
 )
 
 var voltCommand string
+var testdataDir string
 
 func init() {
 	const thisFile = "internal/testutil/testutil.go"
 	_, fn, _, _ := runtime.Caller(0)
 	dir := strings.TrimSuffix(fn, thisFile)
+
 	if runtime.GOOS == "windows" {
 		voltCommand = filepath.Join(dir, "bin", "volt.exe")
 	} else {
 		voltCommand = filepath.Join(dir, "bin", "volt")
 	}
+
+	testdataDir = filepath.Join(dir, "testdata")
+	os.RemoveAll(filepath.Join(testdataDir, "voltpath"))
+}
+
+func TestdataDir() string {
+	return testdataDir
 }
 
 func SetUpEnv(t *testing.T) {
@@ -48,31 +65,163 @@ func RunVolt(args ...string) ([]byte, error) {
 }
 
 func SuccessExit(t *testing.T, out []byte, err error) {
+	t.Helper()
 	outstr := string(out)
 	if strings.Contains(outstr, "[WARN]") || strings.Contains(outstr, "[ERROR]") {
-		t.Fatalf("expected no error but has error at %s: %s", getCallerMsg(), outstr)
+		t.Errorf("expected no error but has error: %s", outstr)
 	}
 	if err != nil {
-		t.Fatal("expected success exit but exited with failure: " + err.Error())
+		t.Error("expected success exit but exited with failure: " + err.Error())
 	}
 }
 
 func FailExit(t *testing.T, out []byte, err error) {
+	t.Helper()
 	outstr := string(out)
 	if !strings.Contains(outstr, "[WARN]") && !strings.Contains(outstr, "[ERROR]") {
-		t.Fatalf("expected error but no error at %s: %s", getCallerMsg(), outstr)
+		t.Errorf("expected error but no error: %s", outstr)
 	}
 	if err == nil {
-		t.Fatal("expected failure exit but exited with success")
+		t.Error("expected failure exit but exited with success")
 	}
 }
 
-func getCallerMsg() string {
-	const voltDirName = "github.com/vim-volt/volt/"
-	_, fn, line, _ := runtime.Caller(2)
-	idx := strings.Index(fn, voltDirName)
-	if idx >= 0 {
-		fn = fn[idx+len(voltDirName):]
+// Return sorted list of command names list
+func GetCmdList() ([]string, error) {
+	out, err := RunVolt("help")
+	if err != nil {
+		return nil, err
 	}
-	return fmt.Sprintf("[%s:%d]", fn, line)
+	outstr := string(out)
+	lines := strings.Split(outstr, "\n")
+	cmdidx := -1
+	for i := range lines {
+		if lines[i] == "Command" {
+			cmdidx = i + 1
+			break
+		}
+	}
+	if cmdidx < 0 {
+		return nil, errors.New("not found 'Command' line in 'volt help'")
+	}
+	dup := make(map[string]bool, 20)
+	cmdList := make([]string, 0, 20)
+	re := regexp.MustCompile(`^  (\S+)`)
+	for i := cmdidx; i < len(lines); i++ {
+		if m := re.FindStringSubmatch(lines[i]); len(m) != 0 && !dup[m[1]] {
+			cmdList = append(cmdList, m[1])
+			dup[m[1]] = true
+		}
+	}
+	sort.Strings(cmdList)
+	return cmdList, nil
+}
+
+// Set up $VOLTPATH after "volt get <repos>"
+// but the same repository is cloned only at first time
+// under testdata/voltpath/{testdataName}/repos/<repos>
+func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, reposPathList []string, strategy string) func() {
+	voltpath := os.Getenv("VOLTPATH")
+	tmpVoltpath := filepath.Join(testdataDir, "voltpath", testdataName)
+	localSrcDir := filepath.Join(testdataDir, "local", testdataName)
+	localName := fmt.Sprintf("localhost/local/%s", testdataName)
+	buf := make([]byte, 32*1024)
+
+	for _, reposPath := range reposPathList {
+		testRepos := filepath.Join(tmpVoltpath, "repos", reposPath)
+		if !pathutil.Exists(testRepos) {
+			switch rType {
+			case lockjson.ReposGitType:
+				home := os.Getenv("HOME")
+				tmpHome, err := ioutil.TempDir("", "volt-test-home-")
+				if err != nil {
+					t.Fatal("failed to create temp dir")
+				}
+				if err := os.Setenv("HOME", tmpHome); err != nil {
+					t.Fatal("failed to set VOLTPATH")
+				}
+				defer os.Setenv("HOME", home)
+				if err := os.Setenv("VOLTPATH", tmpVoltpath); err != nil {
+					t.Fatal("failed to set VOLTPATH")
+				}
+				defer os.Setenv("VOLTPATH", voltpath)
+				out, err := RunVolt("get", reposPath)
+				SuccessExit(t, out, err)
+			case lockjson.ReposStaticType:
+				err := os.Setenv("VOLTPATH", tmpVoltpath)
+				if err != nil {
+					t.Fatal("failed to set VOLTPATH")
+				}
+				defer os.Setenv("VOLTPATH", voltpath)
+				os.MkdirAll(filepath.Dir(testRepos), 0777)
+				if err := fileutil.CopyDir(localSrcDir, testRepos, buf, 0777, 0); err != nil {
+					t.Fatalf("failed to copy %s to %s", localSrcDir, testRepos)
+				}
+				out, err := RunVolt("get", localName)
+				SuccessExit(t, out, err)
+			default:
+				t.Fatalf("unknown type %q", rType)
+			}
+		}
+
+		// Copy repository
+		repos := filepath.Join(voltpath, "repos", reposPath)
+		os.MkdirAll(filepath.Dir(repos), 0777)
+		if err := fileutil.CopyDir(testRepos, repos, buf, 0777, os.FileMode(0)); err != nil {
+			t.Fatalf("failed to copy %s to %s", testRepos, repos)
+		}
+
+		// Copy lock.json
+		testLockjsonPath := filepath.Join(tmpVoltpath, "lock.json")
+		lockjsonPath := filepath.Join(voltpath, "lock.json")
+		os.MkdirAll(filepath.Dir(lockjsonPath), 0777)
+		if err := fileutil.CopyFile(testLockjsonPath, lockjsonPath, buf, 0777); err != nil {
+			t.Fatalf("failed to copy %s to %s", testLockjsonPath, lockjsonPath)
+		}
+	}
+	if strategy == config.SymlinkBuilder {
+		return func() {
+			for _, reposPath := range reposPathList {
+				dir := filepath.Join(tmpVoltpath, "repos", reposPath, "doc")
+				for _, name := range []string{"tags", "tags-ja"} {
+					path := filepath.Join(dir, name)
+					os.Remove(path)
+					if pathutil.Exists(path) {
+						t.Fatal("could not remove " + path)
+					}
+				}
+			}
+		}
+	}
+	return func() {}
+}
+
+func InstallConfig(t *testing.T, filename string) {
+	configFile := filepath.Join(testdataDir, "config", filename)
+	voltpath := os.Getenv("VOLTPATH")
+	dst := filepath.Join(voltpath, "config.toml")
+	os.MkdirAll(filepath.Dir(dst), 0777)
+	if err := fileutil.CopyFile(configFile, dst, nil, 0777); err != nil {
+		t.Fatalf("failed to copy %s to %s", configFile, dst)
+	}
+}
+
+func DefaultMatrix(t *testing.T, f func(*testing.T, bool, string)) {
+	for _, tt := range []struct {
+		full     bool
+		strategy string
+	}{
+		{false, config.SymlinkBuilder},
+		{false, config.CopyBuilder},
+		{true, config.SymlinkBuilder},
+		{true, config.CopyBuilder},
+	} {
+		t.Run(fmt.Sprintf("full=%v,strategy=%v", tt.full, tt.strategy), func(t *testing.T) {
+			f(t, tt.full, tt.strategy)
+		})
+	}
+}
+
+func AvailableStrategies() []string {
+	return []string{config.SymlinkBuilder, config.CopyBuilder}
 }

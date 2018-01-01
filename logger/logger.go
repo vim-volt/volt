@@ -2,10 +2,13 @@ package logger
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/mattn/go-colorable"
 )
 
 type LogLevel int
@@ -17,74 +20,115 @@ const (
 	DebugLevel LogLevel = 4
 )
 
+var (
+	errorLabel string
+	warnLabel  string
+	infoLabel  string
+	debugLabel string
+)
+
+var out *color.Color
+var m sync.Mutex
+
+func init() {
+	if !color.NoColor {
+		errorLabel = "[" + color.New(color.FgRed).Sprint("ERROR") + "]"
+		warnLabel = "[" + color.New(color.FgYellow).Sprint("WARN") + "]"
+		infoLabel = "[" + color.New(color.FgCyan).Sprint("INFO") + "]"
+		debugLabel = "[" + color.New(color.FgMagenta).Sprint("DEBUG") + "]"
+	} else {
+		errorLabel = "[ERROR]"
+		warnLabel = "[WARN]"
+		infoLabel = "[INFO]"
+		debugLabel = "[DEBUG]"
+	}
+	out = color.New()
+}
+
 var logLevel = InfoLevel
 
 func Errorf(format string, msgs ...interface{}) {
 	if logLevel < ErrorLevel {
 		return
 	}
+	m.Lock()
+	defer m.Unlock()
 	msgs = append([]interface{}{getDebugPrefix()}, msgs...)
-	fmt.Fprintf(os.Stderr, "[ERROR]%s "+format+"\n", msgs...)
+	out.Fprintf(colorable.NewColorableStderr(), errorLabel+"%s "+format+"\n", msgs...)
 }
 
 func Error(msgs ...interface{}) {
 	if logLevel < ErrorLevel {
 		return
 	}
+	m.Lock()
+	defer m.Unlock()
 	cmsg := getDebugPrefix()
-	msgs = append([]interface{}{"[ERROR]" + cmsg}, msgs...)
-	fmt.Fprintln(os.Stderr, msgs...)
+	msgs = append([]interface{}{errorLabel + cmsg}, msgs...)
+	out.Fprintln(colorable.NewColorableStderr(), msgs...)
 }
 
 func Warnf(format string, msgs ...interface{}) {
 	if logLevel < WarnLevel {
 		return
 	}
+	m.Lock()
+	defer m.Unlock()
 	msgs = append([]interface{}{getDebugPrefix()}, msgs...)
-	fmt.Printf("[WARN]%s "+format+"\n", msgs...)
+	out.Printf(warnLabel+"%s "+format+"\n", msgs...)
 }
 
 func Warn(msgs ...interface{}) {
 	if logLevel < WarnLevel {
 		return
 	}
+	m.Lock()
+	defer m.Unlock()
 	cmsg := getDebugPrefix()
-	msgs = append([]interface{}{"[WARN]" + cmsg}, msgs...)
-	fmt.Println(msgs...)
+	msgs = append([]interface{}{warnLabel + cmsg}, msgs...)
+	out.Println(msgs...)
 }
 
 func Infof(format string, msgs ...interface{}) {
 	if logLevel < InfoLevel {
 		return
 	}
+	m.Lock()
+	defer m.Unlock()
 	msgs = append([]interface{}{getDebugPrefix()}, msgs...)
-	fmt.Printf("[INFO]%s "+format+"\n", msgs...)
+	out.Printf(infoLabel+"%s "+format+"\n", msgs...)
 }
 
 func Info(msgs ...interface{}) {
 	if logLevel < InfoLevel {
 		return
 	}
+	m.Lock()
+	defer m.Unlock()
 	cmsg := getDebugPrefix()
-	msgs = append([]interface{}{"[INFO]" + cmsg}, msgs...)
-	fmt.Println(msgs...)
+	msgs = append([]interface{}{infoLabel + cmsg}, msgs...)
+	out.Println(msgs...)
 }
 
 func Debugf(format string, msgs ...interface{}) {
 	if logLevel < DebugLevel {
 		return
 	}
+	m.Lock()
+	defer m.Unlock()
 	msgs = append([]interface{}{getDebugPrefix()}, msgs...)
-	fmt.Printf("[DEBUG]%s "+format+"\n", msgs...)
+	out.Printf(debugLabel+"%s "+format+"\n", msgs...)
 }
 
 func Debug(msgs ...interface{}) {
 	if logLevel < DebugLevel {
 		return
 	}
+	m.Lock()
+	defer m.Unlock()
 	cmsg := getDebugPrefix()
-	msgs = append([]interface{}{"[DEBUG]" + cmsg}, msgs...)
-	fmt.Println(msgs...)
+	msgs = append([]interface{}{debugLabel + cmsg}, msgs...)
+	out.Println(msgs...)
 }
 
 func getDebugPrefix() string {

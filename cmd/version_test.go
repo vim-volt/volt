@@ -26,11 +26,11 @@ func TestCompareVersion(t *testing.T) {
 			v2 := parse(t, prefix+tt.v2)
 
 			if got := compareVersion(v1, v2); got != tt.expected {
-				t.Fatalf("compareVersion(%q = %v, %q = %v): expected %v but got %v", prefix+tt.v1, v1, prefix+tt.v2, v2, tt.expected, got)
+				t.Errorf("compareVersion(%q = %v, %q = %v): expected %v but got %v", prefix+tt.v1, v1, prefix+tt.v2, v2, tt.expected, got)
 			}
 
 			if got := compareVersion(v2, v1); got != -tt.expected {
-				t.Fatalf("compareVersion(%q = %v, %q = %v): expected %v but got %v", prefix+tt.v2, v2, prefix+tt.v1, v1, -tt.expected, got)
+				t.Errorf("compareVersion(%q = %v, %q = %v): expected %v but got %v", prefix+tt.v2, v2, prefix+tt.v1, v1, -tt.expected, got)
 			}
 		}
 	}
@@ -39,10 +39,10 @@ func TestCompareVersion(t *testing.T) {
 func parse(t *testing.T, ver string) versionInfo {
 	vinfo, err := parseVersion(ver)
 	if err != nil {
-		t.Fatalf("\"%s\" should be a version number but isn't: %s", ver, err.Error())
+		t.Errorf("\"%s\" should be a version number but isn't: %s", ver, err.Error())
 	}
 	if len(vinfo) != 4 {
-		t.Fatalf("parseVersion(%q) returned invalid versionInfo: %q", ver, vinfo)
+		t.Errorf("parseVersion(%q) returned invalid versionInfo: %q", ver, vinfo)
 	}
 	return vinfo
 }

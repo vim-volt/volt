@@ -22,7 +22,7 @@ func (cmd *listCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt list
+  volt list [-help]
 
 Quick example
   $ volt list # will list installed plugins
@@ -39,6 +39,12 @@ Description
 }
 
 func (cmd *listCmd) Run(args []string) int {
+	fs := cmd.FlagSet()
+	fs.Parse(args)
+	if cmd.helped {
+		return 0
+	}
+
 	profCmd := profileCmd{}
 	err := profCmd.doShow(append(
 		[]string{"-current"},
