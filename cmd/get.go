@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -199,7 +200,13 @@ func (cmd *getCmd) doGet(reposPathList []string, lockJSON *lockjson.LockJSON) er
 	defer transaction.Remove()
 	lockJSON.TrxID++
 
-	done := make(chan getParallelResult)
+	// Read config.toml
+	cfg, err := config.Read()
+	if err != nil {
+		return errors.New("could not read config.toml: " + err.Error())
+	}
+
+	done := make(chan getParallelResult, len(reposPathList))
 	getCount := 0
 	// Invoke installing / upgrading tasks
 	for _, reposPath := range reposPathList {
@@ -208,7 +215,7 @@ func (cmd *getCmd) doGet(reposPathList []string, lockJSON *lockjson.LockJSON) er
 			repos = nil
 		}
 		if repos == nil || repos.Type == lockjson.ReposGitType {
-			go cmd.getParallel(reposPath, repos, done)
+			go cmd.getParallel(reposPath, repos, *cfg.Get.CreateSkeletonPlugconf, done)
 			getCount++
 		}
 	}
@@ -304,9 +311,23 @@ const (
 	fmtUpgraded      = "%s %s > upgraded (%s..%s)"
 )
 
-// This function is executed in goroutine of each plugin
-func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, done chan getParallelResult) {
+// This function is executed in goroutine of each plugin.
+// 1. install plugin if it does not exist
+// 2. install plugconf if it does not exist and createPlugconf=true
+func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, createPlugconf bool, done chan<- getParallelResult) {
+	pluginDone := make(chan getParallelResult)
+	go cmd.installPlugin(reposPath, repos, pluginDone)
+	pluginResult := <-pluginDone
+	if pluginResult.err != nil || !createPlugconf {
+		done <- pluginResult
+		return
+	}
+	plugconfDone := make(chan getParallelResult)
+	go cmd.installPlugconf(reposPath, &pluginResult, plugconfDone)
+	done <- (<-plugconfDone)
+}
 
+func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done chan<- getParallelResult) {
 	// true:upgrade, false:install
 	fullReposPath := pathutil.FullReposPathOf(reposPath)
 	doUpgrade := cmd.upgrade && pathutil.Exists(fullReposPath)
@@ -348,6 +369,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, done cha
 				status:    fmt.Sprintf(fmtUpgradeFailed, statusPrefixFailed, reposPath, msg),
 				err:       errors.New("failed to upgrade plugin: " + msg),
 			}
+			return
 		}
 		// Upgrade plugin
 		if cmd.verbose {
@@ -386,7 +408,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, done cha
 		} else {
 			logger.Debug("Installing " + reposPath + " ...")
 		}
-		err := cmd.installPlugin(reposPath)
+		err := cmd.fetchPlugin(reposPath)
 		// if err == errRepoExists, silently skip
 		if err != nil && err != errRepoExists {
 			result := errors.New("failed to install plugin: " + err.Error())
@@ -409,31 +431,6 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, done cha
 		if err == errRepoExists {
 			status = fmt.Sprintf(fmtAlreadyExists, statusPrefixNoChange, reposPath)
 		} else {
-			// Install plugconf
-			if cmd.verbose {
-				logger.Info("Installing plugconf " + reposPath + " ...")
-			} else {
-				logger.Debug("Installing plugconf " + reposPath + " ...")
-			}
-			err = cmd.installPlugconf(reposPath)
-			if err != nil {
-				result := errors.New("failed to install plugconf: " + err.Error())
-				if cmd.verbose {
-					logger.Info("Rollbacking " + fullReposPath + " ...")
-				} else {
-					logger.Debug("Rollbacking " + fullReposPath + " ...")
-				}
-				err = cmd.rollbackRepos(fullReposPath)
-				if err != nil {
-					result = multierror.Append(result, err)
-				}
-				done <- getParallelResult{
-					reposPath: reposPath,
-					status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
-					err:       result,
-				}
-				return
-			}
 			status = fmt.Sprintf(fmtInstalled, statusPrefixInstalled, reposPath)
 		}
 	}
@@ -474,6 +471,36 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, done cha
 		reposType: reposType,
 		hash:      toHash,
 	}
+}
+
+func (cmd *getCmd) installPlugconf(reposPath string, pluginResult *getParallelResult, done chan<- getParallelResult) {
+	// Install plugconf
+	if cmd.verbose {
+		logger.Info("Installing plugconf " + reposPath + " ...")
+	} else {
+		logger.Debug("Installing plugconf " + reposPath + " ...")
+	}
+	err := cmd.fetchPlugconf(reposPath)
+	if err != nil {
+		result := errors.New("failed to install plugconf: " + err.Error())
+		fullReposPath := pathutil.FullReposPathOf(reposPath)
+		if cmd.verbose {
+			logger.Info("Rollbacking " + fullReposPath + " ...")
+		} else {
+			logger.Debug("Rollbacking " + fullReposPath + " ...")
+		}
+		err = cmd.rollbackRepos(fullReposPath)
+		if err != nil {
+			result = multierror.Append(result, err)
+		}
+		done <- getParallelResult{
+			reposPath: reposPath,
+			status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
+			err:       result,
+		}
+		return
+	}
+	done <- *pluginResult
 }
 
 func (*getCmd) detectReposType(fullpath string) (lockjson.ReposType, error) {
@@ -535,7 +562,7 @@ func (cmd *getCmd) upgradePlugin(reposPath string) error {
 
 var errRepoExists = errors.New("repository exists")
 
-func (cmd *getCmd) installPlugin(reposPath string) error {
+func (cmd *getCmd) fetchPlugin(reposPath string) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 	if pathutil.Exists(fullpath) {
 		return errRepoExists
@@ -589,7 +616,7 @@ func (cmd *getCmd) setUpstreamBranch(r *git.Repository) error {
 	return r.Storer.SetConfig(cfg)
 }
 
-func (cmd *getCmd) installPlugconf(reposPath string) error {
+func (cmd *getCmd) fetchPlugconf(reposPath string) error {
 	filename := pathutil.PlugconfOf(reposPath)
 	if pathutil.Exists(filename) {
 		logger.Debugf("plugconf '%s' exists... skip", filename)

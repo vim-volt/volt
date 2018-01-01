@@ -9,10 +9,15 @@ import (
 
 type Config struct {
 	Build ConfigBuild `toml:"build"`
+	Get   ConfigGet   `toml:"get"`
 }
 
 type ConfigBuild struct {
 	Strategy string `toml:"strategy"`
+}
+
+type ConfigGet struct {
+	CreateSkeletonPlugconf *bool `toml:"create_skeleton_plugconf"`
 }
 
 const (
@@ -21,9 +26,13 @@ const (
 )
 
 func initialConfigTOML() *Config {
+	trueValue := true
 	return &Config{
-		ConfigBuild{
+		Build: ConfigBuild{
 			Strategy: SymlinkBuilder,
+		},
+		Get: ConfigGet{
+			CreateSkeletonPlugconf: &trueValue,
 		},
 	}
 }
@@ -50,6 +59,9 @@ func Read() (*Config, error) {
 func merge(cfg, initCfg *Config) {
 	if cfg.Build.Strategy == "" {
 		cfg.Build.Strategy = initCfg.Build.Strategy
+	}
+	if cfg.Get.CreateSkeletonPlugconf == nil {
+		cfg.Get.CreateSkeletonPlugconf = initCfg.Get.CreateSkeletonPlugconf
 	}
 }
 
