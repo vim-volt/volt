@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"gopkg.in/src-d/go-git.v4"
 
@@ -133,7 +135,7 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 	}
 	if !copied {
 		// Make symlinks under vim dir
-		if err := os.Symlink(src, dst); err != nil {
+		if err := builder.symlink(src, dst); err != nil {
 			done <- actionReposResult{err: err}
 			return
 		}
@@ -144,4 +146,11 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 		}
 	}
 	done <- actionReposResult{repos: repos}
+}
+
+func (*symlinkBuilder) symlink(src, dst string) error {
+	if runtime.GOOS == "windows" {
+		return exec.Command("cmd", "/c", "mklink", "/J", dst, src).Run()
+	}
+	return os.Symlink(src, dst)
 }
