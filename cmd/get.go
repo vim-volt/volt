@@ -206,7 +206,7 @@ func (cmd *getCmd) doGet(reposPathList []string, lockJSON *lockjson.LockJSON) er
 		return errors.New("could not read config.toml: " + err.Error())
 	}
 
-	done := make(chan getParallelResult)
+	done := make(chan getParallelResult, len(reposPathList))
 	getCount := 0
 	// Invoke installing / upgrading tasks
 	for _, reposPath := range reposPathList {
