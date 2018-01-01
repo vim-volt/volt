@@ -86,6 +86,7 @@ See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.
 * [What is Volt](#what-is-volt)
 * [Install](#install)
 * [Build Environment](#build-environment)
+* [Config](#config)
 * [Self upgrade](#self-upgrade)
 * [Introduction](#introduction)
   * [VOLTPATH](#voltpath)
@@ -130,6 +131,22 @@ Or download binaries from [GitHub releases](https://github.com/vim-volt/volt/rel
 * Go 1.9 or higher
   * If you are on WSL (Windows Subsystem Linux), note that you need **[the patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ([#1](https://github.com/vim-volt/go-volt/issues/1))**
   * But it's a hassle, you can just download linux-386/amd64 binaries from [GitHub releases](https://github.com/vim-volt/volt/releases) :)
+
+## Config
+
+Config file: `$VOLTPATH/config.toml`
+
+```toml
+[build]
+# * "symlink" (default): "volt build" creates symlinks "~/.vim/pack/volt/opt/<repos>" referring to "$VOLTPATH/repos/<repos>"
+# * "copy": "volt build" copies "$VOLTPATH/repos/<repos>" files to "~/.vim/pack/volt/opt/<repos>"
+strategy = "symlink"
+
+[get]
+# * true (default): "volt get" creates skeleton plugconf file at "$VOLTPATH/plugconf/<repos>.vim"
+# * false: It does not creates skeleton plugconf file
+create_skeleton_plugconf = true
+```
 
 ## Self upgrade
 
