@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	"github.com/haya14busa/go-vimlparser"
+	"github.com/vim-volt/volt/cmd/builder"
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
@@ -476,22 +479,21 @@ func TestVoltBuildT4NoVimrcGvimrc(t *testing.T) {
 
 // ===========================================================
 
-// * Run `volt build` (repos: exists, vim repos: not exist) (git repository) (A, B, C, E, !F, !H, J, K)
+// * Run `volt build` (repos: exists, vim repos: not exist) (git repository)
+// * Run `volt build -full` (repos: exists, vim repos: not exist) (git repository)
+//   (A, B, D, E, !F, !H, J, K)
 func TestVoltBuildGitNoVimRepos(t *testing.T) {
-	voltBuildGitNoVimRepos(t, false)
+	testBuildMatrix(t, voltBuildGitNoVimRepos)
 }
 
-// * Run `volt build -full` (repos: exists, vim repos: not exist) (git repository) (A, B, D, E, !F, !H, J, K)
-func TestVoltBuildFullGitNoVimRepos(t *testing.T) {
-	voltBuildGitNoVimRepos(t, true)
-}
-
-func voltBuildGitNoVimRepos(t *testing.T, full bool) {
+func voltBuildGitNoVimRepos(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"github.com/tyru/caw.vim"}
-	testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
+	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
+	defer teardown()
+	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 	// =============== run =============== //
 
@@ -503,12 +505,12 @@ func voltBuildGitNoVimRepos(t *testing.T, full bool) {
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
 
-	// (C) and (D)
-	checkBuildOutput(t, full, out)
+	// (D)
+	checkBuildOutput(t, true, out, strategy)
 
 	for _, reposPath := range reposPathList {
 		// (E)
-		checkCopied(t, reposPath)
+		checkCopied(t, reposPath, strategy)
 	}
 
 	// (!F, !H)
@@ -525,21 +527,19 @@ func voltBuildGitNoVimRepos(t *testing.T, full bool) {
 }
 
 // * Run `volt build` (repos: newer, vim repos: older) (git repository) (A, B, C, E, !F, !H, J, K)
-func TestVoltBuildGitVimDirOlder(t *testing.T) {
-	voltBuildGitVimDirOlder(t, false)
-}
-
 // * Run `volt build -full` (repos: newer, vim repos: older) (git repository) (A, B, D, E, !F, !H, J, K)
-func TestVoltBuildFullGitVimDirOlder(t *testing.T) {
-	voltBuildGitVimDirOlder(t, true)
+func TestVoltBuildGitVimDirOlder(t *testing.T) {
+	testBuildMatrix(t, voltBuildGitVimDirOlder)
 }
 
-func voltBuildGitVimDirOlder(t *testing.T, full bool) {
+func voltBuildGitVimDirOlder(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"github.com/tyru/caw.vim"}
-	testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
+	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
+	defer teardown()
+	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
@@ -557,11 +557,11 @@ func voltBuildGitVimDirOlder(t *testing.T, full bool) {
 	testutil.SuccessExit(t, out, err)
 
 	// (C) and (D)
-	checkBuildOutput(t, full, out)
+	checkBuildOutput(t, full, out, strategy)
 
 	for _, reposPath := range reposPathList {
 		// (E)
-		checkCopied(t, reposPath)
+		checkCopied(t, reposPath, strategy)
 	}
 
 	// (!F, !H)
@@ -578,21 +578,19 @@ func voltBuildGitVimDirOlder(t *testing.T, full bool) {
 }
 
 // * Run `volt build` (repos: older, vim repos: newer) (git repository) (A, B, C, E, !F, !H, J, K)
-func TestVoltBuildGitVimDirNewer(t *testing.T) {
-	voltBuildGitVimDirNewer(t, false)
-}
-
 // * Run `volt build -full` (repos: older, vim repos: newer) (git repository) (A, B, D, E, !F, !H, J, K)
-func TestVoltBuildFullGitVimDirNewer(t *testing.T) {
-	voltBuildGitVimDirNewer(t, true)
+func TestVoltBuildGitVimDirNewer(t *testing.T) {
+	testBuildMatrix(t, voltBuildGitVimDirNewer)
 }
 
-func voltBuildGitVimDirNewer(t *testing.T, full bool) {
+func voltBuildGitVimDirNewer(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"github.com/tyru/caw.vim"}
-	testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
+	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
+	defer teardown()
+	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
@@ -610,11 +608,11 @@ func voltBuildGitVimDirNewer(t *testing.T, full bool) {
 	testutil.SuccessExit(t, out, err)
 
 	// (C) and (D)
-	checkBuildOutput(t, full, out)
+	checkBuildOutput(t, full, out, strategy)
 
 	for _, reposPath := range reposPathList {
 		// (E)
-		checkCopied(t, reposPath)
+		checkCopied(t, reposPath, strategy)
 	}
 
 	// (!F, !H)
@@ -630,22 +628,21 @@ func voltBuildGitVimDirNewer(t *testing.T, full bool) {
 	checkSyntax(t, bundledPlugconf)
 }
 
-// * Run `volt build` (repos: exists, vim repos: not exist) (static repository) (A, B, C, E, !F, !H, J, K)
+// * Run `volt build` (repos: exists, vim repos: not exist) (static repository)
+// * Run `volt build -full` (repos: exists, vim repos: not exist) (static repository)
+//   (A, B, D, E, !F, !H, J, K)
 func TestVoltBuildStaticNoVimRepos(t *testing.T) {
-	voltBuildStaticNoVimRepos(t, false)
+	testBuildMatrix(t, voltBuildStaticNoVimRepos)
 }
 
-// * Run `volt build -full` (repos: exists, vim repos: not exist) (static repository) (A, B, D, E, !F, !H, J, K)
-func TestVoltBuildFullStaticNoVimRepos(t *testing.T) {
-	voltBuildStaticNoVimRepos(t, true)
-}
-
-func voltBuildStaticNoVimRepos(t *testing.T, full bool) {
+func voltBuildStaticNoVimRepos(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"localhost/local/hello"}
-	testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList)
+	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
+	defer teardown()
+	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 	// =============== run =============== //
 
@@ -657,12 +654,12 @@ func voltBuildStaticNoVimRepos(t *testing.T, full bool) {
 	// (A, B)
 	testutil.SuccessExit(t, out, err)
 
-	// (C) and (D)
-	checkBuildOutput(t, full, out)
+	// (D)
+	checkBuildOutput(t, true, out, strategy)
 
 	for _, reposPath := range reposPathList {
 		// (E)
-		checkCopied(t, reposPath)
+		checkCopied(t, reposPath, strategy)
 	}
 
 	// (!F, !H)
@@ -679,21 +676,19 @@ func voltBuildStaticNoVimRepos(t *testing.T, full bool) {
 }
 
 // * Run `volt build` (repos: newer, vim repos: older) (static repository) (A, B, C, E, !F, !H, J, K)
-func TestVoltBuildStaticVimDirOlder(t *testing.T) {
-	voltBuildStaticVimDirOlder(t, false)
-}
-
 // * Run `volt build -full` (repos: newer, vim repos: older) (static repository) (A, B, D, E, !F, !H, J, K)
-func TestVoltBuildFullStaticVimDirOlder(t *testing.T) {
-	voltBuildStaticVimDirOlder(t, true)
+func TestVoltBuildStaticVimDirOlder(t *testing.T) {
+	testBuildMatrix(t, voltBuildStaticVimDirOlder)
 }
 
-func voltBuildStaticVimDirOlder(t *testing.T, full bool) {
+func voltBuildStaticVimDirOlder(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"localhost/local/hello"}
-	testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList)
+	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
+	defer teardown()
+	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
@@ -711,11 +706,11 @@ func voltBuildStaticVimDirOlder(t *testing.T, full bool) {
 	testutil.SuccessExit(t, out, err)
 
 	// (C) and (D)
-	checkBuildOutput(t, full, out)
+	checkBuildOutput(t, full, out, strategy)
 
 	for _, reposPath := range reposPathList {
 		// (E)
-		checkCopied(t, reposPath)
+		checkCopied(t, reposPath, strategy)
 	}
 
 	// (!F, !H)
@@ -732,21 +727,19 @@ func voltBuildStaticVimDirOlder(t *testing.T, full bool) {
 }
 
 // * Run `volt build` (repos: older, vim repos: newer) (static repository) (A, B, C, E, !F, !H, J, K)
-func TestVoltBuildStaticVimDirNewer(t *testing.T) {
-	voltBuildStaticVimDirNewer(t, false)
-}
-
 // * Run `volt build -full` (repos: older, vim repos: newer) (static repository) (A, B, D, E, !F, !H, J, K)
-func TestVoltBuildFullStaticVimDirNewer(t *testing.T) {
-	voltBuildStaticVimDirNewer(t, true)
+func TestVoltBuildStaticVimDirNewer(t *testing.T) {
+	testBuildMatrix(t, voltBuildStaticVimDirNewer)
 }
 
-func voltBuildStaticVimDirNewer(t *testing.T, full bool) {
+func voltBuildStaticVimDirNewer(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
 	reposPathList := []string{"localhost/local/hello"}
-	testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList)
+	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
+	defer teardown()
+	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
@@ -764,11 +757,11 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool) {
 	testutil.SuccessExit(t, out, err)
 
 	// (C) and (D)
-	checkBuildOutput(t, full, out)
+	checkBuildOutput(t, full, out, strategy)
 
 	for _, reposPath := range reposPathList {
 		// (E)
-		checkCopied(t, reposPath)
+		checkCopied(t, reposPath, strategy)
 	}
 
 	// (!F, !H)
@@ -786,7 +779,18 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool) {
 
 // ============================================
 
+func testBuildMatrix(t *testing.T, f func(*testing.T, bool, string)) {
+	for _, strategy := range testutil.AvailableStrategies() {
+		for _, full := range []bool{false, true} {
+			t.Run(fmt.Sprintf("full=%v,strategy=%v", full, strategy), func(t *testing.T) {
+				f(t, full, strategy)
+			})
+		}
+	}
+}
+
 func touchFiles(t *testing.T, fullpath string) {
+	t.Helper()
 	filepath.Walk(fullpath, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -805,17 +809,22 @@ func touchFiles(t *testing.T, fullpath string) {
 	})
 }
 
-func checkBuildOutput(t *testing.T, full bool, out []byte) {
+func checkBuildOutput(t *testing.T, full bool, out []byte, strategy string) {
+	t.Helper()
+	if strategy == config.SymlinkBuilder {
+		full = true // symlink builder always perform full build
+	}
 	outstr := string(out)
 	contains := strings.Contains(outstr, "Full building")
 	if !full && contains {
-		t.Error("expected smart build but done by full build: " + outstr)
+		t.Errorf("expected smart build but done by full build (strategy=%s): %s", strategy, outstr)
 	} else if full && !contains {
-		t.Error("expected full build but done by smart build: " + outstr)
+		t.Errorf("expected full build but done by smart build (strategy=%s): %s", strategy, outstr)
 	}
 }
 
-func checkCopied(t *testing.T, reposPath string) {
+func checkCopied(t *testing.T, reposPath string, strategy string) {
+	t.Helper()
 	vimReposDir := pathutil.PackReposPathOf(reposPath)
 	reposDir := pathutil.FullReposPathOf(reposPath)
 	tagsFile := filepath.Join("doc", "tags")
@@ -828,7 +837,7 @@ func checkCopied(t *testing.T, reposPath string) {
 		}
 
 		// symlinks should not be copied
-		if fi.Mode()&os.ModeSymlink != 0 {
+		if strategy != config.SymlinkBuilder && fi.Mode()&os.ModeSymlink != 0 {
 			t.Error("symlinks are copied: " + path)
 		}
 		rel, err := filepath.Rel(vimReposDir, path)
@@ -845,7 +854,7 @@ func checkCopied(t *testing.T, reposPath string) {
 		}
 
 		reposFile := filepath.Join(reposDir, rel)
-		if !sameFile(t, path, reposFile) {
+		if strategy != config.SymlinkBuilder && !sameFile(t, path, reposFile) {
 			t.Errorf("%s and %s are not same", rel, reposFile)
 		}
 		return nil
@@ -853,6 +862,7 @@ func checkCopied(t *testing.T, reposPath string) {
 }
 
 func sameFile(t *testing.T, f1, f2 string) bool {
+	t.Helper()
 	fi1, err := os.Lstat(f1)
 	if err != nil {
 		t.Errorf("os.Lstat(%q) returned error: %s", f1, err.Error())
@@ -878,6 +888,7 @@ func sameFile(t *testing.T, f1, f2 string) bool {
 }
 
 func installProfileRC(t *testing.T, profileName, srcName, dstName string) {
+	t.Helper()
 	src := filepath.Join(testutil.TestdataDir(), "rc", srcName)
 	dst := filepath.Join(pathutil.RCDir(profileName), dstName)
 	os.MkdirAll(filepath.Dir(dst), 0777)
@@ -887,6 +898,7 @@ func installProfileRC(t *testing.T, profileName, srcName, dstName string) {
 }
 
 func installVimRC(t *testing.T, srcName, dstName string) {
+	t.Helper()
 	src := filepath.Join(testutil.TestdataDir(), "rc", srcName)
 	dst := filepath.Join(pathutil.VimDir(), dstName)
 	os.MkdirAll(filepath.Dir(dst), 0777)
@@ -896,6 +908,7 @@ func installVimRC(t *testing.T, srcName, dstName string) {
 }
 
 func checkRCInstalled(t *testing.T, f, g, h, i int) {
+	t.Helper()
 	userVimrc := filepath.Join(pathutil.VimDir(), pathutil.Vimrc)
 	userGvimrc := filepath.Join(pathutil.VimDir(), pathutil.Gvimrc)
 
@@ -926,10 +939,10 @@ func checkRCInstalled(t *testing.T, f, g, h, i int) {
 		{i, userGvimrc},
 	} {
 		if tt.value >= 0 {
-			if tt.value == 1 && !(&buildCmd{}).hasMagicComment(tt.path) {
+			if tt.value == 1 && !(&builder.BaseBuilder{}).HasMagicComment(tt.path) {
 				t.Errorf("expected %s has magic comment but has no magic comment", tt.path)
 			}
-			if tt.value == 0 && (&buildCmd{}).hasMagicComment(tt.path) {
+			if tt.value == 0 && (&builder.BaseBuilder{}).HasMagicComment(tt.path) {
 				t.Errorf("expected %s was not installed but installed", tt.path)
 			}
 		}
@@ -937,6 +950,7 @@ func checkRCInstalled(t *testing.T, f, g, h, i int) {
 }
 
 func checkSyntax(t *testing.T, bundledPlugconf string) {
+	t.Helper()
 	r, err := os.Open(bundledPlugconf)
 	if err != nil {
 		t.Errorf("failed to open %s: %s", bundledPlugconf, err.Error())

@@ -475,6 +475,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, done cha
 		hash:      toHash,
 	}
 }
+
 func (*getCmd) detectReposType(fullpath string) (lockjson.ReposType, error) {
 	if pathutil.Exists(filepath.Join(fullpath, ".git")) {
 		if _, err := git.PlainOpen(fullpath); err != nil {

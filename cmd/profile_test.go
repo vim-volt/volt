@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
@@ -23,87 +25,97 @@ import (
 // * Run `volt profile set -n <profile>` (`<profile>` is not current profile and non-existing profile) (A, B, a)
 func TestVoltProfileSet(t *testing.T) {
 	t.Run("Run `volt profile set <profile>` (`<profile>` is not current profile)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
 
-		reposPathList := []string{"github.com/tyru/caw.vim"}
-		testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
+			reposPathList := []string{"github.com/tyru/caw.vim"}
+			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
+			defer teardown()
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		out, err := testutil.RunVolt("profile", "new", "foo")
-		testutil.SuccessExit(t, out, err)
-		out, err = testutil.RunVolt("profile", "rm", "default", "github.com/tyru/caw.vim")
-		testutil.SuccessExit(t, out, err)
-		out, err = testutil.RunVolt("profile", "add", "foo", "github.com/tyru/caw.vim")
-		testutil.SuccessExit(t, out, err)
+			out, err := testutil.RunVolt("profile", "new", "foo")
+			testutil.SuccessExit(t, out, err)
+			out, err = testutil.RunVolt("profile", "rm", "default", "github.com/tyru/caw.vim")
+			testutil.SuccessExit(t, out, err)
+			out, err = testutil.RunVolt("profile", "add", "foo", "github.com/tyru/caw.vim")
+			testutil.SuccessExit(t, out, err)
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		profileName := "foo"
-		out, err = testutil.RunVolt("profile", "set", profileName)
-		// (A, B)
-		testutil.SuccessExit(t, out, err)
+			profileName := "foo"
+			out, err = testutil.RunVolt("profile", "set", profileName)
+			// (A, B)
+			testutil.SuccessExit(t, out, err)
 
-		// (a)
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		if lockJSON.CurrentProfileName != profileName {
-			t.Errorf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
-		}
-
-		// (b)
-		for _, reposPath := range reposPathList {
-			vimReposDir := pathutil.PackReposPathOf(reposPath)
-			if !pathutil.Exists(vimReposDir) {
-				t.Error("vim repos does not exist: " + vimReposDir)
+			// (a)
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
 			}
-		}
+			if lockJSON.CurrentProfileName != profileName {
+				t.Errorf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
+			}
+
+			// (b)
+			for _, reposPath := range reposPathList {
+				vimReposDir := pathutil.PackReposPathOf(reposPath)
+				if !pathutil.Exists(vimReposDir) {
+					t.Error("vim repos does not exist: " + vimReposDir)
+				}
+			}
+		})
 	})
 
 	t.Run("Run `volt profile set <profile>` (`<profile>` is current profile)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		profileName := "default"
-		out, err := testutil.RunVolt("profile", "set", profileName)
-		// (!A, !B)
-		testutil.FailExit(t, out, err)
+			profileName := "default"
+			out, err := testutil.RunVolt("profile", "set", profileName)
+			// (!A, !B)
+			testutil.FailExit(t, out, err)
 
-		// (!a)
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		if lockJSON.CurrentProfileName != profileName {
-			t.Errorf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
-		}
+			// (!a)
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+			if lockJSON.CurrentProfileName != profileName {
+				t.Errorf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
+			}
+		})
 	})
 
 	t.Run("Run `volt profile set -n <profile>` (`<profile>` is not current profile and non-existing profile)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		profileName := "bar"
-		out, err := testutil.RunVolt("profile", "set", "-n", profileName)
-		// (A, B)
-		testutil.SuccessExit(t, out, err)
+			profileName := "bar"
+			out, err := testutil.RunVolt("profile", "set", "-n", profileName)
+			// (A, B)
+			testutil.SuccessExit(t, out, err)
 
-		// (a)
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		if lockJSON.CurrentProfileName != profileName {
-			t.Errorf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
-		}
+			// (a)
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+			if lockJSON.CurrentProfileName != profileName {
+				t.Errorf("expected: %s, got: %s", profileName, lockJSON.CurrentProfileName)
+			}
+		})
 	})
 }
 
@@ -644,229 +656,251 @@ func TestVoltProfileRename(t *testing.T) {
 // * Run `volt profile add <profile> <repos>` (<profile>: not exist, <repos>: not exist) (!A, !B, b, !c)
 func TestVoltProfileAdd(t *testing.T) {
 	t.Run("Run `volt profile add <profile> <repos>` (<profile>: exists, <repos>: exists)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
 
-		reposPathList := []string{"github.com/tyru/caw.vim"}
-		testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
+			reposPathList := []string{"github.com/tyru/caw.vim"}
+			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
+			defer teardown()
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		out, err := testutil.RunVolt("profile", "new", "empty")
-		testutil.SuccessExit(t, out, err)
+			out, err := testutil.RunVolt("profile", "new", "empty")
+			testutil.SuccessExit(t, out, err)
 
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		reposPath := "github.com/tyru/caw.vim"
-		out, err = testutil.RunVolt("profile", "add", "empty", reposPath)
-		// (A, B)
-		testutil.SuccessExit(t, out, err)
+			reposPath := "github.com/tyru/caw.vim"
+			out, err = testutil.RunVolt("profile", "add", "empty", reposPath)
+			// (A, B)
+			testutil.SuccessExit(t, out, err)
 
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		reposList := getReposList(t, lockJSON, "empty")
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+			reposList := getReposList(t, lockJSON, "empty")
 
-		// (a)
-		if !reposList.Contains(reposPath) {
-			t.Errorf("expected '%s' is added to profile '%s', but not added", reposPath, "empty")
-		}
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "empty")
-		// (c)
-		if lockJSON.Profiles.FindIndexByName("empty") == -1 {
-			t.Errorf("expected profile '%s' does exist, but does not exist", "empty")
-		}
-	})
-
-	t.Run("Run `volt profile add <profile> <repos1> <repos2>` (<profile>: exists, <repos1>,<repos2>: exists)", func(t *testing.T) {
-		// =============== setup =============== //
-
-		testutil.SetUpEnv(t)
-
-		reposPathList := []string{"github.com/tyru/caw.vim", "github.com/tyru/capture.vim"}
-		testutil.SetUpRepos(t, "caw-and-capture", lockjson.ReposGitType, reposPathList)
-
-		out, err := testutil.RunVolt("profile", "new", "empty")
-		testutil.SuccessExit(t, out, err)
-
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-
-		// =============== run =============== //
-
-		args := append([]string{"profile", "add", "empty"}, reposPathList...)
-		out, err = testutil.RunVolt(args...)
-		// (A, B)
-		testutil.SuccessExit(t, out, err)
-
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		reposList := getReposList(t, lockJSON, "empty")
-
-		// (a)
-		for _, reposPath := range reposPathList {
+			// (a)
 			if !reposList.Contains(reposPath) {
 				t.Errorf("expected '%s' is added to profile '%s', but not added", reposPath, "empty")
 			}
-		}
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "empty")
-		// (c)
-		if lockJSON.Profiles.FindIndexByName("empty") == -1 {
-			t.Errorf("expected profile '%s' does exist, but does not exist", "empty")
-		}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "empty")
+			// (c)
+			if lockJSON.Profiles.FindIndexByName("empty") == -1 {
+				t.Errorf("expected profile '%s' does exist, but does not exist", "empty")
+			}
+		})
+	})
+
+	t.Run("Run `volt profile add <profile> <repos1> <repos2>` (<profile>: exists, <repos1>,<repos2>: exists)", func(t *testing.T) {
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
+
+			testutil.SetUpEnv(t)
+
+			reposPathList := []string{"github.com/tyru/caw.vim", "github.com/tyru/capture.vim"}
+			teardown := testutil.SetUpRepos(t, "caw-and-capture", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
+			defer teardown()
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
+
+			out, err := testutil.RunVolt("profile", "new", "empty")
+			testutil.SuccessExit(t, out, err)
+
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+
+			// =============== run =============== //
+
+			args := append([]string{"profile", "add", "empty"}, reposPathList...)
+			out, err = testutil.RunVolt(args...)
+			// (A, B)
+			testutil.SuccessExit(t, out, err)
+
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+			reposList := getReposList(t, lockJSON, "empty")
+
+			// (a)
+			for _, reposPath := range reposPathList {
+				if !reposList.Contains(reposPath) {
+					t.Errorf("expected '%s' is added to profile '%s', but not added", reposPath, "empty")
+				}
+			}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "empty")
+			// (c)
+			if lockJSON.Profiles.FindIndexByName("empty") == -1 {
+				t.Errorf("expected profile '%s' does exist, but does not exist", "empty")
+			}
+		})
 	})
 
 	t.Run("Run `volt profile add -current <repos>` (<repos>: exists)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
 
-		reposPathList := []string{"github.com/tyru/caw.vim"}
-		testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
+			reposPathList := []string{"github.com/tyru/caw.vim"}
+			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
+			defer teardown()
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		out, err := testutil.RunVolt("profile", "set", "-n", "empty")
-		testutil.SuccessExit(t, out, err)
+			out, err := testutil.RunVolt("profile", "set", "-n", "empty")
+			testutil.SuccessExit(t, out, err)
 
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		reposPath := "github.com/tyru/caw.vim"
-		out, err = testutil.RunVolt("profile", "add", "-current", reposPath)
-		// (A, B)
-		testutil.SuccessExit(t, out, err)
+			reposPath := "github.com/tyru/caw.vim"
+			out, err = testutil.RunVolt("profile", "add", "-current", reposPath)
+			// (A, B)
+			testutil.SuccessExit(t, out, err)
 
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		reposList := getReposList(t, lockJSON, lockJSON.CurrentProfileName)
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+			reposList := getReposList(t, lockJSON, lockJSON.CurrentProfileName)
 
-		// (a)
-		if !reposList.Contains(reposPath) {
-			t.Errorf("expected '%s' is added to profile '%s', but not added", reposPath, lockJSON.CurrentProfileName)
-		}
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, lockJSON.CurrentProfileName)
-		// (c)
-		if lockJSON.Profiles.FindIndexByName(lockJSON.CurrentProfileName) == -1 {
-			t.Errorf("expected profile '%s' does exist, but does not exist", lockJSON.CurrentProfileName)
-		}
+			// (a)
+			if !reposList.Contains(reposPath) {
+				t.Errorf("expected '%s' is added to profile '%s', but not added", reposPath, lockJSON.CurrentProfileName)
+			}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, lockJSON.CurrentProfileName)
+			// (c)
+			if lockJSON.Profiles.FindIndexByName(lockJSON.CurrentProfileName) == -1 {
+				t.Errorf("expected profile '%s' does exist, but does not exist", lockJSON.CurrentProfileName)
+			}
+		})
 	})
 
 	t.Run("Run `volt profile add <profile> <repos>` (<profile>: not exist, <repos>: exists)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
 
-		reposPathList := []string{"github.com/tyru/caw.vim"}
-		testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
+			reposPathList := []string{"github.com/tyru/caw.vim"}
+			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
+			defer teardown()
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		reposPath := "github.com/tyru/caw.vim"
-		out, err := testutil.RunVolt("profile", "add", "not_existing_profile", reposPath)
-		// (!A, !B)
-		testutil.FailExit(t, out, err)
+			reposPath := "github.com/tyru/caw.vim"
+			out, err := testutil.RunVolt("profile", "add", "not_existing_profile", reposPath)
+			// (!A, !B)
+			testutil.FailExit(t, out, err)
 
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
-		// (!c)
-		if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
-			t.Errorf("expected profile '%s' does not exist, but does exist", "not_existing_profile")
-		}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
+			// (!c)
+			if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
+				t.Errorf("expected profile '%s' does not exist, but does exist", "not_existing_profile")
+			}
+		})
 	})
 
 	t.Run("Run `volt profile add <profile> <repos>` (<profile>: exists, <repos>: not exist)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		out, err := testutil.RunVolt("profile", "new", "empty")
-		testutil.SuccessExit(t, out, err)
+			out, err := testutil.RunVolt("profile", "new", "empty")
+			testutil.SuccessExit(t, out, err)
 
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		reposPath := "github.com/tyru/caw.vim"
-		out, err = testutil.RunVolt("profile", "add", "empty", reposPath)
-		// (!A, !B)
-		testutil.FailExit(t, out, err)
+			reposPath := "github.com/tyru/caw.vim"
+			out, err = testutil.RunVolt("profile", "add", "empty", reposPath)
+			// (!A, !B)
+			testutil.FailExit(t, out, err)
 
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		reposList := getReposList(t, lockJSON, "empty")
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+			reposList := getReposList(t, lockJSON, "empty")
 
-		// (!a)
-		if reposList.Contains(reposPath) {
-			t.Errorf("expected '%s' is not added to profile '%s', but added", reposPath, "empty")
-		}
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "empty")
-		// (c)
-		if lockJSON.Profiles.FindIndexByName("empty") == -1 {
-			t.Errorf("expected profile '%s' does exist, but does not exist", "empty")
-		}
+			// (!a)
+			if reposList.Contains(reposPath) {
+				t.Errorf("expected '%s' is not added to profile '%s', but added", reposPath, "empty")
+			}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "empty")
+			// (c)
+			if lockJSON.Profiles.FindIndexByName("empty") == -1 {
+				t.Errorf("expected profile '%s' does exist, but does not exist", "empty")
+			}
+		})
 	})
 
 	t.Run("Run `volt profile add <profile> <repos>` (<profile>: not exist, <repos>: not exist)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		reposPath := "github.com/tyru/caw.vim"
-		out, err := testutil.RunVolt("profile", "add", "not_existing_profile", reposPath)
-		// (!A, !B)
-		testutil.FailExit(t, out, err)
+			reposPath := "github.com/tyru/caw.vim"
+			out, err := testutil.RunVolt("profile", "add", "not_existing_profile", reposPath)
+			// (!A, !B)
+			testutil.FailExit(t, out, err)
 
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
-		// (!c)
-		if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
-			t.Errorf("expected profile '%s' does not exist, but does exist", "empty")
-		}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
+			// (!c)
+			if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
+				t.Errorf("expected profile '%s' does not exist, but does exist", "empty")
+			}
+		})
 	})
 }
 
@@ -883,217 +917,239 @@ func TestVoltProfileAdd(t *testing.T) {
 // * Run `volt profile rm <profile> <repos>` (<profile>: not exist, <repos>: not exist) (!A, !B, b, !c)
 func TestVoltProfileRm(t *testing.T) {
 	t.Run("Run `volt profile rm <profile> <repos>` (<profile>: exists, <repos>: exists)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
 
-		reposPathList := []string{"github.com/tyru/caw.vim"}
-		testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
+			reposPathList := []string{"github.com/tyru/caw.vim"}
+			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
+			defer teardown()
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		reposPath := "github.com/tyru/caw.vim"
-		out, err := testutil.RunVolt("profile", "rm", "default", reposPath)
-		// (A, B)
-		testutil.SuccessExit(t, out, err)
+			reposPath := "github.com/tyru/caw.vim"
+			out, err := testutil.RunVolt("profile", "rm", "default", reposPath)
+			// (A, B)
+			testutil.SuccessExit(t, out, err)
 
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		reposList := getReposList(t, lockJSON, "default")
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+			reposList := getReposList(t, lockJSON, "default")
 
-		// (a)
-		if reposList.Contains(reposPath) {
-			t.Errorf("expected '%s' is removed from profile '%s', but not removed", reposPath, "default")
-		}
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "default")
-		// (c)
-		if lockJSON.Profiles.FindIndexByName("default") == -1 {
-			t.Errorf("expected profile '%s' does exist, but does not exist", "default")
-		}
-	})
-
-	t.Run("Run `volt profile rm <profile> <repos1> <repos2>` (<profile>: exists, <repos1>,<repos2>: exists)", func(t *testing.T) {
-		// =============== setup =============== //
-
-		testutil.SetUpEnv(t)
-
-		reposPathList := []string{"github.com/tyru/caw.vim", "github.com/tyru/capture.vim"}
-		testutil.SetUpRepos(t, "caw-and-capture", lockjson.ReposGitType, reposPathList)
-
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-
-		// =============== run =============== //
-
-		args := append([]string{"profile", "rm", "default"}, reposPathList...)
-		out, err := testutil.RunVolt(args...)
-		// (A, B)
-		testutil.SuccessExit(t, out, err)
-
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		reposList := getReposList(t, lockJSON, "default")
-
-		// (a)
-		for _, reposPath := range reposPathList {
+			// (a)
 			if reposList.Contains(reposPath) {
 				t.Errorf("expected '%s' is removed from profile '%s', but not removed", reposPath, "default")
 			}
-		}
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "default")
-		// (c)
-		if lockJSON.Profiles.FindIndexByName("default") == -1 {
-			t.Errorf("expected profile '%s' does exist, but does not exist", "default")
-		}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "default")
+			// (c)
+			if lockJSON.Profiles.FindIndexByName("default") == -1 {
+				t.Errorf("expected profile '%s' does exist, but does not exist", "default")
+			}
+		})
+	})
+
+	t.Run("Run `volt profile rm <profile> <repos1> <repos2>` (<profile>: exists, <repos1>,<repos2>: exists)", func(t *testing.T) {
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
+
+			testutil.SetUpEnv(t)
+
+			reposPathList := []string{"github.com/tyru/caw.vim", "github.com/tyru/capture.vim"}
+			teardown := testutil.SetUpRepos(t, "caw-and-capture", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
+			defer teardown()
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
+
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+
+			// =============== run =============== //
+
+			args := append([]string{"profile", "rm", "default"}, reposPathList...)
+			out, err := testutil.RunVolt(args...)
+			// (A, B)
+			testutil.SuccessExit(t, out, err)
+
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+			reposList := getReposList(t, lockJSON, "default")
+
+			// (a)
+			for _, reposPath := range reposPathList {
+				if reposList.Contains(reposPath) {
+					t.Errorf("expected '%s' is removed from profile '%s', but not removed", reposPath, "default")
+				}
+			}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "default")
+			// (c)
+			if lockJSON.Profiles.FindIndexByName("default") == -1 {
+				t.Errorf("expected profile '%s' does exist, but does not exist", "default")
+			}
+		})
 	})
 
 	t.Run("Run `volt profile rm -current <repos>` (<repos>: exists)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
 
-		reposPathList := []string{"github.com/tyru/caw.vim"}
-		testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
+			reposPathList := []string{"github.com/tyru/caw.vim"}
+			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
+			defer teardown()
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		reposPath := "github.com/tyru/caw.vim"
-		out, err := testutil.RunVolt("profile", "rm", "-current", reposPath)
-		// (A, B)
-		testutil.SuccessExit(t, out, err)
+			reposPath := "github.com/tyru/caw.vim"
+			out, err := testutil.RunVolt("profile", "rm", "-current", reposPath)
+			// (A, B)
+			testutil.SuccessExit(t, out, err)
 
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		reposList := getReposList(t, lockJSON, lockJSON.CurrentProfileName)
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+			reposList := getReposList(t, lockJSON, lockJSON.CurrentProfileName)
 
-		// (a)
-		if reposList.Contains(reposPath) {
-			t.Errorf("expected '%s' is removed from profile '%s', but not removed", reposPath, lockJSON.CurrentProfileName)
-		}
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, lockJSON.CurrentProfileName)
-		// (c)
-		if lockJSON.Profiles.FindIndexByName(lockJSON.CurrentProfileName) == -1 {
-			t.Errorf("expected profile '%s' does exist, but does not exist", lockJSON.CurrentProfileName)
-		}
+			// (a)
+			if reposList.Contains(reposPath) {
+				t.Errorf("expected '%s' is removed from profile '%s', but not removed", reposPath, lockJSON.CurrentProfileName)
+			}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, lockJSON.CurrentProfileName)
+			// (c)
+			if lockJSON.Profiles.FindIndexByName(lockJSON.CurrentProfileName) == -1 {
+				t.Errorf("expected profile '%s' does exist, but does not exist", lockJSON.CurrentProfileName)
+			}
+		})
 	})
 
 	t.Run("Run `volt profile rm <profile> <repos>` (<profile>: not exist, <repos>: exists)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
 
-		reposPathList := []string{"github.com/tyru/caw.vim"}
-		testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList)
+			reposPathList := []string{"github.com/tyru/caw.vim"}
+			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
+			defer teardown()
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		reposPath := "github.com/tyru/caw.vim"
-		out, err := testutil.RunVolt("profile", "rm", "not_existing_profile", reposPath)
-		// (!A, !B)
-		testutil.FailExit(t, out, err)
+			reposPath := "github.com/tyru/caw.vim"
+			out, err := testutil.RunVolt("profile", "rm", "not_existing_profile", reposPath)
+			// (!A, !B)
+			testutil.FailExit(t, out, err)
 
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
-		// (!c)
-		if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
-			t.Errorf("expected profile '%s' does not exist, but does exist", "not_existing_profile")
-		}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
+			// (!c)
+			if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
+				t.Errorf("expected profile '%s' does not exist, but does exist", "not_existing_profile")
+			}
+		})
 	})
 
 	t.Run("Run `volt profile rm <profile> <repos>` (<profile>: exists, <repos>: not exist)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		reposPath := "github.com/tyru/caw.vim"
-		out, err := testutil.RunVolt("profile", "rm", "default", reposPath)
-		// (!A, !B)
-		testutil.FailExit(t, out, err)
+			reposPath := "github.com/tyru/caw.vim"
+			out, err := testutil.RunVolt("profile", "rm", "default", reposPath)
+			// (!A, !B)
+			testutil.FailExit(t, out, err)
 
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
-		reposList := getReposList(t, lockJSON, "default")
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
+			reposList := getReposList(t, lockJSON, "default")
 
-		// (a)
-		if reposList.Contains(reposPath) {
-			t.Errorf("expected '%s' does not exist on profile '%s', but appears", reposPath, "default")
-		}
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "default")
-		// (c)
-		if lockJSON.Profiles.FindIndexByName("default") == -1 {
-			t.Errorf("expected profile '%s' does exist, but does not exist", "default")
-		}
+			// (a)
+			if reposList.Contains(reposPath) {
+				t.Errorf("expected '%s' does not exist on profile '%s', but appears", reposPath, "default")
+			}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "default")
+			// (c)
+			if lockJSON.Profiles.FindIndexByName("default") == -1 {
+				t.Errorf("expected profile '%s' does exist, but does not exist", "default")
+			}
+		})
 	})
 
 	t.Run("Run `volt profile rm <profile> <repos>` (<profile>: not exist, <repos>: not exist)", func(t *testing.T) {
-		// =============== setup =============== //
+		testProfileMatrix(t, func(t *testing.T, strategy string) {
+			// =============== setup =============== //
 
-		testutil.SetUpEnv(t)
+			testutil.SetUpEnv(t)
+			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
-		oldLockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			oldLockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// =============== run =============== //
+			// =============== run =============== //
 
-		reposPath := "github.com/tyru/caw.vim"
-		out, err := testutil.RunVolt("profile", "rm", "not_existing_profile", reposPath)
-		// (!A, !B)
-		testutil.FailExit(t, out, err)
+			reposPath := "github.com/tyru/caw.vim"
+			out, err := testutil.RunVolt("profile", "rm", "not_existing_profile", reposPath)
+			// (!A, !B)
+			testutil.FailExit(t, out, err)
 
-		lockJSON, err := lockjson.Read()
-		if err != nil {
-			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
-		}
+			lockJSON, err := lockjson.Read()
+			if err != nil {
+				t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+			}
 
-		// (b)
-		testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
-		// (!c)
-		if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
-			t.Errorf("expected profile '%s' does not exist, but does exist", "default")
-		}
+			// (b)
+			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "not_existing_profile")
+			// (!c)
+			if lockJSON.Profiles.FindIndexByName("not_existing_profile") != -1 {
+				t.Errorf("expected profile '%s' does not exist, but does exist", "default")
+			}
+		})
 	})
 }
 
@@ -1147,5 +1203,13 @@ func testNotChangedProfileExcept(t *testing.T, oldLockJSON *lockjson.LockJSON, n
 		if oldStr != newStr {
 			t.Errorf("expected old/new profiles are same but got:\n  old = %s\n  new = %s", oldStr, newStr)
 		}
+	}
+}
+
+func testProfileMatrix(t *testing.T, f func(*testing.T, string)) {
+	for _, strategy := range testutil.AvailableStrategies() {
+		t.Run(fmt.Sprintf("strategy=%v", strategy), func(t *testing.T) {
+			f(t, strategy)
+		})
 	}
 }
