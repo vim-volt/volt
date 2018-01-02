@@ -85,8 +85,21 @@ func Main() int {
 	return 0
 }
 
+// start = The first line number **inside** code block
+// end = The end of code block line (```) line number
 func findTopCodeBlockRange(lines []string) (int, int) {
-	return 6, 80
+	start, end := -1, -1
+	for i := range lines {
+		if lines[i] == "```" {
+			if start == -1 {
+				start = i + 1
+			} else {
+				end = i
+				break
+			}
+		}
+	}
+	return start, end
 }
 
 func getVoltHelpOutput() (string, error) {
