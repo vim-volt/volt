@@ -226,7 +226,8 @@ Quick example
   $ volt rm -r -p tyru/caw.vim # Remove tyru/caw.vim plugin from lock.json, and remove repository directory, plugconf
 
 Description
-  Uninstall {repository} on every profile.
+  Uninstall one or more {repository} from every profile.
+  This results in removing vim plugins from ~/.vim/pack/volt/opt/ directory.
   If {repository} is depended by other repositories, this command exits with an error.
 
   If -r option was given, remove also repository directories of specified repositories.
