@@ -12,6 +12,7 @@ import (
 
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
+	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -336,7 +337,7 @@ func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done c
 	var err error
 	if doUpgrade {
 		// Get HEAD hash string
-		fromHash, err = getReposHEAD(reposPath)
+		fromHash, err = gitutil.GetHEAD(reposPath)
 		if err != nil {
 			result := errors.New("failed to get HEAD commit hash: " + err.Error())
 			if cmd.verbose {
@@ -439,7 +440,7 @@ func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done c
 	reposType, err := cmd.detectReposType(fullReposPath)
 	if err == nil && reposType == lockjson.ReposGitType {
 		// Get HEAD hash string
-		toHash, err = getReposHEAD(reposPath)
+		toHash, err = gitutil.GetHEAD(reposPath)
 		if err != nil {
 			result := errors.New("failed to get HEAD commit hash: " + err.Error())
 			if cmd.verbose {
@@ -588,32 +589,7 @@ func (cmd *getCmd) fetchPlugin(reposPath string) error {
 		return err
 	}
 
-	return cmd.setUpstreamBranch(r)
-}
-
-func (cmd *getCmd) setUpstreamBranch(r *git.Repository) error {
-	cfg, err := r.Config()
-	if err != nil {
-		return err
-	}
-
-	head, err := r.Head()
-	if err != nil {
-		return err
-	}
-
-	refBranch := head.Name().String()
-	branch := refHeadsRx.FindStringSubmatch(refBranch)
-	if len(branch) == 0 {
-		return errors.New("HEAD is not matched to refs/heads/...: " + refBranch)
-	}
-
-	sec := cfg.Raw.Section("branch")
-	subsec := sec.Subsection(branch[1])
-	subsec.AddOption("remote", "origin")
-	subsec.AddOption("merge", refBranch)
-
-	return r.Storer.SetConfig(cfg)
+	return gitutil.SetUpstreamBranch(r)
 }
 
 func (cmd *getCmd) fetchPlugconf(reposPath string) error {

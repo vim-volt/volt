@@ -1,4 +1,4 @@
-package cmd
+package gitutil
 
 import (
 	"errors"
@@ -16,7 +16,7 @@ var refHeadsRx = regexp.MustCompile(`^refs/heads/(.+)$`)
 //   where {branch} is default branch
 // If the repository is non-bare:
 //   Return the reference of current branch's HEAD
-func getReposHEAD(reposPath string) (string, error) {
+func GetHEAD(reposPath string) (string, error) {
 	repos, err := git.PlainOpen(pathutil.FullReposPathOf(reposPath))
 	if err != nil {
 		return "", err
@@ -54,4 +54,29 @@ func getReposHEAD(reposPath string) (string, error) {
 		return "", err
 	}
 	return ref.Hash().String(), nil
+}
+
+func SetUpstreamBranch(r *git.Repository) error {
+	cfg, err := r.Config()
+	if err != nil {
+		return err
+	}
+
+	head, err := r.Head()
+	if err != nil {
+		return err
+	}
+
+	refBranch := head.Name().String()
+	branch := refHeadsRx.FindStringSubmatch(refBranch)
+	if len(branch) == 0 {
+		return errors.New("HEAD is not matched to refs/heads/...: " + refBranch)
+	}
+
+	sec := cfg.Raw.Section("branch")
+	subsec := sec.Subsection(branch[1])
+	subsec.AddOption("remote", "origin")
+	subsec.AddOption("merge", refBranch)
+
+	return r.Storer.SetConfig(cfg)
 }
