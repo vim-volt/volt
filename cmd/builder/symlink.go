@@ -105,23 +105,23 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
 
-	// Show warning when HEAD and locked revision are different
-	head, err := gitutil.GetHEAD(repos.Path)
-	if err != nil {
-		done <- actionReposResult{
-			err: fmt.Errorf("failed to get HEAD revision of %q: %s", src, err.Error()),
-		}
-		return
-	}
-	if head != repos.Version {
-		logger.Warnf("%s: HEAD and locked revision are different", repos.Path)
-		logger.Warn("  HEAD: " + head)
-		logger.Warn("  locked revision: " + repos.Version)
-		logger.Warnf("  Please run 'volt get %s' to update locked revision.", repos.Path)
-	}
-
 	copied := false
 	if repos.Type == lockjson.ReposGitType {
+		// Show warning when HEAD and locked revision are different
+		head, err := gitutil.GetHEAD(repos.Path)
+		if err != nil {
+			done <- actionReposResult{
+				err: fmt.Errorf("failed to get HEAD revision of %q: %s", src, err.Error()),
+			}
+			return
+		}
+		if head != repos.Version {
+			logger.Warnf("%s: HEAD and locked revision are different", repos.Path)
+			logger.Warn("  HEAD: " + head)
+			logger.Warn("  locked revision: " + repos.Version)
+			logger.Warnf("  Please run 'volt get %s' to update locked revision.", repos.Path)
+		}
+
 		// Open a repository to determine it is bare repository or not
 		r, err := git.PlainOpen(src)
 		if err != nil {
