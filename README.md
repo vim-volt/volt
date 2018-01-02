@@ -74,7 +74,7 @@ Command
 
   version
     Show volt command version
- ```
+```
 
 See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.md) for more details.
 
