@@ -12,6 +12,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/vim-volt/volt/cmd/buildinfo"
+	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -103,8 +104,24 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
 	src := pathutil.FullReposPathOf(repos.Path)
 	dst := pathutil.PackReposPathOf(repos.Path)
+
 	copied := false
 	if repos.Type == lockjson.ReposGitType {
+		// Show warning when HEAD and locked revision are different
+		head, err := gitutil.GetHEAD(repos.Path)
+		if err != nil {
+			done <- actionReposResult{
+				err: fmt.Errorf("failed to get HEAD revision of %q: %s", src, err.Error()),
+			}
+			return
+		}
+		if head != repos.Version {
+			logger.Warnf("%s: HEAD and locked revision are different", repos.Path)
+			logger.Warn("  HEAD: " + head)
+			logger.Warn("  locked revision: " + repos.Version)
+			logger.Warnf("  Please run 'volt get %s' to update locked revision.", repos.Path)
+		}
+
 		// Open a repository to determine it is bare repository or not
 		r, err := git.PlainOpen(src)
 		if err != nil {
