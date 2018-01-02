@@ -233,44 +233,27 @@ func (cmd *profileCmd) doShow(args []string) error {
 		profileName = lockJSON.CurrentProfileName
 	} else {
 		profileName = args[0]
-	}
-
-	// Return error if profiles[]/name does not match profileName
-	profile, err := lockJSON.Profiles.FindByName(profileName)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("name:", profile.Name)
-	fmt.Println("repos path:")
-	for _, reposPath := range profile.ReposPath {
-		hash, err := getReposHEAD(reposPath)
-		if err != nil {
-			hash = "?"
+		if lockJSON.Profiles.FindIndexByName(profileName) == -1 {
+			return fmt.Errorf("profile '%s' does not exist", profileName)
 		}
-		fmt.Printf("  %s (%s)\n", reposPath, hash)
 	}
 
-	return nil
+	return (&listCmd{}).list(fmt.Sprintf(`name: %s
+repos path:
+{{- with profile %q -}}
+{{- range .ReposPath }}
+  {{ . }}
+{{- end -}}
+{{- end }}
+`, profileName, profileName))
 }
 
 func (cmd *profileCmd) doList(args []string) error {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
-	}
-
-	// List profile names
-	for _, profile := range lockJSON.Profiles {
-		if profile.Name == lockJSON.CurrentProfileName {
-			fmt.Println("* " + profile.Name)
-		} else {
-			fmt.Println("  " + profile.Name)
-		}
-	}
-
-	return nil
+	return (&listCmd{}).list(`
+{{- range .Profiles -}}
+{{- if eq .Name $.CurrentProfileName -}}*{{- else }} {{ end }} {{ .Name }}
+{{ end -}}
+`)
 }
 
 func (cmd *profileCmd) doNew(args []string) error {

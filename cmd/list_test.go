@@ -13,6 +13,26 @@ import (
 // (B) Exit with zero status
 
 // Checks:
+// (a) `volt list` and `volt profile show -current` output is same
+func TestVoltListAndVoltProfileAreSame(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
+	out1, err := testutil.RunVolt("list")
+	testutil.SuccessExit(t, out1, err) // (A, B)
+	out2, err := testutil.RunVolt("profile", "show", "-current")
+	testutil.SuccessExit(t, out2, err)
+
+	// (a)
+	if string(out1) != string(out2) {
+		t.Errorf("=== expected ===\n[%s]\n=== got ===\n[%s]", string(out2), string(out1))
+	}
+}
+
+// Checks:
 // (a) `currentProfile` returns current profile
 // (b) `version` returns current version
 // (c) `versionMajor` returns current version
@@ -37,6 +57,12 @@ func TestVoltListFunctions(t *testing.T) {
 	})
 
 	t.Run("currentProfile", func(t *testing.T) {
+		// =============== setup =============== //
+
+		testutil.SetUpEnv(t)
+
+		// =============== run =============== //
+
 		out, err := testutil.RunVolt("list", "-f", "{{ currentProfile.Name }}")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
@@ -69,6 +95,12 @@ func TestVoltListFunctions(t *testing.T) {
 	})
 
 	t.Run("version", func(t *testing.T) {
+		// =============== setup =============== //
+
+		testutil.SetUpEnv(t)
+
+		// =============== run =============== //
+
 		out, err := testutil.RunVolt("list", "-f", "{{ version }}")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
@@ -80,6 +112,12 @@ func TestVoltListFunctions(t *testing.T) {
 	})
 
 	t.Run("versionMajor", func(t *testing.T) {
+		// =============== setup =============== //
+
+		testutil.SetUpEnv(t)
+
+		// =============== run =============== //
+
 		out, err := testutil.RunVolt("list", "-f", "{{ versionMajor }}")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
@@ -92,6 +130,12 @@ func TestVoltListFunctions(t *testing.T) {
 	})
 
 	t.Run("versionMinor", func(t *testing.T) {
+		// =============== setup =============== //
+
+		testutil.SetUpEnv(t)
+
+		// =============== run =============== //
+
 		out, err := testutil.RunVolt("list", "-f", "{{ versionMinor }}")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
@@ -104,6 +148,12 @@ func TestVoltListFunctions(t *testing.T) {
 	})
 
 	t.Run("versionPatch", func(t *testing.T) {
+		// =============== setup =============== //
+
+		testutil.SetUpEnv(t)
+
+		// =============== run =============== //
+
 		out, err := testutil.RunVolt("list", "-f", "{{ versionPatch }}")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
