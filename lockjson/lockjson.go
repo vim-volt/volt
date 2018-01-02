@@ -44,8 +44,6 @@ type profReposPath []string
 type Profile struct {
 	Name      string        `json:"name"`
 	ReposPath profReposPath `json:"repos_path"`
-	UseVimrc  bool          `json:"use_vimrc"`
-	UseGvimrc bool          `json:"use_gvimrc"`
 }
 
 const lockJSONVersion = 2
@@ -60,8 +58,6 @@ func initialLockJSON() *LockJSON {
 			Profile{
 				Name:      "default",
 				ReposPath: make([]string, 0),
-				UseVimrc:  true,
-				UseGvimrc: true,
 			},
 		},
 	}

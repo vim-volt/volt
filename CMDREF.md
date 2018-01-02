@@ -259,10 +259,6 @@ Command
   profile rm [-current | {name}] {repository} [{repository2} ...]
     Remove one or more repositories from profile {name}.
 
-  profile use [-current | {name}] vimrc [true | false]
-  profile use [-current | {name}] gvimrc [true | false]
-    Set vimrc / gvimrc flag to true or false.
-
 Quick example
   $ volt profile list   # default profile is "default"
   * default
@@ -284,9 +280,6 @@ Quick example
   $ volt profile rm foo tyru/caw.vim    # disable loading tyru/caw.vim on "foo" profile
 
   $ volt profile destroy foo   # will delete profile "foo"
-
-  $ volt profile use -current vimrc false   # Disable installing vimrc on current profile on "volt build"
-  $ volt profile use default gvimrc true   # Enable installing gvimrc on profile default on "volt build"
 ```
 
 # volt rm

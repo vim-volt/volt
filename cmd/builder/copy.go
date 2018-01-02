@@ -37,7 +37,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	}
 
 	// Get current profile's repos list
-	profile, reposList, err := builder.getCurrentProfileAndReposList(lockJSON)
+	reposList, err := builder.getCurrentReposList(lockJSON)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	vimrcPath := filepath.Join(vimDir, pathutil.Vimrc)
 	gvimrcPath := filepath.Join(vimDir, pathutil.Gvimrc)
 	err = builder.installVimrcAndGvimrc(
-		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath, profile.UseVimrc, profile.UseGvimrc,
+		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath,
 	)
 	if err != nil {
 		return err

@@ -121,13 +121,11 @@ func TestVoltProfileSet(t *testing.T) {
 
 // Checks:
 // (a) Output has profile name
-// (b) Output has "use vimrc"
-// (c) Output has "use gvimrc"
-// (d) Output has "repos path"
+// (b) Output has "repos path"
 //
-// * Run `volt profile show <profile>` (`<profile>` is existing profile) (A, B, a, b, c, d)
-// * Run `volt profile show -current` (A, B, a, b, c, d)
-// * Run `volt profile show <profile>` (`<profile>` is non-existing profile) (!A, !B, !a, !b, !c, !d)
+// * Run `volt profile show <profile>` (`<profile>` is existing profile) (A, B, a, b)
+// * Run `volt profile show -current` (A, B, a, b)
+// * Run `volt profile show <profile>` (`<profile>` is non-existing profile) (!A, !B, !a, !b)
 func TestVoltProfileShow(t *testing.T) {
 	t.Run("Run `volt profile show <profile>` (`<profile>` is existing profile)", func(t *testing.T) {
 		// =============== setup =============== //
@@ -140,16 +138,10 @@ func TestVoltProfileShow(t *testing.T) {
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
 
-		// (a, b, c, d)
+		// (a, b)
 		outstr := string(out)
 		if !strings.Contains(outstr, "name: default\n") {
 			t.Errorf("Expected 'name: default' line, but got: %s", outstr)
-		}
-		if !strings.Contains(outstr, "use vimrc: true\n") {
-			t.Errorf("Expected 'use vimrc: true' line, but got: %s", outstr)
-		}
-		if !strings.Contains(outstr, "use gvimrc: true\n") {
-			t.Errorf("Expected 'use gvimrc: true' line, but got: %s", outstr)
 		}
 		if !strings.Contains(outstr, "repos path:\n") {
 			t.Errorf("Expected 'repos path:' line, but got: %s", outstr)
@@ -167,16 +159,10 @@ func TestVoltProfileShow(t *testing.T) {
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
 
-		// (a, b, c, d)
+		// (a, b)
 		outstr := string(out)
 		if !strings.Contains(outstr, "name: default\n") {
 			t.Errorf("Expected 'name: default' line, but got: %s", outstr)
-		}
-		if !strings.Contains(outstr, "use vimrc: true\n") {
-			t.Errorf("Expected 'use vimrc: true' line, but got: %s", outstr)
-		}
-		if !strings.Contains(outstr, "use gvimrc: true\n") {
-			t.Errorf("Expected 'use gvimrc: true' line, but got: %s", outstr)
 		}
 		if !strings.Contains(outstr, "repos path:\n") {
 			t.Errorf("Expected 'repos path:' line, but got: %s", outstr)
@@ -194,7 +180,7 @@ func TestVoltProfileShow(t *testing.T) {
 		// (!A, !B)
 		testutil.FailExit(t, out, err)
 
-		// (!a, !b, !c, !d)
+		// (!a, !b)
 		outstr := string(out)
 		expected := "[ERROR] profile 'bar' does not exist"
 		if strings.Trim(outstr, " \t\r\n") != expected {

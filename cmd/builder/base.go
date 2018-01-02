@@ -19,7 +19,7 @@ import (
 
 type BaseBuilder struct{}
 
-func (builder *BaseBuilder) installVimrcAndGvimrc(profileName, vimrcPath, gvimrcPath string, useVimrc, useGvimrc bool) error {
+func (builder *BaseBuilder) installVimrcAndGvimrc(profileName, vimrcPath, gvimrcPath string) error {
 	// Save old vimrc file as {vimrc}.bak
 	vimrcInfo, err := os.Stat(vimrcPath)
 	if err != nil && !os.IsNotExist(err) {
@@ -39,7 +39,6 @@ func (builder *BaseBuilder) installVimrcAndGvimrc(profileName, vimrcPath, gvimrc
 		profileName,
 		pathutil.ProfileVimrc,
 		vimrcPath,
-		useVimrc,
 	)
 	if err != nil {
 		return err
@@ -50,7 +49,6 @@ func (builder *BaseBuilder) installVimrcAndGvimrc(profileName, vimrcPath, gvimrc
 		profileName,
 		pathutil.ProfileGvimrc,
 		gvimrcPath,
-		useGvimrc,
 	)
 	if err != nil {
 		// Restore old vimrc
@@ -70,7 +68,7 @@ func (builder *BaseBuilder) installVimrcAndGvimrc(profileName, vimrcPath, gvimrc
 	return nil
 }
 
-func (builder *BaseBuilder) installRCFile(profileName, srcRCFileName, dst string, install bool) error {
+func (builder *BaseBuilder) installRCFile(profileName, srcRCFileName, dst string) error {
 	src := filepath.Join(pathutil.RCDir(profileName), srcRCFileName)
 
 	// Return error if destination file does not have magic comment
@@ -90,8 +88,8 @@ func (builder *BaseBuilder) installRCFile(profileName, srcRCFileName, dst string
 		return errors.New("failed to remove " + dst)
 	}
 
-	// Skip if use_vimrc/use_gvimrc is false or rc file does not exist
-	if !install || !pathutil.Exists(src) {
+	// Skip if rc file does not exist
+	if !pathutil.Exists(src) {
 		return nil
 	}
 
@@ -165,17 +163,17 @@ type actionReposResult struct {
 	files buildinfo.FileMap
 }
 
-func (builder *BaseBuilder) getCurrentProfileAndReposList(lockJSON *lockjson.LockJSON) (*lockjson.Profile, lockjson.ReposList, error) {
+func (builder *BaseBuilder) getCurrentReposList(lockJSON *lockjson.LockJSON) (lockjson.ReposList, error) {
 	// Find current profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates that the matching profile exists
-		return nil, nil, err
+		return nil, err
 	}
 
 	reposList, err := lockJSON.GetReposListByProfile(profile)
-	return profile, reposList, err
+	return reposList, err
 }
 
 func (builder *BaseBuilder) helptags(reposPath, vimExePath string) error {

@@ -34,7 +34,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	if err != nil {
 		return errors.New("could not read lock.json: " + err.Error())
 	}
-	profile, reposList, err := builder.getCurrentProfileAndReposList(lockJSON)
+	reposList, err := builder.getCurrentReposList(lockJSON)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	vimrcPath := filepath.Join(vimDir, pathutil.Vimrc)
 	gvimrcPath := filepath.Join(vimDir, pathutil.Gvimrc)
 	err = builder.installVimrcAndGvimrc(
-		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath, profile.UseVimrc, profile.UseGvimrc,
+		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath,
 	)
 	if err != nil {
 		return err
