@@ -309,6 +309,7 @@ const (
 	fmtAlreadyExists = "%s %s > already exists"
 	fmtAddedRepos    = "%s %s > added repository to current profile"
 	fmtInstalled     = "%s %s > installed"
+	fmtRevUpdate     = "%s %s > updated lock.json revision (%s..%s)"
 	fmtUpgraded      = "%s %s > upgraded (%s..%s)"
 )
 
@@ -464,6 +465,12 @@ func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done c
 	// Show old and new revisions: "upgraded ({from}..{to})".
 	if upgraded {
 		status = fmt.Sprintf(fmtUpgraded, statusPrefixUpgraded, reposPath, fromHash, toHash)
+	}
+
+	if repos != nil && repos.Version != toHash {
+		status = fmt.Sprintf(fmtRevUpdate, statusPrefixUpgraded, reposPath, repos.Version, toHash)
+	} else {
+		status = fmt.Sprintf(fmtNoChange, statusPrefixNoChange, reposPath)
 	}
 
 	done <- getParallelResult{
