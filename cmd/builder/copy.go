@@ -2,6 +2,7 @@ package builder
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/cmd/buildinfo"
 	"github.com/vim-volt/volt/fileutil"
+	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -144,8 +146,21 @@ func (builder *copyBuilder) copyReposList(buildReposMap map[string]*buildinfo.Re
 }
 
 func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buildinfo.Repos, vimExePath string, done chan actionReposResult) (int, error) {
-	// Open ~/volt/repos/{repos}
 	src := pathutil.FullReposPathOf(repos.Path)
+
+	// Show warning when HEAD and locked revision are different
+	head, err := gitutil.GetHEAD(repos.Path)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get HEAD revision of %q: %s", src, err.Error())
+	}
+	if head != repos.Version {
+		logger.Warnf("%s: HEAD and locked revision are different", repos.Path)
+		logger.Warn("  HEAD: " + head)
+		logger.Warn("  locked revision: " + repos.Version)
+		logger.Warnf("  Please run 'volt get %s' to update locked revision.", repos.Path)
+	}
+
+	// Open ~/volt/repos/{repos}
 	r, err := git.PlainOpen(src)
 	if err != nil {
 		return 0, errors.New("failed to open repository: " + err.Error())
