@@ -109,6 +109,35 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 		return err
 	}
 
+	// Copy ftdetect files
+	err = os.MkdirAll(filepath.Dir(pathutil.VimVoltFtDetectDir()), 0755)
+	if err != nil {
+		return err
+	}
+	for _, repo := range reposList {
+		dstFtdPath := pathutil.VimVoltFtDetectDir()
+		if !pathutil.Exists(dstFtdPath) {
+			os.MkdirAll(dstFtdPath, 0755)
+			if !pathutil.Exists(dstFtdPath) {
+				return errors.New("could not create " + dstFtdPath)
+			}
+		}
+		src := pathutil.PackReposPathOf(repo.Path)
+		srcFtdPath := filepath.Join(src, "ftdetect")
+		if err = filepath.Walk(srcFtdPath, func(path string, info os.FileInfo, err error) error {
+			if srcFtdPath != path {
+				buf := make([]byte, 32*1024)
+				err = fileutil.TryLinkFile(path, filepath.Join(dstFtdPath, info.Name()), buf, info.Mode())
+				if err != nil {
+					return errors.New("could not create " + filepath.Join(dstFtdPath, info.Name()))
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+
 	// Write to build-info.json if buildInfo was modified
 	if copyModified || removeModified {
 		err = buildInfo.Write()
