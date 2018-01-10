@@ -161,6 +161,10 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 			done <- actionReposResult{err: err}
 			return
 		}
+		if err := builder.linkFTDFiles(src); err != nil {
+			done <- actionReposResult{err: err}
+			return
+		}
 	}
 	done <- actionReposResult{repos: repos}
 }
@@ -170,4 +174,28 @@ func (*symlinkBuilder) symlink(src, dst string) error {
 		return exec.Command("cmd", "/c", "mklink", "/J", dst, src).Run()
 	}
 	return os.Symlink(src, dst)
+}
+
+func (builder *symlinkBuilder) linkFTDFiles(src string) error {
+	srcFtdPath := filepath.Join(src, "ftdetect")
+	if pathutil.Exists(srcFtdPath) {
+		dstFtdPath := pathutil.VimVoltFtDetectDir()
+		if !pathutil.Exists(dstFtdPath) {
+			os.MkdirAll(dstFtdPath, 0755)
+			if !pathutil.Exists(dstFtdPath) {
+				return errors.New("could not create " + dstFtdPath)
+			}
+		}
+		if err := filepath.Walk(srcFtdPath, func(path string, info os.FileInfo, err error) error {
+			if srcFtdPath != path {
+				if err := builder.symlink(path, filepath.Join(dstFtdPath, info.Name())); err != nil {
+					return errors.New("could not create " + filepath.Join(dstFtdPath, info.Name()))
+				}
+			}
+			return nil
+		}); err != nil {
+			return errors.New("could not read files in " + srcFtdPath)
+		}
+	}
+	return nil
 }
