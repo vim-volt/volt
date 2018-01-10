@@ -234,6 +234,11 @@ func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[string]*Plugco
 		}
 		if loadOn == string(loadOnStart) {
 			loadCmds = append(loadCmds, "  "+invokedCmd)
+		} else if loadOn == string(loadOnFileType) {
+			for i := range patterns {
+				autocmd := fmt.Sprintf("  autocmd %s %s %s | if(!exists('b:did_autocmd')) | let b:did_autocmd=1 | set filetype=%[2]s | endif", loadOn, patterns[i], invokedCmd)
+				loadCmds = append(loadCmds, autocmd)
+			}
 		} else {
 			for i := range patterns {
 				autocmd := fmt.Sprintf("  autocmd %s %s %s", loadOn, patterns[i], invokedCmd)
