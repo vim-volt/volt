@@ -160,6 +160,10 @@ func BundledPlugConf() string {
 	return filepath.Join(VimVoltStartDir(), "system", "plugin", "bundled_plugconf.vim")
 }
 
+func VimVoltFtDetectDir() string {
+	return filepath.Join(VimVoltStartDir(), "system", "ftdetect")
+}
+
 func LookUpVimrcOrGvimrc() []string {
 	return append(LookUpVimrc(), LookUpGvimrc()...)
 }
