@@ -12,6 +12,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/vim-volt/volt/cmd/buildinfo"
+	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -188,7 +189,8 @@ func (builder *symlinkBuilder) linkFTDFiles(src string) error {
 		}
 		if err := filepath.Walk(srcFtdPath, func(path string, info os.FileInfo, err error) error {
 			if srcFtdPath != path {
-				if err := builder.symlink(path, filepath.Join(dstFtdPath, info.Name())); err != nil {
+				buf := make([]byte, 32*1024)
+				if err := fileutil.TryLinkFile(path, filepath.Join(dstFtdPath, info.Name()), buf, info.Mode()); err != nil {
 					return errors.New("could not create " + filepath.Join(dstFtdPath, info.Name()))
 				}
 			}
