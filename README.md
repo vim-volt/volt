@@ -171,7 +171,7 @@ This is `$HOME/volt` by default.
 For example, installing [tyru/caw.vim](https://github.com/tyru/caw.vim) plugin:
 
 ```
-$ volt get https://github.com/tyru/caw.vim   # most verbose way
+$ volt get https://github.com/tyru/caw.vim   # most verbose way (but handy when you copy & paste from browser address bar :)
 $ volt get github.com/tyru/caw.vim           # you can omit https:// of repository URL
 $ volt get tyru/caw.vim                      # you can omit github.com/ if the repository is on GitHub
 ```
