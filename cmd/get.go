@@ -562,8 +562,9 @@ func (cmd *getCmd) upgradePlugin(reposPath string) error {
 			return err
 		}
 		return wt.Pull(&git.PullOptions{
-			RemoteName: "origin",
-			Progress:   progress,
+			RemoteName:        "origin",
+			Progress:          progress,
+			RecurseSubmodules: 10,
 		})
 	}
 }
@@ -589,8 +590,9 @@ func (cmd *getCmd) fetchPlugin(reposPath string) error {
 	// Clone repository to $VOLTPATH/repos/{site}/{user}/{name}
 	isBare := false
 	r, err := git.PlainClone(fullpath, isBare, &git.CloneOptions{
-		URL:      pathutil.CloneURLOf(reposPath),
-		Progress: progress,
+		URL:               pathutil.CloneURLOf(reposPath),
+		Progress:          progress,
+		RecurseSubmodules: 10,
 	})
 	if err != nil {
 		return err
