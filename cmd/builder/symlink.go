@@ -12,6 +12,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/vim-volt/volt/cmd/buildinfo"
+	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -161,6 +162,10 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 			done <- actionReposResult{err: err}
 			return
 		}
+		if err := builder.linkFTDFiles(src); err != nil {
+			done <- actionReposResult{err: err}
+			return
+		}
 	}
 	done <- actionReposResult{repos: repos}
 }
@@ -170,4 +175,29 @@ func (*symlinkBuilder) symlink(src, dst string) error {
 		return exec.Command("cmd", "/c", "mklink", "/J", dst, src).Run()
 	}
 	return os.Symlink(src, dst)
+}
+
+func (builder *symlinkBuilder) linkFTDFiles(src string) error {
+	srcFtdPath := filepath.Join(src, "ftdetect")
+	if pathutil.Exists(srcFtdPath) {
+		dstFtdPath := pathutil.VimVoltFtDetectDir()
+		if !pathutil.Exists(dstFtdPath) {
+			os.MkdirAll(dstFtdPath, 0755)
+			if !pathutil.Exists(dstFtdPath) {
+				return errors.New("could not create " + dstFtdPath)
+			}
+		}
+		if err := filepath.Walk(srcFtdPath, func(path string, info os.FileInfo, err error) error {
+			if srcFtdPath != path {
+				buf := make([]byte, 32*1024)
+				if err := fileutil.TryLinkFile(path, filepath.Join(dstFtdPath, info.Name()), buf, info.Mode()); err != nil {
+					return errors.New("could not create " + filepath.Join(dstFtdPath, info.Name()))
+				}
+			}
+			return nil
+		}); err != nil {
+			return errors.New("could not read files in " + srcFtdPath)
+		}
+	}
+	return nil
 }
