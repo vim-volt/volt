@@ -116,13 +116,13 @@ func (cmd *buildCmd) doBuild(full bool) error {
 	// Put repos into map to be able to search with O(1).
 	// Use empty build-info.json map if the -full option was given
 	// because the repos info is unnecessary because it is not referenced.
-	var buildReposMap map[string]*buildinfo.Repos
+	var buildReposMap map[pathutil.ReposPath]*buildinfo.Repos
 	optDir := pathutil.VimVoltOptDir()
 	if full {
-		buildReposMap = make(map[string]*buildinfo.Repos)
+		buildReposMap = make(map[pathutil.ReposPath]*buildinfo.Repos)
 		logger.Info("Full building " + optDir + " directory ...")
 	} else {
-		buildReposMap = make(map[string]*buildinfo.Repos, len(buildInfo.Repos))
+		buildReposMap = make(map[pathutil.ReposPath]*buildinfo.Repos, len(buildInfo.Repos))
 		for i := range buildInfo.Repos {
 			repos := &buildInfo.Repos[i]
 			buildReposMap[repos.Path] = repos

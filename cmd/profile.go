@@ -286,7 +286,7 @@ func (cmd *profileCmd) doNew(args []string) error {
 	// Add profile
 	lockJSON.Profiles = append(lockJSON.Profiles, lockjson.Profile{
 		Name:      profileName,
-		ReposPath: make([]string, 0),
+		ReposPath: make([]pathutil.ReposPath, 0),
 	})
 
 	// Write to lock.json
@@ -434,10 +434,10 @@ func (cmd *profileCmd) doAdd(args []string) error {
 		// Add repositories to profile if the repository does not exist
 		for _, reposPath := range reposPathList {
 			if profile.ReposPath.Contains(reposPath) {
-				logger.Warn("repository '" + reposPath + "' is already enabled")
+				logger.Warn("repository '" + reposPath.String() + "' is already enabled")
 			} else {
 				profile.ReposPath = append(profile.ReposPath, reposPath)
-				logger.Info("Enabled '" + reposPath + "' on profile '" + profileName + "'")
+				logger.Info("Enabled '" + reposPath.String() + "' on profile '" + profileName + "'")
 			}
 		}
 	})
@@ -479,9 +479,9 @@ func (cmd *profileCmd) doRm(args []string) error {
 			if index >= 0 {
 				// Remove profile.ReposPath[index]
 				profile.ReposPath = append(profile.ReposPath[:index], profile.ReposPath[index+1:]...)
-				logger.Info("Disabled '" + reposPath + "' from profile '" + profileName + "'")
+				logger.Info("Disabled '" + reposPath.String() + "' from profile '" + profileName + "'")
 			} else {
-				logger.Warn("repository '" + reposPath + "' is already disabled")
+				logger.Warn("repository '" + reposPath.String() + "' is already disabled")
 			}
 		}
 	})
@@ -498,7 +498,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, args []string) (string, []string, error) {
+func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, args []string) (string, []pathutil.ReposPath, error) {
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Errorf("'volt profile %s' receives profile name and one or more repositories.", subCmd)
@@ -506,7 +506,7 @@ func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, 
 	}
 
 	profileName := args[0]
-	reposPathList := make([]string, 0, len(args)-1)
+	reposPathList := make([]pathutil.ReposPath, 0, len(args)-1)
 	for _, arg := range args[1:] {
 		reposPath, err := pathutil.NormalizeRepos(arg)
 		if err != nil {

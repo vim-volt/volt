@@ -19,7 +19,7 @@ type ReposList []Repos
 
 type Repos struct {
 	Type          lockjson.ReposType `json:"type"`
-	Path          string             `json:"path"`
+	Path          pathutil.ReposPath `json:"path"`
 	Version       string             `json:"version"`
 	Files         FileMap            `json:"files,omitempty"`
 	DirtyWorktree bool               `json:"dirty_worktree,omitempty"`
@@ -73,18 +73,18 @@ func (buildInfo *BuildInfo) Write() error {
 
 func (buildInfo *BuildInfo) validate() error {
 	// Validate if repos do not have duplicate repository
-	dupRepos := make(map[string]bool, len(buildInfo.Repos))
+	dupRepos := make(map[pathutil.ReposPath]bool, len(buildInfo.Repos))
 	for i := range buildInfo.Repos {
 		r := &buildInfo.Repos[i]
 		if _, exists := dupRepos[r.Path]; exists {
-			return errors.New("duplicate repos: " + r.Path)
+			return errors.New("duplicate repos: " + r.Path.String())
 		}
 		dupRepos[r.Path] = true
 	}
 	return nil
 }
 
-func (reposList *ReposList) FindByReposPath(reposPath string) *Repos {
+func (reposList *ReposList) FindByReposPath(reposPath pathutil.ReposPath) *Repos {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
 		if repos.Path == reposPath {
@@ -94,7 +94,7 @@ func (reposList *ReposList) FindByReposPath(reposPath string) *Repos {
 	return nil
 }
 
-func (reposList *ReposList) RemoveByReposPath(reposPath string) {
+func (reposList *ReposList) RemoveByReposPath(reposPath pathutil.ReposPath) {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
 		if repos.Path == reposPath {

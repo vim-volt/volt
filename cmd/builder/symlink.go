@@ -24,7 +24,7 @@ type symlinkBuilder struct {
 }
 
 // TODO: rollback when return err (!= nil)
-func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[string]*buildinfo.Repos) error {
+func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos) error {
 	// Exit if vim executable was not found in PATH
 	if _, err := pathutil.VimExecutable(); err != nil {
 		return err
@@ -81,7 +81,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 			return err
 		}
 		if result.repos != nil {
-			logger.Debug("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
+			logger.Debug("Installing " + string(result.repos.Type) + " repository " + result.repos.Path.String() + " ... Done.")
 		}
 	}
 

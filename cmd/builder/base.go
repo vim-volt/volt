@@ -176,7 +176,7 @@ func (builder *BaseBuilder) getCurrentReposList(lockJSON *lockjson.LockJSON) (lo
 	return reposList, err
 }
 
-func (builder *BaseBuilder) helptags(reposPath, vimExePath string) error {
+func (builder *BaseBuilder) helptags(reposPath pathutil.ReposPath, vimExePath string) error {
 	// Do nothing if <reposPath>/doc directory doesn't exist
 	docdir := filepath.Join(pathutil.PackReposPathOf(reposPath), "doc")
 	if !pathutil.Exists(docdir) {
@@ -192,7 +192,7 @@ func (builder *BaseBuilder) helptags(reposPath, vimExePath string) error {
 	return nil
 }
 
-func (*BaseBuilder) makeVimArgs(reposPath string) []string {
+func (*BaseBuilder) makeVimArgs(reposPath pathutil.ReposPath) []string {
 	path := pathutil.PackReposPathOf(reposPath)
 	return []string{
 		"-u", "NONE", "-i", "NONE", "-N",

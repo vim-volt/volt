@@ -16,7 +16,7 @@ var refHeadsRx = regexp.MustCompile(`^refs/heads/(.+)$`)
 //   where {branch} is default branch
 // If the repository is non-bare:
 //   Return the reference of current branch's HEAD
-func GetHEAD(reposPath string) (string, error) {
+func GetHEAD(reposPath pathutil.ReposPath) (string, error) {
 	repos, err := git.PlainOpen(pathutil.FullReposPathOf(reposPath))
 	if err != nil {
 		return "", err

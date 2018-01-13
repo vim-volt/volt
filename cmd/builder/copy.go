@@ -25,7 +25,7 @@ type copyBuilder struct {
 	BaseBuilder
 }
 
-func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[string]*buildinfo.Repos) error {
+func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos) error {
 	// Exit if vim executable was not found in PATH
 	vimExePath, err := pathutil.VimExecutable()
 	if err != nil {
@@ -77,7 +77,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	// Wait copy
 	var copyModified bool
 	copyErr := builder.waitCopyRepos(copyDone, copyCount, func(result *actionReposResult) error {
-		logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
+		logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path.String() + " ... Done.")
 		// Construct buildInfo from the result
 		builder.constructBuildInfo(buildInfo, result)
 		copyModified = true
@@ -120,7 +120,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	return nil
 }
 
-func (builder *copyBuilder) copyReposList(buildReposMap map[string]*buildinfo.Repos, reposList []lockjson.Repos, optDir, vimExePath string) (chan actionReposResult, int) {
+func (builder *copyBuilder) copyReposList(buildReposMap map[pathutil.ReposPath]*buildinfo.Repos, reposList []lockjson.Repos, optDir, vimExePath string) (chan actionReposResult, int) {
 	copyDone := make(chan actionReposResult, len(reposList))
 	copyCount := 0
 	for i := range reposList {
@@ -199,7 +199,7 @@ func (builder *copyBuilder) copyReposStatic(repos *lockjson.Repos, buildRepos *b
 
 // Remove vim repos not found in lock.json current repos list
 func (builder *copyBuilder) removeReposList(reposList lockjson.ReposList, reposDirList []os.FileInfo) (chan actionReposResult, int) {
-	removeList := make([]string, 0, len(reposList))
+	removeList := make([]pathutil.ReposPath, 0, len(reposList))
 	for i := range reposDirList {
 		reposPath := pathutil.UnpackPathOf(reposDirList[i].Name())
 		if !reposList.Contains(reposPath) {
@@ -208,7 +208,7 @@ func (builder *copyBuilder) removeReposList(reposList lockjson.ReposList, reposD
 	}
 	removeDone := make(chan actionReposResult, len(removeList))
 	for i := range removeList {
-		go func(reposPath string) {
+		go func(reposPath pathutil.ReposPath) {
 			err := os.RemoveAll(pathutil.PackReposPathOf(reposPath))
 			logger.Info("Removing " + reposPath + " ... Done.")
 			removeDone <- actionReposResult{
@@ -228,7 +228,7 @@ func (*copyBuilder) waitCopyRepos(copyDone chan actionReposResult, copyCount int
 			merr = multierror.Append(
 				merr,
 				errors.New(
-					"failed to copy repository '"+result.repos.Path+
+					"failed to copy repository '"+result.repos.Path.String()+
 						"': "+result.err.Error()))
 		} else {
 			err := callback(&result)
@@ -285,7 +285,7 @@ func (*copyBuilder) waitRemoveRepos(removeDone chan actionReposResult, removeCou
 		if result.err != nil {
 			target := "files"
 			if result.repos != nil {
-				target = result.repos.Path
+				target = result.repos.Path.String()
 			}
 			merr = multierror.Append(
 				merr, errors.New(

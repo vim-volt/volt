@@ -490,7 +490,7 @@ func voltBuildGitNoVimRepos(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"github.com/tyru/caw.vim"}
+	reposPathList := []pathutil.ReposPath{"github.com/tyru/caw.vim"}
 	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -536,7 +536,7 @@ func voltBuildGitVimDirOlder(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"github.com/tyru/caw.vim"}
+	reposPathList := []pathutil.ReposPath{"github.com/tyru/caw.vim"}
 	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -587,7 +587,7 @@ func voltBuildGitVimDirNewer(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"github.com/tyru/caw.vim"}
+	reposPathList := []pathutil.ReposPath{"github.com/tyru/caw.vim"}
 	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -639,7 +639,7 @@ func voltBuildStaticNoVimRepos(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"localhost/local/hello"}
+	reposPathList := []pathutil.ReposPath{"localhost/local/hello"}
 	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -685,7 +685,7 @@ func voltBuildStaticVimDirOlder(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"localhost/local/hello"}
+	reposPathList := []pathutil.ReposPath{"localhost/local/hello"}
 	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -736,7 +736,7 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"localhost/local/hello"}
+	reposPathList := []pathutil.ReposPath{"localhost/local/hello"}
 	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -823,7 +823,7 @@ func checkBuildOutput(t *testing.T, full bool, out []byte, strategy string) {
 	}
 }
 
-func checkCopied(t *testing.T, reposPath string, strategy string) {
+func checkCopied(t *testing.T, reposPath pathutil.ReposPath, strategy string) {
 	t.Helper()
 	vimReposDir := pathutil.PackReposPathOf(reposPath)
 	reposDir := pathutil.FullReposPathOf(reposPath)

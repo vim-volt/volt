@@ -13,25 +13,41 @@ import (
 // 1. user/name[.git]
 // 2. github.com/user/name[.git]
 // 3. [git|http|https]://github.com/user/name[.git]
-func NormalizeRepos(rawReposPath string) (string, error) {
+func NormalizeRepos(rawReposPath string) (ReposPath, error) {
 	rawReposPath = filepath.ToSlash(rawReposPath)
 	paths := strings.Split(rawReposPath, "/")
 	if len(paths) == 3 {
-		return strings.TrimSuffix(rawReposPath, ".git"), nil
+		return ReposPath(strings.TrimSuffix(rawReposPath, ".git")), nil
 	}
 	if len(paths) == 2 {
-		return strings.TrimSuffix("github.com/"+rawReposPath, ".git"), nil
+		return ReposPath(strings.TrimSuffix("github.com/"+rawReposPath, ".git")), nil
 	}
 	if paths[0] == "https:" || paths[0] == "http:" || paths[0] == "git:" {
-		reposPath := strings.Join(paths[len(paths)-3:], "/")
-		return strings.TrimSuffix(reposPath, ".git"), nil
+		path := strings.Join(paths[len(paths)-3:], "/")
+		return ReposPath(strings.TrimSuffix(path, ".git")), nil
 	}
-	return "", errors.New("invalid format of repository: " + rawReposPath)
+	return ReposPath(""), errors.New("invalid format of repository: " + rawReposPath)
 }
 
-func NormalizeLocalRepos(name string) (string, error) {
+type ReposPath string
+type ReposPathList []ReposPath
+
+func (path *ReposPath) String() string {
+	return string(*path)
+}
+
+// TODO: unsafe
+func (list ReposPathList) Strings() []string {
+	result := make([]string, 0, len(list))
+	for i := range list {
+		result = append(result, string(list[i]))
+	}
+	return result
+}
+
+func NormalizeLocalRepos(name string) (ReposPath, error) {
 	if !strings.Contains(name, "/") {
-		return "localhost/local/" + name, nil
+		return ReposPath("localhost/local/" + name), nil
 	} else {
 		return NormalizeRepos(name)
 	}
@@ -59,8 +75,8 @@ func VoltPath() string {
 	return filepath.Join(HomeDir(), "volt")
 }
 
-func FullReposPathOf(reposPath string) string {
-	reposList := strings.Split(filepath.ToSlash(reposPath), "/")
+func FullReposPathOf(ReposPath ReposPath) string {
+	reposList := strings.Split(filepath.ToSlash(ReposPath.String()), "/")
 	paths := make([]string, 0, len(reposList)+2)
 	paths = append(paths, VoltPath())
 	paths = append(paths, "repos")
@@ -68,12 +84,12 @@ func FullReposPathOf(reposPath string) string {
 	return filepath.Join(paths...)
 }
 
-func CloneURLOf(reposPath string) string {
-	return "https://" + filepath.ToSlash(reposPath)
+func CloneURLOf(ReposPath ReposPath) string {
+	return "https://" + filepath.ToSlash(ReposPath.String())
 }
 
-func PlugconfOf(reposPath string) string {
-	filenameList := strings.Split(filepath.ToSlash(reposPath+".vim"), "/")
+func PlugconfOf(ReposPath ReposPath) string {
+	filenameList := strings.Split(filepath.ToSlash(ReposPath.String()+".vim"), "/")
 	paths := make([]string, 0, len(filenameList)+2)
 	paths = append(paths, VoltPath())
 	paths = append(paths, "plugconf")
@@ -94,14 +110,18 @@ var packer = strings.NewReplacer("_", "__", "/", "_")
 var unpacker1 = strings.NewReplacer("_", "/")
 var unpacker2 = strings.NewReplacer("//", "_")
 
-func PackReposPathOf(reposPath string) string {
-	path := packer.Replace(reposPath)
+// Encode repos path to directory name.
+// The directory name is: ~/.vim/pack/volt/opt/{name}
+func PackReposPathOf(ReposPath ReposPath) string {
+	path := packer.Replace(ReposPath.String())
 	return filepath.Join(VimVoltOptDir(), path)
 }
 
-func UnpackPathOf(path string) (reposPath string) {
-	path = filepath.Base(path)
-	return unpacker2.Replace(unpacker1.Replace(path))
+// Decode name to repos path.
+// name is directory name: ~/.vim/pack/volt/opt/{name}
+func UnpackPathOf(name string) ReposPath {
+	name = filepath.Base(name)
+	return ReposPath(unpacker2.Replace(unpacker1.Replace(name)))
 }
 
 func LockJSON() string {

@@ -5,10 +5,11 @@ import (
 
 	"github.com/vim-volt/volt/cmd/buildinfo"
 	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/pathutil"
 )
 
 type Builder interface {
-	Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[string]*buildinfo.Repos) error
+	Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos) error
 }
 
 func Get(strategy string) (Builder, error) {

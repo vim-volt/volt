@@ -85,7 +85,7 @@ func (cmd *rmCmd) Run(args []string) int {
 	return 0
 }
 
-func (cmd *rmCmd) parseArgs(args []string) ([]string, error) {
+func (cmd *rmCmd) parseArgs(args []string) ([]pathutil.ReposPath, error) {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {
@@ -97,7 +97,7 @@ func (cmd *rmCmd) parseArgs(args []string) ([]string, error) {
 		return nil, errors.New("repository was not given")
 	}
 
-	var reposPathList []string
+	var reposPathList []pathutil.ReposPath
 	for _, arg := range fs.Args() {
 		reposPath, err := pathutil.NormalizeRepos(arg)
 		if err != nil {
@@ -108,7 +108,7 @@ func (cmd *rmCmd) parseArgs(args []string) ([]string, error) {
 	return reposPathList, nil
 }
 
-func (cmd *rmCmd) doRemove(reposPathList []string) error {
+func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -131,7 +131,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string) error {
 		}
 		if len(rdeps) > 0 {
 			return fmt.Errorf("cannot remove '%s' because it's depended by '%s'",
-				reposPath, strings.Join(rdeps, "', '"))
+				reposPath, strings.Join(rdeps.Strings(), "', '"))
 		}
 	}
 

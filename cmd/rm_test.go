@@ -37,7 +37,7 @@ func TestVoltRmOnePlugin(t *testing.T) {
 		out, err = testutil.RunVolt("rm", "tyru/caw.vim")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
-		reposPath := "github.com/tyru/caw.vim"
+		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 
 		// (!C)
 		reposDir := pathutil.FullReposPathOf(reposPath)
@@ -78,7 +78,7 @@ func TestVoltRmRoptOnePlugin(t *testing.T) {
 		out, err = testutil.RunVolt("rm", "-r", "tyru/caw.vim")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
-		reposPath := "github.com/tyru/caw.vim"
+		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 
 		// (C)
 		reposDir := pathutil.FullReposPathOf(reposPath)
@@ -113,7 +113,7 @@ func TestVoltRmOnePluginNoPlugconf(t *testing.T) {
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
 		testutil.SuccessExit(t, out, err)
-		reposPath := "github.com/tyru/caw.vim"
+		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 		if err := os.Remove(pathutil.PlugconfOf(reposPath)); err != nil {
 			t.Error("failed to remove plugconf: " + err.Error())
 		}
@@ -157,10 +157,10 @@ func TestVoltRmTwoOrMorePluginNoPlugconf(t *testing.T) {
 		out, err = testutil.RunVolt("rm", "tyru/caw.vim", "tyru/capture.vim")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
-		cawReposPath := "github.com/tyru/caw.vim"
-		captureReposPath := "github.com/tyru/capture.vim"
+		cawReposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+		captureReposPath := pathutil.ReposPath("github.com/tyru/capture.vim")
 
-		for _, reposPath := range []string{cawReposPath, captureReposPath} {
+		for _, reposPath := range []pathutil.ReposPath{cawReposPath, captureReposPath} {
 			// (!C)
 			reposDir := pathutil.FullReposPathOf(reposPath)
 			if !pathutil.Exists(reposDir) {
@@ -195,7 +195,7 @@ func TestVoltRmOnePluginNoRepos(t *testing.T) {
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
 		testutil.SuccessExit(t, out, err)
-		reposPath := "github.com/tyru/caw.vim"
+		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 		if err := os.RemoveAll(pathutil.FullReposPathOf(reposPath)); err != nil {
 			t.Error("failed to remove repos: " + err.Error())
 		}
@@ -233,7 +233,7 @@ func TestVoltRmOnePluginNoReposNoPlugconf(t *testing.T) {
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
 		testutil.SuccessExit(t, out, err)
-		reposPath := "github.com/tyru/caw.vim"
+		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 		if err := os.RemoveAll(pathutil.FullReposPathOf(reposPath)); err != nil {
 			t.Error("failed to remove repos: " + err.Error())
 		}
@@ -274,7 +274,7 @@ func TestVoltRmPoptOnePlugin(t *testing.T) {
 		out, err = testutil.RunVolt("rm", "-p", "tyru/caw.vim")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
-		reposPath := "github.com/tyru/caw.vim"
+		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 
 		// (!C)
 		reposDir := pathutil.FullReposPathOf(reposPath)
@@ -309,7 +309,7 @@ func TestVoltRmPoptOnePluginNoPlugconf(t *testing.T) {
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
 		testutil.SuccessExit(t, out, err)
-		reposPath := "github.com/tyru/caw.vim"
+		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 		if err := os.Remove(pathutil.PlugconfOf(reposPath)); err != nil {
 			t.Error("failed to remove plugconf: " + err.Error())
 		}
@@ -347,7 +347,7 @@ func TestVoltRmPoptOnePluginNoRepos(t *testing.T) {
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
 		testutil.SuccessExit(t, out, err)
-		reposPath := "github.com/tyru/caw.vim"
+		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 		if err := os.RemoveAll(pathutil.FullReposPathOf(reposPath)); err != nil {
 			t.Error("failed to remove repos: " + err.Error())
 		}
@@ -391,10 +391,10 @@ func TestVoltRmPoptTwoOrMorePluginNoPlugconf(t *testing.T) {
 		out, err = testutil.RunVolt("rm", "-p", "tyru/caw.vim", "tyru/capture.vim")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
-		cawReposPath := "github.com/tyru/caw.vim"
-		captureReposPath := "github.com/tyru/capture.vim"
+		cawReposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+		captureReposPath := pathutil.ReposPath("github.com/tyru/capture.vim")
 
-		for _, reposPath := range []string{cawReposPath, captureReposPath} {
+		for _, reposPath := range []pathutil.ReposPath{cawReposPath, captureReposPath} {
 			// (!C)
 			reposDir := pathutil.FullReposPathOf(reposPath)
 			if !pathutil.Exists(reposDir) {
@@ -429,7 +429,7 @@ func TestVoltRmPoptOnePluginNoReposNoPlugconf(t *testing.T) {
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
 		testutil.SuccessExit(t, out, err)
-		reposPath := "github.com/tyru/caw.vim"
+		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 		if err := os.RemoveAll(pathutil.FullReposPathOf(reposPath)); err != nil {
 			t.Error("failed to remove repos: " + err.Error())
 		}
@@ -480,7 +480,7 @@ func TestErrVoltRmNotFound(t *testing.T) {
 	testutil.FailExit(t, out, err)
 }
 
-func testReposPathWereRemoved(t *testing.T, reposPath string) {
+func testReposPathWereRemoved(t *testing.T, reposPath pathutil.ReposPath) {
 	t.Helper()
 	lockJSON, err := lockjson.Read()
 	if err != nil {

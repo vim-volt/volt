@@ -5,20 +5,20 @@ import "testing"
 func TestNormalizeRepos(t *testing.T) {
 	var tests = []struct {
 		in  string
-		out string
+		out ReposPath
 	}{
-		{"user/name", "github.com/user/name"},
-		{"user/name.git", "github.com/user/name"},
-		{"github.com/user/name", "github.com/user/name"},
-		{"github.com/user/name.git", "github.com/user/name"},
-		{"https://github.com/user/name", "github.com/user/name"},
-		{"https://github.com/user/name.git", "github.com/user/name"},
-		{"http://github.com/user/name", "github.com/user/name"},
-		{"http://github.com/user/name.git", "github.com/user/name"},
-		{"git://github.com/user/name", "github.com/user/name"},
-		{"git://github.com/user/name.git", "github.com/user/name"},
-		{"localhost/local/name", "localhost/local/name"},
-		{"localhost/local/name.git", "localhost/local/name"},
+		{"user/name", ReposPath("github.com/user/name")},
+		{"user/name.git", ReposPath("github.com/user/name")},
+		{"github.com/user/name", ReposPath("github.com/user/name")},
+		{"github.com/user/name.git", ReposPath("github.com/user/name")},
+		{"https://github.com/user/name", ReposPath("github.com/user/name")},
+		{"https://github.com/user/name.git", ReposPath("github.com/user/name")},
+		{"http://github.com/user/name", ReposPath("github.com/user/name")},
+		{"http://github.com/user/name.git", ReposPath("github.com/user/name")},
+		{"git://github.com/user/name", ReposPath("github.com/user/name")},
+		{"git://github.com/user/name.git", ReposPath("github.com/user/name")},
+		{"localhost/local/name", ReposPath("localhost/local/name")},
+		{"localhost/local/name.git", ReposPath("localhost/local/name")},
 	}
 	for _, tt := range tests {
 		result, err := NormalizeRepos(tt.in)

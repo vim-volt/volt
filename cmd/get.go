@@ -161,8 +161,8 @@ func (cmd *getCmd) parseArgs(args []string) ([]string, error) {
 	return fs.Args(), nil
 }
 
-func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) ([]string, error) {
-	reposPathList := make([]string, 0, 32)
+func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) ([]pathutil.ReposPath, error) {
+	reposPathList := make([]pathutil.ReposPath, 0, 32)
 	if cmd.lockJSON {
 		for _, repos := range lockJSON.Repos {
 			reposPathList = append(reposPathList, repos.Path)
@@ -179,7 +179,7 @@ func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) 
 	return reposPathList, nil
 }
 
-func (cmd *getCmd) doGet(reposPathList []string, lockJSON *lockjson.LockJSON) error {
+func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) error {
 	// Find matching profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
@@ -283,7 +283,7 @@ func (*getCmd) formatStatus(r *getParallelResult) string {
 }
 
 type getParallelResult struct {
-	reposPath string
+	reposPath pathutil.ReposPath
 	status    string
 	hash      string
 	reposType lockjson.ReposType
@@ -311,7 +311,7 @@ const (
 // This function is executed in goroutine of each plugin.
 // 1. install plugin if it does not exist
 // 2. install plugconf if it does not exist and createPlugconf=true
-func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, createPlugconf bool, done chan<- getParallelResult) {
+func (cmd *getCmd) getParallel(reposPath pathutil.ReposPath, repos *lockjson.Repos, createPlugconf bool, done chan<- getParallelResult) {
 	pluginDone := make(chan getParallelResult)
 	go cmd.installPlugin(reposPath, repos, pluginDone)
 	pluginResult := <-pluginDone
@@ -324,7 +324,7 @@ func (cmd *getCmd) getParallel(reposPath string, repos *lockjson.Repos, createPl
 	done <- (<-plugconfDone)
 }
 
-func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done chan<- getParallelResult) {
+func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.Repos, done chan<- getParallelResult) {
 	// true:upgrade, false:install
 	fullReposPath := pathutil.FullReposPathOf(reposPath)
 	doUpgrade := cmd.upgrade && pathutil.Exists(fullReposPath)
@@ -452,7 +452,7 @@ func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done c
 	}
 }
 
-func (cmd *getCmd) installPlugconf(reposPath string, pluginResult *getParallelResult, done chan<- getParallelResult) {
+func (cmd *getCmd) installPlugconf(reposPath pathutil.ReposPath, pluginResult *getParallelResult, done chan<- getParallelResult) {
 	// Install plugconf
 	logger.Debug("Installing plugconf " + reposPath + " ...")
 	err := cmd.fetchPlugconf(reposPath)
@@ -496,7 +496,7 @@ func (*getCmd) rollbackRepos(fullReposPath string) error {
 	return nil
 }
 
-func (cmd *getCmd) upgradePlugin(reposPath string) error {
+func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 
 	repos, err := git.PlainOpen(fullpath)
@@ -527,7 +527,7 @@ func (cmd *getCmd) upgradePlugin(reposPath string) error {
 
 var errRepoExists = errors.New("repository exists")
 
-func (cmd *getCmd) fetchPlugin(reposPath string) error {
+func (cmd *getCmd) fetchPlugin(reposPath pathutil.ReposPath) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 	if pathutil.Exists(fullpath) {
 		return errRepoExists
@@ -551,7 +551,7 @@ func (cmd *getCmd) fetchPlugin(reposPath string) error {
 	return gitutil.SetUpstreamBranch(r)
 }
 
-func (cmd *getCmd) fetchPlugconf(reposPath string) error {
+func (cmd *getCmd) fetchPlugconf(reposPath pathutil.ReposPath) error {
 	filename := pathutil.PlugconfOf(reposPath)
 	if pathutil.Exists(filename) {
 		logger.Debugf("plugconf '%s' exists... skip", filename)
@@ -578,7 +578,7 @@ func (cmd *getCmd) fetchPlugconf(reposPath string) error {
 
 // * Add repos to 'repos' if not found
 // * Add repos to 'profiles[]/repos_path' if not found
-func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath string, reposType lockjson.ReposType, version string, profile *lockjson.Profile) bool {
+func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath pathutil.ReposPath, reposType lockjson.ReposType, version string, profile *lockjson.Profile) bool {
 	repos, err := lockJSON.Repos.FindByPath(reposPath)
 	if err != nil {
 		repos = nil
