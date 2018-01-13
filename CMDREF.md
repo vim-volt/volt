@@ -57,13 +57,13 @@ Description
 
 ```
 Usage
-  volt get [-help] [-l] [-u] [-v] [{repository} ...]
+  volt get [-help] [-l] [-u] [{repository} ...]
 
 Quick example
   $ volt get tyru/caw.vim     # will install tyru/caw.vim plugin
   $ volt get -u tyru/caw.vim  # will upgrade tyru/caw.vim plugin
   $ volt get -l -u            # will upgrade all installed plugins
-  $ volt get -v tyru/caw.vim  # will output more verbosely
+  $ VOLT_DEBUG=1 volt get tyru/caw.vim  # will output more verbosely
 
   $ mkdir -p ~/volt/repos/localhost/local/hello/plugin
   $ echo 'command! Hello echom "hello"' >~/volt/repos/localhost/local/hello/plugin/hello.vim
@@ -77,8 +77,6 @@ Description
     https://github.com/vim-volt/plugconf-templates
   and install it to:
     $VOLTPATH/plugconf/{repository}.vim
-
-  If -v option was specified, output more verbosely.
 
 Repository List
   {repository} list (=target to perform installing, upgrading, and so on) is determined as followings:
@@ -122,7 +120,6 @@ Repository path
 Options
   -l    use all installed repositories as targets
   -u    upgrade repositories
-  -v    output more verbosely
 ```
 
 # volt list

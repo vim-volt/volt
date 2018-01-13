@@ -21,7 +21,7 @@ Usage
   volt COMMAND ARGS
 
 Command
-  get [-l] [-u] [-v] [{repository} ...]
+  get [-l] [-u] [{repository} ...]
     Install or upgrade given {repository} list, or add local {repository} list as plugins
 
   rm [-help] [-r] [-p] {repository} [{repository2} ...]

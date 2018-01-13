@@ -21,7 +21,6 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"
 )
 
 func init() {
@@ -32,7 +31,6 @@ type getCmd struct {
 	helped   bool
 	lockJSON bool
 	upgrade  bool
-	verbose  bool
 }
 
 func (cmd *getCmd) FlagSet() *flag.FlagSet {
@@ -41,13 +39,13 @@ func (cmd *getCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Println(`
 Usage
-  volt get [-help] [-l] [-u] [-v] [{repository} ...]
+  volt get [-help] [-l] [-u] [{repository} ...]
 
 Quick example
   $ volt get tyru/caw.vim     # will install tyru/caw.vim plugin
   $ volt get -u tyru/caw.vim  # will upgrade tyru/caw.vim plugin
   $ volt get -l -u            # will upgrade all installed plugins
-  $ volt get -v tyru/caw.vim  # will output more verbosely
+  $ VOLT_DEBUG=1 volt get tyru/caw.vim  # will output more verbosely
 
   $ mkdir -p ~/volt/repos/localhost/local/hello/plugin
   $ echo 'command! Hello echom "hello"' >~/volt/repos/localhost/local/hello/plugin/hello.vim
@@ -61,8 +59,6 @@ Description
     https://github.com/vim-volt/plugconf-templates
   and install it to:
     $VOLTPATH/plugconf/{repository}.vim
-
-  If -v option was specified, output more verbosely.
 
 Repository List
   {repository} list (=target to perform installing, upgrading, and so on) is determined as followings:
@@ -110,7 +106,6 @@ Options`)
 	}
 	fs.BoolVar(&cmd.lockJSON, "l", false, "use all installed repositories as targets")
 	fs.BoolVar(&cmd.upgrade, "u", false, "upgrade repositories")
-	fs.BoolVar(&cmd.verbose, "v", false, "output more verbosely")
 	return fs
 }
 
@@ -341,11 +336,7 @@ func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done c
 		fromHash, err = gitutil.GetHEAD(reposPath)
 		if err != nil {
 			result := errors.New("failed to get HEAD commit hash: " + err.Error())
-			if cmd.verbose {
-				logger.Info("Rollbacking " + fullReposPath + " ...")
-			} else {
-				logger.Debug("Rollbacking " + fullReposPath + " ...")
-			}
+			logger.Debug("Rollbacking " + fullReposPath + " ...")
 			err = cmd.rollbackRepos(fullReposPath)
 			if err != nil {
 				result = multierror.Append(result, err)
@@ -374,19 +365,11 @@ func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done c
 			return
 		}
 		// Upgrade plugin
-		if cmd.verbose {
-			logger.Info("Upgrading " + reposPath + " ...")
-		} else {
-			logger.Debug("Upgrading " + reposPath + " ...")
-		}
+		logger.Debug("Upgrading " + reposPath + " ...")
 		err := cmd.upgradePlugin(reposPath)
 		if err != git.NoErrAlreadyUpToDate && err != nil {
 			result := errors.New("failed to upgrade plugin: " + err.Error())
-			if cmd.verbose {
-				logger.Info("Rollbacking " + fullReposPath + " ...")
-			} else {
-				logger.Debug("Rollbacking " + fullReposPath + " ...")
-			}
+			logger.Debug("Rollbacking " + fullReposPath + " ...")
 			err = cmd.rollbackRepos(fullReposPath)
 			if err != nil {
 				result = multierror.Append(result, err)
@@ -405,20 +388,12 @@ func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done c
 		}
 	} else if !pathutil.Exists(fullReposPath) {
 		// Install plugin
-		if cmd.verbose {
-			logger.Info("Installing " + reposPath + " ...")
-		} else {
-			logger.Debug("Installing " + reposPath + " ...")
-		}
+		logger.Debug("Installing " + reposPath + " ...")
 		err := cmd.fetchPlugin(reposPath)
 		// if err == errRepoExists, silently skip
 		if err != nil && err != errRepoExists {
 			result := errors.New("failed to install plugin: " + err.Error())
-			if cmd.verbose {
-				logger.Info("Rollbacking " + fullReposPath + " ...")
-			} else {
-				logger.Debug("Rollbacking " + fullReposPath + " ...")
-			}
+			logger.Debug("Rollbacking " + fullReposPath + " ...")
 			err = cmd.rollbackRepos(fullReposPath)
 			if err != nil {
 				result = multierror.Append(result, err)
@@ -444,11 +419,7 @@ func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done c
 		toHash, err = gitutil.GetHEAD(reposPath)
 		if err != nil {
 			result := errors.New("failed to get HEAD commit hash: " + err.Error())
-			if cmd.verbose {
-				logger.Info("Rollbacking " + fullReposPath + " ...")
-			} else {
-				logger.Debug("Rollbacking " + fullReposPath + " ...")
-			}
+			logger.Debug("Rollbacking " + fullReposPath + " ...")
 			err = cmd.rollbackRepos(fullReposPath)
 			if err != nil {
 				result = multierror.Append(result, err)
@@ -483,20 +454,12 @@ func (cmd *getCmd) installPlugin(reposPath string, repos *lockjson.Repos, done c
 
 func (cmd *getCmd) installPlugconf(reposPath string, pluginResult *getParallelResult, done chan<- getParallelResult) {
 	// Install plugconf
-	if cmd.verbose {
-		logger.Info("Installing plugconf " + reposPath + " ...")
-	} else {
-		logger.Debug("Installing plugconf " + reposPath + " ...")
-	}
+	logger.Debug("Installing plugconf " + reposPath + " ...")
 	err := cmd.fetchPlugconf(reposPath)
 	if err != nil {
 		result := errors.New("failed to install plugconf: " + err.Error())
 		fullReposPath := pathutil.FullReposPathOf(reposPath)
-		if cmd.verbose {
-			logger.Info("Rollbacking " + fullReposPath + " ...")
-		} else {
-			logger.Debug("Rollbacking " + fullReposPath + " ...")
-		}
+		logger.Debug("Rollbacking " + fullReposPath + " ...")
 		err = cmd.rollbackRepos(fullReposPath)
 		if err != nil {
 			result = multierror.Append(result, err)
@@ -536,11 +499,6 @@ func (*getCmd) rollbackRepos(fullReposPath string) error {
 func (cmd *getCmd) upgradePlugin(reposPath string) error {
 	fullpath := pathutil.FullReposPathOf(reposPath)
 
-	var progress sideband.Progress = nil
-	// if cmd.verbose {
-	// 	progress = os.Stdout
-	// }
-
 	repos, err := git.PlainOpen(fullpath)
 	if err != nil {
 		return err
@@ -554,7 +512,6 @@ func (cmd *getCmd) upgradePlugin(reposPath string) error {
 	if cfg.Core.IsBare {
 		return repos.Fetch(&git.FetchOptions{
 			RemoteName: "origin",
-			Progress:   progress,
 		})
 	} else {
 		wt, err := repos.Worktree()
@@ -563,7 +520,6 @@ func (cmd *getCmd) upgradePlugin(reposPath string) error {
 		}
 		return wt.Pull(&git.PullOptions{
 			RemoteName:        "origin",
-			Progress:          progress,
 			RecurseSubmodules: 10,
 		})
 	}
@@ -577,11 +533,6 @@ func (cmd *getCmd) fetchPlugin(reposPath string) error {
 		return errRepoExists
 	}
 
-	var progress sideband.Progress = nil
-	// if cmd.verbose {
-	// 	progress = os.Stdout
-	// }
-
 	err := os.MkdirAll(filepath.Dir(fullpath), 0755)
 	if err != nil {
 		return err
@@ -591,7 +542,6 @@ func (cmd *getCmd) fetchPlugin(reposPath string) error {
 	isBare := false
 	r, err := git.PlainClone(fullpath, isBare, &git.CloneOptions{
 		URL:               pathutil.CloneURLOf(reposPath),
-		Progress:          progress,
 		RecurseSubmodules: 10,
 	})
 	if err != nil {
