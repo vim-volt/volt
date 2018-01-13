@@ -36,8 +36,8 @@ func (path *ReposPath) String() string {
 	return string(*path)
 }
 
-// TODO: unsafe
 func (list ReposPathList) Strings() []string {
+	// TODO: Use unsafe
 	result := make([]string, 0, len(list))
 	for i := range list {
 		result = append(result, string(list[i]))
@@ -53,6 +53,9 @@ func NormalizeLocalRepos(name string) (ReposPath, error) {
 	}
 }
 
+// Detect HOME path.
+// If HOME environment variable is not set,
+// use USERPROFILE environment variable instead.
 func HomeDir() string {
 	home := os.Getenv("HOME")
 	if home != "" {
@@ -67,6 +70,7 @@ func HomeDir() string {
 	panic("Couldn't look up HOME")
 }
 
+// $HOME/volt
 func VoltPath() string {
 	path := os.Getenv("VOLTPATH")
 	if path != "" {
@@ -75,8 +79,8 @@ func VoltPath() string {
 	return filepath.Join(HomeDir(), "volt")
 }
 
-func FullReposPath(ReposPath ReposPath) string {
-	reposList := strings.Split(filepath.ToSlash(ReposPath.String()), "/")
+func FullReposPath(reposPath ReposPath) string {
+	reposList := strings.Split(filepath.ToSlash(reposPath.String()), "/")
 	paths := make([]string, 0, len(reposList)+2)
 	paths = append(paths, VoltPath())
 	paths = append(paths, "repos")
@@ -84,12 +88,13 @@ func FullReposPath(ReposPath ReposPath) string {
 	return filepath.Join(paths...)
 }
 
-func CloneURL(ReposPath ReposPath) string {
-	return "https://" + filepath.ToSlash(ReposPath.String())
+// https://{reposPath}
+func CloneURL(reposPath ReposPath) string {
+	return "https://" + filepath.ToSlash(reposPath.String())
 }
 
-func Plugconf(ReposPath ReposPath) string {
-	filenameList := strings.Split(filepath.ToSlash(ReposPath.String()+".vim"), "/")
+func Plugconf(reposPath ReposPath) string {
+	filenameList := strings.Split(filepath.ToSlash(reposPath.String()+".vim"), "/")
 	paths := make([]string, 0, len(filenameList)+2)
 	paths = append(paths, VoltPath())
 	paths = append(paths, "plugconf")
@@ -102,6 +107,7 @@ const ProfileGvimrc = "gvimrc.vim"
 const Vimrc = "vimrc"
 const Gvimrc = "gvimrc"
 
+// $HOME/volt/rc/{profileName}
 func RCDir(profileName string) string {
 	return filepath.Join([]string{VoltPath(), "rc", profileName}...)
 }
@@ -112,8 +118,8 @@ var unpacker2 = strings.NewReplacer("//", "_")
 
 // Encode repos path to directory name.
 // The directory name is: ~/.vim/pack/volt/opt/{name}
-func EncodeReposPath(ReposPath ReposPath) string {
-	path := packer.Replace(ReposPath.String())
+func EncodeReposPath(reposPath ReposPath) string {
+	path := packer.Replace(reposPath.String())
 	return filepath.Join(VimVoltOptDir(), path)
 }
 
@@ -124,22 +130,29 @@ func DecodeReposPath(name string) ReposPath {
 	return ReposPath(unpacker2.Replace(unpacker1.Replace(name)))
 }
 
+// $HOME/volt/lock.json
 func LockJSON() string {
 	return filepath.Join(VoltPath(), "lock.json")
 }
 
+// $HOME/volt/config.toml
 func ConfigTOML() string {
 	return filepath.Join(VoltPath(), "config.toml")
 }
 
+// $HOME/volt/trx.lock
 func TrxLock() string {
 	return filepath.Join(VoltPath(), "trx.lock")
 }
 
-func TempPath() string {
+// $HOME/tmp
+func TempDir() string {
 	return filepath.Join(VoltPath(), "tmp")
 }
 
+// Detect vim executable path.
+// If VOLT_VIM environment variable is set, use it.
+// Otherwise look up "vim" binary from PATH.
 func VimExecutable() (string, error) {
 	var vim string
 	if vim = os.Getenv("VOLT_VIM"); vim != "" {
@@ -152,6 +165,8 @@ func VimExecutable() (string, error) {
 	return exec.LookPath(exeName)
 }
 
+// Windows: $HOME/vimfiles
+// Otherwise: $HOME/.vim
 func VimDir() string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(HomeDir(), "vimfiles")
@@ -160,30 +175,36 @@ func VimDir() string {
 	}
 }
 
+// (vim dir)/pack/volt
 func VimVoltDir() string {
 	return filepath.Join(VimDir(), "pack", "volt")
 }
 
+// (vim dir)/pack/volt/opt
 func VimVoltOptDir() string {
 	return filepath.Join(VimDir(), "pack", "volt", "opt")
 }
 
+// (vim dir)/pack/volt/start
 func VimVoltStartDir() string {
 	return filepath.Join(VimDir(), "pack", "volt", "start")
 }
 
+// (vim dir)/pack/volt/build-info.json
 func BuildInfoJSON() string {
 	return filepath.Join(VimVoltDir(), "build-info.json")
 }
 
+// (vim dir)/pack/volt/start/system/plugin/bundled_plugconf.vim
 func BundledPlugConf() string {
 	return filepath.Join(VimVoltStartDir(), "system", "plugin", "bundled_plugconf.vim")
 }
 
-func LookUpVimrcOrGvimrc() []string {
-	return append(LookUpVimrc(), LookUpGvimrc()...)
-}
-
+// Look up vimrc path from the following candidates:
+//   Windows  : $HOME/_vimrc
+//              (vim dir)/vimrc
+//   Otherwise: $HOME/.vimrc
+//              (vim dir)/vimrc
 func LookUpVimrc() []string {
 	var vimrcPaths []string
 	if runtime.GOOS == "windows" {
@@ -207,6 +228,11 @@ func LookUpVimrc() []string {
 	return vimrcPaths
 }
 
+// Look up gvimrc path from the following candidates:
+//   Windows  : $HOME/_gvimrc
+//              (vim dir)/gvimrc
+//   Otherwise: $HOME/.gvimrc
+//              (vim dir)/gvimrc
 func LookUpGvimrc() []string {
 	var gvimrcPaths []string
 	if runtime.GOOS == "windows" {
@@ -230,6 +256,8 @@ func LookUpGvimrc() []string {
 	return gvimrcPaths
 }
 
+// Returns true if path exists, otherwise returns false.
+// Existence is checked by os.Lstat().
 func Exists(path string) bool {
 	_, err := os.Lstat(path)
 	return !os.IsNotExist(err)
