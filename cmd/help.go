@@ -44,13 +44,13 @@ Command
   rm [-help] [-r] [-p] {repository} [{repository2} ...]
     Remove vim plugin from ~/.vim/pack/volt/opt/ directory
 
+  list [-f {text/template string}]
+    Vim plugin information extractor.
+    Unless -f flag was given, this command shows vim plugins of **current profile** (not all installed plugins) by default.
+
   enable {repository} [{repository2} ...]
     This is shortcut of:
     volt profile add -current {repository} [{repository2} ...]
-
-  list
-    This is shortcut of:
-    volt profile show -current
 
   disable {repository} [{repository2} ...]
     This is shortcut of:

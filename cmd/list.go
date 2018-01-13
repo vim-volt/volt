@@ -27,7 +27,7 @@ func (cmd *listCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt list [-help] [-f {template}]
+  volt list [-help] [-f {text/template string}]
 
 Quick example
   $ volt list # will list installed plugins
@@ -109,7 +109,8 @@ Structures
   }
 
 Description
-  This shows vim plugins of **current profile** (not all installed plugins).
+  Vim plugin information extractor.
+  If -f flag is not given, this command shows vim plugins of **current profile** (not all installed plugins) by default.
   If -f flag is given, it renders by given template which can access the information of lock.json .` + "\n\n")
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
