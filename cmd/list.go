@@ -149,7 +149,7 @@ func (cmd *listCmd) list(format string) error {
 		return errors.New("failed to read lock.json: " + err.Error())
 	}
 	// Parse template string
-	t, err := template.New("volt").Funcs(*cmd.funcMap(lockJSON)).Parse(format)
+	t, err := template.New("volt").Funcs(cmd.funcMap(lockJSON)).Parse(format)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func (cmd *listCmd) list(format string) error {
 	return t.Execute(os.Stdout, lockJSON)
 }
 
-func (*listCmd) funcMap(lockJSON *lockjson.LockJSON) *template.FuncMap {
+func (*listCmd) funcMap(lockJSON *lockjson.LockJSON) template.FuncMap {
 	profileOf := func(name string) *lockjson.Profile {
 		profile, err := lockJSON.Profiles.FindByName(name)
 		if err != nil {
@@ -166,7 +166,7 @@ func (*listCmd) funcMap(lockJSON *lockjson.LockJSON) *template.FuncMap {
 		return profile
 	}
 
-	return &template.FuncMap{
+	return template.FuncMap{
 		"json": func(value interface{}, args ...string) string {
 			var b []byte
 			switch len(args) {
