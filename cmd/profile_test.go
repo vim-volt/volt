@@ -60,7 +60,7 @@ func TestVoltProfileSet(t *testing.T) {
 
 			// (b)
 			for _, reposPath := range reposPathList {
-				vimReposDir := pathutil.PackReposPathOf(reposPath)
+				vimReposDir := pathutil.EncodeReposPath(reposPath)
 				if !pathutil.Exists(vimReposDir) {
 					t.Error("vim repos does not exist: " + vimReposDir)
 				}

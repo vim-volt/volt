@@ -17,7 +17,7 @@ var refHeadsRx = regexp.MustCompile(`^refs/heads/(.+)$`)
 // If the repository is non-bare:
 //   Return the reference of current branch's HEAD
 func GetHEAD(reposPath pathutil.ReposPath) (string, error) {
-	repos, err := git.PlainOpen(pathutil.FullReposPathOf(reposPath))
+	repos, err := git.PlainOpen(pathutil.FullReposPath(reposPath))
 	if err != nil {
 		return "", err
 	}

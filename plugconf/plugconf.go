@@ -220,7 +220,7 @@ func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.Repos
 	for _, repos := range reposList {
 		p, exists := plugconf[repos.Path]
 		// :packadd <repos>
-		optName := filepath.Base(pathutil.PackReposPathOf(repos.Path))
+		optName := filepath.Base(pathutil.EncodeReposPath(repos.Path))
 		packadd := fmt.Sprintf("packadd %s", optName)
 		// autocommand event & patterns
 		var loadOn string
@@ -327,7 +327,7 @@ func parsePlugconfAsMap(reposList []lockjson.Repos) (map[pathutil.ReposPath]*Plu
 	for _, repos := range reposList {
 		var parsed *Plugconf
 		var err error
-		path := pathutil.PlugconfOf(repos.Path)
+		path := pathutil.Plugconf(repos.Path)
 		if pathutil.Exists(path) {
 			parsed, err = ParsePlugconfFile(path, reposID, repos.Path)
 		} else {

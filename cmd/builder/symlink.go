@@ -102,8 +102,8 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 }
 
 func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
-	src := pathutil.FullReposPathOf(repos.Path)
-	dst := pathutil.PackReposPathOf(repos.Path)
+	src := pathutil.FullReposPath(repos.Path)
+	dst := pathutil.EncodeReposPath(repos.Path)
 
 	copied := false
 	if repos.Type == lockjson.ReposGitType {

@@ -75,7 +75,7 @@ func VoltPath() string {
 	return filepath.Join(HomeDir(), "volt")
 }
 
-func FullReposPathOf(ReposPath ReposPath) string {
+func FullReposPath(ReposPath ReposPath) string {
 	reposList := strings.Split(filepath.ToSlash(ReposPath.String()), "/")
 	paths := make([]string, 0, len(reposList)+2)
 	paths = append(paths, VoltPath())
@@ -84,11 +84,11 @@ func FullReposPathOf(ReposPath ReposPath) string {
 	return filepath.Join(paths...)
 }
 
-func CloneURLOf(ReposPath ReposPath) string {
+func CloneURL(ReposPath ReposPath) string {
 	return "https://" + filepath.ToSlash(ReposPath.String())
 }
 
-func PlugconfOf(ReposPath ReposPath) string {
+func Plugconf(ReposPath ReposPath) string {
 	filenameList := strings.Split(filepath.ToSlash(ReposPath.String()+".vim"), "/")
 	paths := make([]string, 0, len(filenameList)+2)
 	paths = append(paths, VoltPath())
@@ -112,14 +112,14 @@ var unpacker2 = strings.NewReplacer("//", "_")
 
 // Encode repos path to directory name.
 // The directory name is: ~/.vim/pack/volt/opt/{name}
-func PackReposPathOf(ReposPath ReposPath) string {
+func EncodeReposPath(ReposPath ReposPath) string {
 	path := packer.Replace(ReposPath.String())
 	return filepath.Join(VimVoltOptDir(), path)
 }
 
 // Decode name to repos path.
 // name is directory name: ~/.vim/pack/volt/opt/{name}
-func UnpackPathOf(name string) ReposPath {
+func DecodeReposPath(name string) ReposPath {
 	name = filepath.Base(name)
 	return ReposPath(unpacker2.Replace(unpacker1.Replace(name)))
 }

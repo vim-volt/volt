@@ -47,7 +47,7 @@ func TestVoltGetOnePlugin(t *testing.T) {
 				testutil.SuccessExit(t, out, err)
 
 				// (C)
-				reposDir := pathutil.FullReposPathOf(tt.reposPath)
+				reposDir := pathutil.FullReposPath(tt.reposPath)
 				if !pathutil.Exists(reposDir) {
 					t.Error("repos does not exist: " + reposDir)
 				}
@@ -57,14 +57,14 @@ func TestVoltGetOnePlugin(t *testing.T) {
 				}
 
 				// (D)
-				plugconf := pathutil.PlugconfOf(tt.reposPath)
+				plugconf := pathutil.Plugconf(tt.reposPath)
 				if !pathutil.Exists(plugconf) {
 					t.Error("plugconf does not exist: " + plugconf)
 				}
 				// TODO: check plugconf has s:config(), s:loaded_on(), depends()
 
 				// (E)
-				vimReposDir := pathutil.PackReposPathOf(tt.reposPath)
+				vimReposDir := pathutil.EncodeReposPath(tt.reposPath)
 				if !pathutil.Exists(vimReposDir) {
 					t.Error("vim repos does not exist: " + vimReposDir)
 				}
@@ -120,7 +120,7 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 
 				for _, reposPath := range tt.reposPathList {
 					// (C)
-					reposDir := pathutil.FullReposPathOf(reposPath)
+					reposDir := pathutil.FullReposPath(reposPath)
 					if !pathutil.Exists(reposDir) {
 						t.Error("repos does not exist: " + reposDir)
 					}
@@ -130,14 +130,14 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 					}
 
 					// (D)
-					plugconf := pathutil.PlugconfOf(reposPath)
+					plugconf := pathutil.Plugconf(reposPath)
 					if !pathutil.Exists(plugconf) {
 						t.Error("plugconf does not exist: " + plugconf)
 					}
 					// TODO: check plugconf has s:config(), s:loaded_on(), depends()
 
 					// (E)
-					vimReposDir := pathutil.PackReposPathOf(reposPath)
+					vimReposDir := pathutil.EncodeReposPath(reposPath)
 					if !pathutil.Exists(vimReposDir) {
 						t.Error("vim repos does not exist: " + vimReposDir)
 					}
@@ -179,19 +179,19 @@ func TestErrVoltGetInvalidArgs(t *testing.T) {
 		pathutil.ReposPath("github.com/caw.vim"),
 	} {
 		// (!C)
-		reposDir := pathutil.FullReposPathOf(reposPath)
+		reposDir := pathutil.FullReposPath(reposPath)
 		if pathutil.Exists(reposDir) {
 			t.Error("repos exists: " + reposDir)
 		}
 
 		// (!D)
-		plugconf := pathutil.PlugconfOf(reposPath)
+		plugconf := pathutil.Plugconf(reposPath)
 		if pathutil.Exists(plugconf) {
 			t.Error("plugconf exists: " + plugconf)
 		}
 
 		// (!E)
-		vimReposDir := pathutil.PackReposPathOf(reposPath)
+		vimReposDir := pathutil.EncodeReposPath(reposPath)
 		if pathutil.Exists(vimReposDir) {
 			t.Error("vim repos exists: " + vimReposDir)
 		}
@@ -221,19 +221,19 @@ func TestErrVoltGetNotFound(t *testing.T) {
 	reposPath := pathutil.ReposPath("github.com/vim-volt/not_found")
 
 	// (!C)
-	reposDir := pathutil.FullReposPathOf(reposPath)
+	reposDir := pathutil.FullReposPath(reposPath)
 	if pathutil.Exists(reposDir) {
 		t.Error("repos exists: " + reposDir)
 	}
 
 	// (!D)
-	plugconf := pathutil.PlugconfOf(reposPath)
+	plugconf := pathutil.Plugconf(reposPath)
 	if pathutil.Exists(plugconf) {
 		t.Error("plugconf exists: " + plugconf)
 	}
 
 	// (!E)
-	vimReposDir := pathutil.PackReposPathOf(reposPath)
+	vimReposDir := pathutil.EncodeReposPath(reposPath)
 	if pathutil.Exists(vimReposDir) {
 		t.Error("vim repos exists: " + vimReposDir)
 	}

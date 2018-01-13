@@ -326,7 +326,7 @@ func (cmd *getCmd) getParallel(reposPath pathutil.ReposPath, repos *lockjson.Rep
 
 func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.Repos, done chan<- getParallelResult) {
 	// true:upgrade, false:install
-	fullReposPath := pathutil.FullReposPathOf(reposPath)
+	fullReposPath := pathutil.FullReposPath(reposPath)
 	doUpgrade := cmd.upgrade && pathutil.Exists(fullReposPath)
 
 	var fromHash string
@@ -458,7 +458,7 @@ func (cmd *getCmd) installPlugconf(reposPath pathutil.ReposPath, pluginResult *g
 	err := cmd.fetchPlugconf(reposPath)
 	if err != nil {
 		result := errors.New("failed to install plugconf: " + err.Error())
-		fullReposPath := pathutil.FullReposPathOf(reposPath)
+		fullReposPath := pathutil.FullReposPath(reposPath)
 		logger.Debug("Rollbacking " + fullReposPath + " ...")
 		err = cmd.rollbackRepos(fullReposPath)
 		if err != nil {
@@ -497,7 +497,7 @@ func (*getCmd) rollbackRepos(fullReposPath string) error {
 }
 
 func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath) error {
-	fullpath := pathutil.FullReposPathOf(reposPath)
+	fullpath := pathutil.FullReposPath(reposPath)
 
 	repos, err := git.PlainOpen(fullpath)
 	if err != nil {
@@ -528,7 +528,7 @@ func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath) error {
 var errRepoExists = errors.New("repository exists")
 
 func (cmd *getCmd) fetchPlugin(reposPath pathutil.ReposPath) error {
-	fullpath := pathutil.FullReposPathOf(reposPath)
+	fullpath := pathutil.FullReposPath(reposPath)
 	if pathutil.Exists(fullpath) {
 		return errRepoExists
 	}
@@ -541,7 +541,7 @@ func (cmd *getCmd) fetchPlugin(reposPath pathutil.ReposPath) error {
 	// Clone repository to $VOLTPATH/repos/{site}/{user}/{name}
 	isBare := false
 	r, err := git.PlainClone(fullpath, isBare, &git.CloneOptions{
-		URL:               pathutil.CloneURLOf(reposPath),
+		URL:               pathutil.CloneURL(reposPath),
 		RecurseSubmodules: 10,
 	})
 	if err != nil {
@@ -552,7 +552,7 @@ func (cmd *getCmd) fetchPlugin(reposPath pathutil.ReposPath) error {
 }
 
 func (cmd *getCmd) fetchPlugconf(reposPath pathutil.ReposPath) error {
-	filename := pathutil.PlugconfOf(reposPath)
+	filename := pathutil.Plugconf(reposPath)
 	if pathutil.Exists(filename) {
 		logger.Debugf("plugconf '%s' exists... skip", filename)
 		return nil

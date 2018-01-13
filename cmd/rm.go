@@ -139,7 +139,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 	for _, reposPath := range reposPathList {
 		// Remove repository directory
 		if cmd.rmRepos {
-			fullReposPath := pathutil.FullReposPathOf(reposPath)
+			fullReposPath := pathutil.FullReposPath(reposPath)
 			if pathutil.Exists(fullReposPath) {
 				if err = cmd.removeRepos(fullReposPath); err != nil {
 					return err
@@ -152,7 +152,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 
 		// Remove plugconf file
 		if cmd.rmPlugconf {
-			plugconfPath := pathutil.PlugconfOf(reposPath)
+			plugconfPath := pathutil.Plugconf(reposPath)
 			if pathutil.Exists(plugconfPath) {
 				if err = cmd.removePlugconf(plugconfPath); err != nil {
 					return err

@@ -146,7 +146,7 @@ func (builder *copyBuilder) copyReposList(buildReposMap map[pathutil.ReposPath]*
 }
 
 func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buildinfo.Repos, vimExePath string, done chan actionReposResult) (int, error) {
-	src := pathutil.FullReposPathOf(repos.Path)
+	src := pathutil.FullReposPath(repos.Path)
 
 	// Show warning when HEAD and locked revision are different
 	head, err := gitutil.GetHEAD(repos.Path)
@@ -201,7 +201,7 @@ func (builder *copyBuilder) copyReposStatic(repos *lockjson.Repos, buildRepos *b
 func (builder *copyBuilder) removeReposList(reposList lockjson.ReposList, reposDirList []os.FileInfo) (chan actionReposResult, int) {
 	removeList := make([]pathutil.ReposPath, 0, len(reposList))
 	for i := range reposDirList {
-		reposPath := pathutil.UnpackPathOf(reposDirList[i].Name())
+		reposPath := pathutil.DecodeReposPath(reposDirList[i].Name())
 		if !reposList.Contains(reposPath) {
 			removeList = append(removeList, reposPath)
 		}
@@ -209,7 +209,7 @@ func (builder *copyBuilder) removeReposList(reposList lockjson.ReposList, reposD
 	removeDone := make(chan actionReposResult, len(removeList))
 	for i := range removeList {
 		go func(reposPath pathutil.ReposPath) {
-			err := os.RemoveAll(pathutil.PackReposPathOf(reposPath))
+			err := os.RemoveAll(pathutil.EncodeReposPath(reposPath))
 			logger.Info("Removing " + reposPath + " ... Done.")
 			removeDone <- actionReposResult{
 				err:   err,
@@ -331,8 +331,8 @@ func (*copyBuilder) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *buildi
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
 func (builder *copyBuilder) updateGitRepos(repos *lockjson.Repos, r *git.Repository, copyFromGitObjects bool, vimExePath string, done chan actionReposResult) {
-	src := pathutil.FullReposPathOf(repos.Path)
-	dst := pathutil.PackReposPathOf(repos.Path)
+	src := pathutil.FullReposPath(repos.Path)
+	dst := pathutil.EncodeReposPath(repos.Path)
 
 	// Remove ~/.vim/volt/opt/{repos}
 	// TODO: Do not remove here, copy newer files only after
@@ -487,7 +487,7 @@ func (builder *copyBuilder) hasChangedStaticRepos(repos *lockjson.Repos, buildRe
 		return true
 	}
 
-	src := pathutil.FullReposPathOf(repos.Path)
+	src := pathutil.FullReposPath(repos.Path)
 
 	// Get latest mtime of src
 	// TODO: Don't check mtime here, do it when copy altogether
@@ -514,8 +514,8 @@ func (builder *copyBuilder) hasChangedStaticRepos(repos *lockjson.Repos, buildRe
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
 func (builder *copyBuilder) updateStaticRepos(repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
-	src := pathutil.FullReposPathOf(repos.Path)
-	dst := pathutil.PackReposPathOf(repos.Path)
+	src := pathutil.FullReposPath(repos.Path)
+	dst := pathutil.EncodeReposPath(repos.Path)
 
 	// Remove ~/.vim/volt/opt/{repos}
 	// TODO: Do not remove here, copy newer files only after
