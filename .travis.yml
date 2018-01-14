@@ -6,12 +6,13 @@ matrix:
       go: 1.9
     - os: linux
       go: tip
-    - os: osx
-      osx_image: xcode8.3
-      go: 1.9
-    - os: osx
-      osx_image: xcode8.3
-      go: tip
+    # macOS build *extraordinary* slow, disable them
+    # - os: osx
+    #   osx_image: xcode8.3
+    #   go: 1.9
+    # - os: osx
+    #   osx_image: xcode8.3
+    #   go: tip
 
 script:
   - go vet -v ./...
