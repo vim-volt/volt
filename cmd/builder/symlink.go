@@ -119,7 +119,7 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 			logger.Warnf("%s: HEAD and locked revision are different", repos.Path)
 			logger.Warn("  HEAD: " + head)
 			logger.Warn("  locked revision: " + repos.Version)
-			logger.Warnf("  Please run 'volt get %s' to update locked revision.", repos.Path)
+			logger.Warn("  Please run 'volt get -l' to update locked revision.")
 		}
 
 		// Open a repository to determine it is bare repository or not
