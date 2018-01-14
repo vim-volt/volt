@@ -24,7 +24,7 @@ Command
   get [-l] [-u] [{repository} ...]
     Install or upgrade given {repository} list, or add local {repository} list as plugins
 
-  rm [-help] [-r] [-p] {repository} [{repository2} ...]
+  rm [-r] [-p] {repository} [{repository2} ...]
     Remove vim plugin from ~/.vim/pack/volt/opt/ directory
 
   list [-f {text/template string}]
