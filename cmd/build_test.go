@@ -490,7 +490,7 @@ func voltBuildGitNoVimRepos(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"github.com/tyru/caw.vim"}
+	reposPathList := []pathutil.ReposPath{"github.com/tyru/caw.vim"}
 	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -536,14 +536,14 @@ func voltBuildGitVimDirOlder(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"github.com/tyru/caw.vim"}
+	reposPathList := []pathutil.ReposPath{"github.com/tyru/caw.vim"}
 	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
-		touchFiles(t, pathutil.FullReposPathOf(reposPath))
+		touchFiles(t, pathutil.FullReposPath(reposPath))
 	}
 
 	// =============== run =============== //
@@ -587,14 +587,14 @@ func voltBuildGitVimDirNewer(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"github.com/tyru/caw.vim"}
+	reposPathList := []pathutil.ReposPath{"github.com/tyru/caw.vim"}
 	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
-		touchFiles(t, pathutil.PackReposPathOf(reposPath))
+		touchFiles(t, pathutil.EncodeReposPath(reposPath))
 	}
 
 	// =============== run =============== //
@@ -639,7 +639,7 @@ func voltBuildStaticNoVimRepos(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"localhost/local/hello"}
+	reposPathList := []pathutil.ReposPath{"localhost/local/hello"}
 	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -685,14 +685,14 @@ func voltBuildStaticVimDirOlder(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"localhost/local/hello"}
+	reposPathList := []pathutil.ReposPath{"localhost/local/hello"}
 	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
-		touchFiles(t, pathutil.FullReposPathOf(reposPath))
+		touchFiles(t, pathutil.FullReposPath(reposPath))
 	}
 
 	// =============== run =============== //
@@ -736,14 +736,14 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
-	reposPathList := []string{"localhost/local/hello"}
+	reposPathList := []pathutil.ReposPath{"localhost/local/hello"}
 	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
 	defer teardown()
 	testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
-		touchFiles(t, pathutil.PackReposPathOf(reposPath))
+		touchFiles(t, pathutil.EncodeReposPath(reposPath))
 	}
 
 	// =============== run =============== //
@@ -823,10 +823,10 @@ func checkBuildOutput(t *testing.T, full bool, out []byte, strategy string) {
 	}
 }
 
-func checkCopied(t *testing.T, reposPath string, strategy string) {
+func checkCopied(t *testing.T, reposPath pathutil.ReposPath, strategy string) {
 	t.Helper()
-	vimReposDir := pathutil.PackReposPathOf(reposPath)
-	reposDir := pathutil.FullReposPathOf(reposPath)
+	vimReposDir := pathutil.EncodeReposPath(reposPath)
+	reposDir := pathutil.FullReposPath(reposPath)
 	tagsFile := filepath.Join("doc", "tags")
 	filepath.Walk(vimReposDir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {

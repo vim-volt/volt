@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -57,10 +56,6 @@ Command
   profile rm [-current | {name}] {repository} [{repository2} ...]
     Remove one or more repositories from profile {name}.
 
-  profile use [-current | {name}] vimrc [true | false]
-  profile use [-current | {name}] gvimrc [true | false]
-    Set vimrc / gvimrc flag to true or false.
-
 Quick example
   $ volt profile list   # default profile is "default"
   * default
@@ -81,10 +76,7 @@ Quick example
   $ volt disable tyru/caw.vim   # disable loading tyru/caw.vim on current profile
   $ volt profile rm foo tyru/caw.vim    # disable loading tyru/caw.vim on "foo" profile
 
-  $ volt profile destroy foo   # will delete profile "foo"
-
-  $ volt profile use -current vimrc false   # Disable installing vimrc on current profile on "volt build"
-  $ volt profile use default gvimrc true   # Enable installing gvimrc on profile default on "volt build"` + "\n\n")
+  $ volt profile destroy foo   # will delete profile "foo"` + "\n\n")
 		cmd.helped = true
 	}
 	return fs
@@ -119,8 +111,6 @@ func (cmd *profileCmd) Run(args []string) int {
 		err = cmd.doAdd(args[1:])
 	case "rm":
 		err = cmd.doRm(args[1:])
-	case "use":
-		err = cmd.doUse(args[1:])
 	default:
 		logger.Error("unknown subcommand: " + subCmd)
 		return 11
@@ -243,46 +233,27 @@ func (cmd *profileCmd) doShow(args []string) error {
 		profileName = lockJSON.CurrentProfileName
 	} else {
 		profileName = args[0]
-	}
-
-	// Return error if profiles[]/name does not match profileName
-	profile, err := lockJSON.Profiles.FindByName(profileName)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("name:", profile.Name)
-	fmt.Println("use vimrc:", profile.UseVimrc)
-	fmt.Println("use gvimrc:", profile.UseGvimrc)
-	fmt.Println("repos path:")
-	for _, reposPath := range profile.ReposPath {
-		hash, err := getReposHEAD(reposPath)
-		if err != nil {
-			hash = "?"
+		if lockJSON.Profiles.FindIndexByName(profileName) == -1 {
+			return fmt.Errorf("profile '%s' does not exist", profileName)
 		}
-		fmt.Printf("  %s (%s)\n", reposPath, hash)
 	}
 
-	return nil
+	return (&listCmd{}).list(fmt.Sprintf(`name: %s
+repos path:
+{{- with profile %q -}}
+{{- range .ReposPath }}
+  {{ . }}
+{{- end -}}
+{{- end }}
+`, profileName, profileName))
 }
 
 func (cmd *profileCmd) doList(args []string) error {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
-	}
-
-	// List profile names
-	for _, profile := range lockJSON.Profiles {
-		if profile.Name == lockJSON.CurrentProfileName {
-			fmt.Println("* " + profile.Name)
-		} else {
-			fmt.Println("  " + profile.Name)
-		}
-	}
-
-	return nil
+	return (&listCmd{}).list(`
+{{- range .Profiles -}}
+{{- if eq .Name $.CurrentProfileName -}}*{{- else }} {{ end }} {{ .Name }}
+{{ end -}}
+`)
 }
 
 func (cmd *profileCmd) doNew(args []string) error {
@@ -315,9 +286,7 @@ func (cmd *profileCmd) doNew(args []string) error {
 	// Add profile
 	lockJSON.Profiles = append(lockJSON.Profiles, lockjson.Profile{
 		Name:      profileName,
-		ReposPath: make([]string, 0),
-		UseVimrc:  true,
-		UseGvimrc: true,
+		ReposPath: make([]pathutil.ReposPath, 0),
 	})
 
 	// Write to lock.json
@@ -465,10 +434,10 @@ func (cmd *profileCmd) doAdd(args []string) error {
 		// Add repositories to profile if the repository does not exist
 		for _, reposPath := range reposPathList {
 			if profile.ReposPath.Contains(reposPath) {
-				logger.Warn("repository '" + reposPath + "' is already enabled")
+				logger.Warn("repository '" + reposPath.String() + "' is already enabled")
 			} else {
 				profile.ReposPath = append(profile.ReposPath, reposPath)
-				logger.Info("Enabled '" + reposPath + "' on profile '" + profileName + "'")
+				logger.Info("Enabled '" + reposPath.String() + "' on profile '" + profileName + "'")
 			}
 		}
 	})
@@ -510,9 +479,9 @@ func (cmd *profileCmd) doRm(args []string) error {
 			if index >= 0 {
 				// Remove profile.ReposPath[index]
 				profile.ReposPath = append(profile.ReposPath[:index], profile.ReposPath[index+1:]...)
-				logger.Info("Disabled '" + reposPath + "' from profile '" + profileName + "'")
+				logger.Info("Disabled '" + reposPath.String() + "' from profile '" + profileName + "'")
 			} else {
-				logger.Warn("repository '" + reposPath + "' is already disabled")
+				logger.Warn("repository '" + reposPath.String() + "' is already disabled")
 			}
 		}
 	})
@@ -529,7 +498,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, args []string) (string, []string, error) {
+func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, args []string) (string, []pathutil.ReposPath, error) {
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Errorf("'volt profile %s' receives profile name and one or more repositories.", subCmd)
@@ -537,7 +506,7 @@ func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, 
 	}
 
 	profileName := args[0]
-	reposPathList := make([]string, 0, len(args)-1)
+	reposPathList := make([]pathutil.ReposPath, 0, len(args)-1)
 	for _, arg := range args[1:] {
 		reposPath, err := pathutil.NormalizeRepos(arg)
 		if err != nil {
@@ -580,94 +549,4 @@ func (*profileCmd) transactProfile(lockJSON *lockjson.LockJSON, profileName stri
 		return nil, err
 	}
 	return lockJSON, nil
-}
-
-func (cmd *profileCmd) doUse(args []string) error {
-	// Validate arguments
-	if len(args) != 3 {
-		cmd.FlagSet().Usage()
-		logger.Error("'volt profile use' receives profile name, rc name, value.")
-		return nil
-	}
-	if args[1] != "vimrc" && args[1] != "gvimrc" {
-		cmd.FlagSet().Usage()
-		logger.Error("volt profile use: Please specify \"vimrc\" or \"gvimrc\" to the 2nd argument")
-		return nil
-	}
-	if args[2] != "true" && args[2] != "false" {
-		cmd.FlagSet().Usage()
-		logger.Error("volt profile use: Please specify \"true\" or \"false\" to the 3rd argument")
-		return nil
-	}
-
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
-	}
-
-	// Convert arguments
-	var profileName string
-	var rcName string
-	var value bool
-	if args[0] == "-current" {
-		profileName = lockJSON.CurrentProfileName
-	} else {
-		profileName = args[0]
-	}
-	rcName = args[1]
-	if args[2] == "true" {
-		value = true
-	} else {
-		value = false
-	}
-
-	// Look up specified profile
-	profile, err := lockJSON.Profiles.FindByName(profileName)
-	if err != nil {
-		return err
-	}
-
-	// Begin transaction
-	err = transaction.Create()
-	if err != nil {
-		return err
-	}
-	defer transaction.Remove()
-
-	// Set use_vimrc / use_gvimrc flag
-	changed := false
-	if rcName == "vimrc" {
-		if profile.UseVimrc != value {
-			logger.Infof("Set vimrc flag of profile '%s' to '%s'", profileName, strconv.FormatBool(value))
-			profile.UseVimrc = value
-			changed = true
-		} else {
-			logger.Warnf("vimrc flag of profile '%s' is already '%s'", profileName, strconv.FormatBool(value))
-		}
-	} else {
-		if profile.UseGvimrc != value {
-			logger.Infof("Set gvimrc flag of profile '%s' to '%s'", profileName, strconv.FormatBool(value))
-			profile.UseGvimrc = value
-			changed = true
-		} else {
-			logger.Warnf("gvimrc flag of profile '%s' is already '%s'", profileName, strconv.FormatBool(value))
-		}
-	}
-
-	if changed {
-		// Write to lock.json
-		err = lockJSON.Write()
-		if err != nil {
-			return err
-		}
-	}
-
-	// Build ~/.vim/pack/volt dir
-	err = (&buildCmd{}).doBuild(false)
-	if err != nil {
-		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
-	}
-
-	return nil
 }

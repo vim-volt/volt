@@ -30,7 +30,7 @@ func TestVoltProfileSet(t *testing.T) {
 
 			testutil.SetUpEnv(t)
 
-			reposPathList := []string{"github.com/tyru/caw.vim"}
+			reposPathList := []pathutil.ReposPath{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
 			defer teardown()
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -60,7 +60,7 @@ func TestVoltProfileSet(t *testing.T) {
 
 			// (b)
 			for _, reposPath := range reposPathList {
-				vimReposDir := pathutil.PackReposPathOf(reposPath)
+				vimReposDir := pathutil.EncodeReposPath(reposPath)
 				if !pathutil.Exists(vimReposDir) {
 					t.Error("vim repos does not exist: " + vimReposDir)
 				}
@@ -121,13 +121,11 @@ func TestVoltProfileSet(t *testing.T) {
 
 // Checks:
 // (a) Output has profile name
-// (b) Output has "use vimrc"
-// (c) Output has "use gvimrc"
-// (d) Output has "repos path"
+// (b) Output has "repos path"
 //
-// * Run `volt profile show <profile>` (`<profile>` is existing profile) (A, B, a, b, c, d)
-// * Run `volt profile show -current` (A, B, a, b, c, d)
-// * Run `volt profile show <profile>` (`<profile>` is non-existing profile) (!A, !B, !a, !b, !c, !d)
+// * Run `volt profile show <profile>` (`<profile>` is existing profile) (A, B, a, b)
+// * Run `volt profile show -current` (A, B, a, b)
+// * Run `volt profile show <profile>` (`<profile>` is non-existing profile) (!A, !B, !a, !b)
 func TestVoltProfileShow(t *testing.T) {
 	t.Run("Run `volt profile show <profile>` (`<profile>` is existing profile)", func(t *testing.T) {
 		// =============== setup =============== //
@@ -140,16 +138,10 @@ func TestVoltProfileShow(t *testing.T) {
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
 
-		// (a, b, c, d)
+		// (a, b)
 		outstr := string(out)
 		if !strings.Contains(outstr, "name: default\n") {
 			t.Errorf("Expected 'name: default' line, but got: %s", outstr)
-		}
-		if !strings.Contains(outstr, "use vimrc: true\n") {
-			t.Errorf("Expected 'use vimrc: true' line, but got: %s", outstr)
-		}
-		if !strings.Contains(outstr, "use gvimrc: true\n") {
-			t.Errorf("Expected 'use gvimrc: true' line, but got: %s", outstr)
 		}
 		if !strings.Contains(outstr, "repos path:\n") {
 			t.Errorf("Expected 'repos path:' line, but got: %s", outstr)
@@ -167,16 +159,10 @@ func TestVoltProfileShow(t *testing.T) {
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
 
-		// (a, b, c, d)
+		// (a, b)
 		outstr := string(out)
 		if !strings.Contains(outstr, "name: default\n") {
 			t.Errorf("Expected 'name: default' line, but got: %s", outstr)
-		}
-		if !strings.Contains(outstr, "use vimrc: true\n") {
-			t.Errorf("Expected 'use vimrc: true' line, but got: %s", outstr)
-		}
-		if !strings.Contains(outstr, "use gvimrc: true\n") {
-			t.Errorf("Expected 'use gvimrc: true' line, but got: %s", outstr)
 		}
 		if !strings.Contains(outstr, "repos path:\n") {
 			t.Errorf("Expected 'repos path:' line, but got: %s", outstr)
@@ -194,7 +180,7 @@ func TestVoltProfileShow(t *testing.T) {
 		// (!A, !B)
 		testutil.FailExit(t, out, err)
 
-		// (!a, !b, !c, !d)
+		// (!a, !b)
 		outstr := string(out)
 		expected := "[ERROR] profile 'bar' does not exist"
 		if strings.Trim(outstr, " \t\r\n") != expected {
@@ -661,7 +647,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 			testutil.SetUpEnv(t)
 
-			reposPathList := []string{"github.com/tyru/caw.vim"}
+			reposPathList := []pathutil.ReposPath{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
 			defer teardown()
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -676,8 +662,8 @@ func TestVoltProfileAdd(t *testing.T) {
 
 			// =============== run =============== //
 
-			reposPath := "github.com/tyru/caw.vim"
-			out, err = testutil.RunVolt("profile", "add", "empty", reposPath)
+			reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+			out, err = testutil.RunVolt("profile", "add", "empty", reposPath.String())
 			// (A, B)
 			testutil.SuccessExit(t, out, err)
 
@@ -706,7 +692,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 			testutil.SetUpEnv(t)
 
-			reposPathList := []string{"github.com/tyru/caw.vim", "github.com/tyru/capture.vim"}
+			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim"), pathutil.ReposPath("github.com/tyru/capture.vim")}
 			teardown := testutil.SetUpRepos(t, "caw-and-capture", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
 			defer teardown()
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -721,7 +707,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 			// =============== run =============== //
 
-			args := append([]string{"profile", "add", "empty"}, reposPathList...)
+			args := append([]string{"profile", "add", "empty"}, reposPathList.Strings()...)
 			out, err = testutil.RunVolt(args...)
 			// (A, B)
 			testutil.SuccessExit(t, out, err)
@@ -735,7 +721,7 @@ func TestVoltProfileAdd(t *testing.T) {
 			// (a)
 			for _, reposPath := range reposPathList {
 				if !reposList.Contains(reposPath) {
-					t.Errorf("expected '%s' is added to profile '%s', but not added", reposPath, "empty")
+					t.Errorf("expected '%s' is added to profile '%s', but not added", reposPath.String(), "empty")
 				}
 			}
 			// (b)
@@ -753,7 +739,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 			testutil.SetUpEnv(t)
 
-			reposPathList := []string{"github.com/tyru/caw.vim"}
+			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
 			defer teardown()
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -768,8 +754,8 @@ func TestVoltProfileAdd(t *testing.T) {
 
 			// =============== run =============== //
 
-			reposPath := "github.com/tyru/caw.vim"
-			out, err = testutil.RunVolt("profile", "add", "-current", reposPath)
+			reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+			out, err = testutil.RunVolt("profile", "add", "-current", reposPath.String())
 			// (A, B)
 			testutil.SuccessExit(t, out, err)
 
@@ -798,7 +784,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 			testutil.SetUpEnv(t)
 
-			reposPathList := []string{"github.com/tyru/caw.vim"}
+			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
 			defer teardown()
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -846,8 +832,8 @@ func TestVoltProfileAdd(t *testing.T) {
 
 			// =============== run =============== //
 
-			reposPath := "github.com/tyru/caw.vim"
-			out, err = testutil.RunVolt("profile", "add", "empty", reposPath)
+			reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+			out, err = testutil.RunVolt("profile", "add", "empty", reposPath.String())
 			// (!A, !B)
 			testutil.FailExit(t, out, err)
 
@@ -859,7 +845,7 @@ func TestVoltProfileAdd(t *testing.T) {
 
 			// (!a)
 			if reposList.Contains(reposPath) {
-				t.Errorf("expected '%s' is not added to profile '%s', but added", reposPath, "empty")
+				t.Errorf("expected '%s' is not added to profile '%s', but added", reposPath.String(), "empty")
 			}
 			// (b)
 			testNotChangedProfileExcept(t, oldLockJSON, lockJSON, "empty")
@@ -884,8 +870,8 @@ func TestVoltProfileAdd(t *testing.T) {
 
 			// =============== run =============== //
 
-			reposPath := "github.com/tyru/caw.vim"
-			out, err := testutil.RunVolt("profile", "add", "not_existing_profile", reposPath)
+			reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+			out, err := testutil.RunVolt("profile", "add", "not_existing_profile", reposPath.String())
 			// (!A, !B)
 			testutil.FailExit(t, out, err)
 
@@ -922,7 +908,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 			testutil.SetUpEnv(t)
 
-			reposPathList := []string{"github.com/tyru/caw.vim"}
+			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
 			defer teardown()
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -934,8 +920,8 @@ func TestVoltProfileRm(t *testing.T) {
 
 			// =============== run =============== //
 
-			reposPath := "github.com/tyru/caw.vim"
-			out, err := testutil.RunVolt("profile", "rm", "default", reposPath)
+			reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+			out, err := testutil.RunVolt("profile", "rm", "default", reposPath.String())
 			// (A, B)
 			testutil.SuccessExit(t, out, err)
 
@@ -964,7 +950,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 			testutil.SetUpEnv(t)
 
-			reposPathList := []string{"github.com/tyru/caw.vim", "github.com/tyru/capture.vim"}
+			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim"), pathutil.ReposPath("github.com/tyru/capture.vim")}
 			teardown := testutil.SetUpRepos(t, "caw-and-capture", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
 			defer teardown()
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -976,7 +962,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 			// =============== run =============== //
 
-			args := append([]string{"profile", "rm", "default"}, reposPathList...)
+			args := append([]string{"profile", "rm", "default"}, reposPathList.Strings()...)
 			out, err := testutil.RunVolt(args...)
 			// (A, B)
 			testutil.SuccessExit(t, out, err)
@@ -990,7 +976,7 @@ func TestVoltProfileRm(t *testing.T) {
 			// (a)
 			for _, reposPath := range reposPathList {
 				if reposList.Contains(reposPath) {
-					t.Errorf("expected '%s' is removed from profile '%s', but not removed", reposPath, "default")
+					t.Errorf("expected '%s' is removed from profile '%s', but not removed", reposPath.String(), "default")
 				}
 			}
 			// (b)
@@ -1008,7 +994,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 			testutil.SetUpEnv(t)
 
-			reposPathList := []string{"github.com/tyru/caw.vim"}
+			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
 			defer teardown()
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -1020,8 +1006,8 @@ func TestVoltProfileRm(t *testing.T) {
 
 			// =============== run =============== //
 
-			reposPath := "github.com/tyru/caw.vim"
-			out, err := testutil.RunVolt("profile", "rm", "-current", reposPath)
+			reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+			out, err := testutil.RunVolt("profile", "rm", "-current", reposPath.String())
 			// (A, B)
 			testutil.SuccessExit(t, out, err)
 
@@ -1050,7 +1036,7 @@ func TestVoltProfileRm(t *testing.T) {
 
 			testutil.SetUpEnv(t)
 
-			reposPathList := []string{"github.com/tyru/caw.vim"}
+			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
 			defer teardown()
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
@@ -1095,8 +1081,8 @@ func TestVoltProfileRm(t *testing.T) {
 
 			// =============== run =============== //
 
-			reposPath := "github.com/tyru/caw.vim"
-			out, err := testutil.RunVolt("profile", "rm", "default", reposPath)
+			reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+			out, err := testutil.RunVolt("profile", "rm", "default", reposPath.String())
 			// (!A, !B)
 			testutil.FailExit(t, out, err)
 

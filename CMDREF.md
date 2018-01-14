@@ -57,13 +57,13 @@ Description
 
 ```
 Usage
-  volt get [-help] [-l] [-u] [-v] [{repository} ...]
+  volt get [-help] [-l] [-u] [{repository} ...]
 
 Quick example
   $ volt get tyru/caw.vim     # will install tyru/caw.vim plugin
   $ volt get -u tyru/caw.vim  # will upgrade tyru/caw.vim plugin
   $ volt get -l -u            # will upgrade all installed plugins
-  $ volt get -v tyru/caw.vim  # will output more verbosely
+  $ VOLT_DEBUG=1 volt get tyru/caw.vim  # will output more verbosely
 
   $ mkdir -p ~/volt/repos/localhost/local/hello/plugin
   $ echo 'command! Hello echom "hello"' >~/volt/repos/localhost/local/hello/plugin/hello.vim
@@ -77,8 +77,6 @@ Description
     https://github.com/vim-volt/plugconf-templates
   and install it to:
     $VOLTPATH/plugconf/{repository}.vim
-
-  If -v option was specified, output more verbosely.
 
 Repository List
   {repository} list (=target to perform installing, upgrading, and so on) is determined as followings:
@@ -122,21 +120,97 @@ Repository path
 Options
   -l    use all installed repositories as targets
   -u    upgrade repositories
-  -v    output more verbosely
 ```
 
 # volt list
 
 ```
 Usage
-  volt list [-help]
+  volt list [-help] [-f {text/template string}]
 
 Quick example
   $ volt list # will list installed plugins
 
+  Show all installed repositories:
+
+  $ volt list -f '{{ range .Repos }}{{ println .Path }}{{ end }}'
+
+  Show repositories used by current profile:
+
+  $ volt list -f '{{ range .Profiles }}{{ if eq $.CurrentProfileName .Name }}{{ range .ReposPath }}{{ . }}{{ end }}{{ end }}{{ end }}'
+
+  Or (see "Additional property"):
+
+  $ volt list -f '{{ range currentProfile.ReposPath }}{{ println . }}{{ end }}'
+
+Template functions
+
+  json value [prefix [indent]] (string)
+    Returns JSON representation of value.
+    The argument is same as json.MarshalIndent().
+
+  currentProfile (Profile (see "Structures"))
+    Returns current profile
+
+  currentProfile (Profile (see "Structures"))
+    Returns given name's profile
+
+  version (string)
+    Returns volt version string. format is "v{major}.{minor}.{patch}" (e.g. "v0.3.0")
+
+  versionMajor (number)
+    Returns volt major version
+
+  versionMinor (number)
+    Returns volt minor version
+
+  versionPatch (number)
+    Returns volt patch version
+
+Structures
+  This describes the structure of lock.json .
+  {
+    // lock.json structure compatibility version
+    "version": <int64>,
+
+    // Unique number of transaction
+    "trx_id": <int64>,
+
+    // Current profile name (e.g. "default")
+    "current_profile_name": <string>,
+
+    // All Installed repositories
+    // ("volt list" shows current profile's repositories, which is not the same as this)
+    "repos": [
+      {
+        // "git" (git repository) or "static" (static repository)
+        "type": <string>,
+
+        // Unique number of transaction
+        "trx_id": <int64>,
+
+        // Repository path like "github.com/vim-volt/vim-volt"
+        "path": <string>,
+
+        // Git commit hash. if "type" is "static" this property does not exist
+        "version": <string>,
+      },
+    ],
+
+    // Profiles
+    "profiles": [
+      // Profile name (.e.g. "default")
+      "name": <string>,
+
+      // Repositories ("volt list" shows these repositories)
+      "repos_path": [ <string> ],
+    ]
+  }
+
 Description
-  This is shortcut of:
-  volt profile show {current profile}
+  Vim plugin information extractor.
+  If -f flag is not given, this command shows vim plugins of **current profile** (not all installed plugins) by default.
+  If -f flag is given, it renders by given template which can access the information of lock.json .
 ```
 
 # volt migrate
@@ -183,10 +257,6 @@ Command
   profile rm [-current | {name}] {repository} [{repository2} ...]
     Remove one or more repositories from profile {name}.
 
-  profile use [-current | {name}] vimrc [true | false]
-  profile use [-current | {name}] gvimrc [true | false]
-    Set vimrc / gvimrc flag to true or false.
-
 Quick example
   $ volt profile list   # default profile is "default"
   * default
@@ -208,9 +278,6 @@ Quick example
   $ volt profile rm foo tyru/caw.vim    # disable loading tyru/caw.vim on "foo" profile
 
   $ volt profile destroy foo   # will delete profile "foo"
-
-  $ volt profile use -current vimrc false   # Disable installing vimrc on current profile on "volt build"
-  $ volt profile use default gvimrc true   # Enable installing gvimrc on profile default on "volt build"
 ```
 
 # volt rm
@@ -226,7 +293,8 @@ Quick example
   $ volt rm -r -p tyru/caw.vim # Remove tyru/caw.vim plugin from lock.json, and remove repository directory, plugconf
 
 Description
-  Uninstall {repository} on every profile.
+  Uninstall one or more {repository} from every profile.
+  This results in removing vim plugins from ~/.vim/pack/volt/opt/ directory.
   If {repository} is depended by other repositories, this command exits with an error.
 
   If -r option was given, remove also repository directories of specified repositories.

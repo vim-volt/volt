@@ -53,7 +53,7 @@ func (cmd *enableCmd) Run(args []string) int {
 	profCmd := profileCmd{}
 	err = profCmd.doAdd(append(
 		[]string{"-current"},
-		reposPathList...,
+		reposPathList.Strings()...,
 	))
 	if err != nil {
 		logger.Error(err.Error())
@@ -63,7 +63,7 @@ func (cmd *enableCmd) Run(args []string) int {
 	return 0
 }
 
-func (cmd *enableCmd) parseArgs(args []string) ([]string, error) {
+func (cmd *enableCmd) parseArgs(args []string) (pathutil.ReposPathList, error) {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {
@@ -76,7 +76,7 @@ func (cmd *enableCmd) parseArgs(args []string) ([]string, error) {
 	}
 
 	// Normalize repos path
-	var reposPathList []string
+	reposPathList := make(pathutil.ReposPathList, 0, len(fs.Args()))
 	for _, arg := range fs.Args() {
 		reposPath, err := pathutil.NormalizeRepos(arg)
 		if err != nil {

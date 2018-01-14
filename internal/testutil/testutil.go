@@ -120,7 +120,7 @@ func GetCmdList() ([]string, error) {
 // Set up $VOLTPATH after "volt get <repos>"
 // but the same repository is cloned only at first time
 // under testdata/voltpath/{testdataName}/repos/<repos>
-func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, reposPathList []string, strategy string) func() {
+func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, reposPathList []pathutil.ReposPath, strategy string) func() {
 	voltpath := os.Getenv("VOLTPATH")
 	tmpVoltpath := filepath.Join(testdataDir, "voltpath", testdataName)
 	localSrcDir := filepath.Join(testdataDir, "local", testdataName)
@@ -128,7 +128,7 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 	buf := make([]byte, 32*1024)
 
 	for _, reposPath := range reposPathList {
-		testRepos := filepath.Join(tmpVoltpath, "repos", reposPath)
+		testRepos := filepath.Join(tmpVoltpath, "repos", reposPath.String())
 		if !pathutil.Exists(testRepos) {
 			switch rType {
 			case lockjson.ReposGitType:
@@ -145,7 +145,7 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 					t.Fatal("failed to set VOLTPATH")
 				}
 				defer os.Setenv("VOLTPATH", voltpath)
-				out, err := RunVolt("get", reposPath)
+				out, err := RunVolt("get", reposPath.String())
 				SuccessExit(t, out, err)
 			case lockjson.ReposStaticType:
 				err := os.Setenv("VOLTPATH", tmpVoltpath)
@@ -165,7 +165,7 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 		}
 
 		// Copy repository
-		repos := filepath.Join(voltpath, "repos", reposPath)
+		repos := filepath.Join(voltpath, "repos", reposPath.String())
 		os.MkdirAll(filepath.Dir(repos), 0777)
 		if err := fileutil.CopyDir(testRepos, repos, buf, 0777, os.FileMode(0)); err != nil {
 			t.Fatalf("failed to copy %s to %s", testRepos, repos)
@@ -182,7 +182,7 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 	if strategy == config.SymlinkBuilder {
 		return func() {
 			for _, reposPath := range reposPathList {
-				dir := filepath.Join(tmpVoltpath, "repos", reposPath, "doc")
+				dir := filepath.Join(tmpVoltpath, "repos", reposPath.String(), "doc")
 				for _, name := range []string{"tags", "tags-ja"} {
 					path := filepath.Join(dir, name)
 					os.Remove(path)

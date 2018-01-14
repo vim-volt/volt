@@ -31,17 +31,17 @@ const (
 
 type Plugconf struct {
 	reposID     int
-	reposPath   string
+	reposPath   pathutil.ReposPath
 	functions   []string
 	configFunc  string
 	loadOnFunc  string
 	loadOn      loadOnType
 	loadOnArg   string
 	dependsFunc string
-	depends     []string
+	depends     pathutil.ReposPathList
 }
 
-func ParsePlugconfFile(plugConf string, reposID int, reposPath string) (*Plugconf, error) {
+func ParsePlugconfFile(plugConf string, reposID int, reposPath pathutil.ReposPath) (*Plugconf, error) {
 	content, err := ioutil.ReadFile(plugConf)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func ParsePlugconf(file *ast.File, src string) (*Plugconf, error) {
 	var configFunc string
 	var functions []string
 	var dependsFunc string
-	var depends []string
+	var depends pathutil.ReposPathList
 	var parseErr error
 
 	// Inspect nodes and get above values from plugconf script
@@ -100,7 +100,11 @@ func ParsePlugconf(file *ast.File, src string) (*Plugconf, error) {
 			configFunc = extractBody(fn, src)
 		case "s:depends":
 			dependsFunc = extractBody(fn, src)
-			depends = getDependencies(fn, src)
+			var err error
+			depends, err = getDependencies(fn, src)
+			if err != nil {
+				parseErr = err
+			}
 		default:
 			functions = append(functions, extractBody(fn, src))
 		}
@@ -173,8 +177,9 @@ func extractBody(fn *ast.Function, src string) string {
 	return src[pos.Offset:endpos.Offset]
 }
 
-func getDependencies(fn *ast.Function, src string) []string {
-	var deps []string
+func getDependencies(fn *ast.Function, src string) (pathutil.ReposPathList, error) {
+	var deps pathutil.ReposPathList
+	var parseErr error
 
 	ast.Inspect(fn, func(node ast.Node) bool {
 		// Cast to return node (return if it's not a return node)
@@ -188,10 +193,15 @@ func getDependencies(fn *ast.Function, src string) []string {
 			for i := range list.Values {
 				if str, ok := list.Values[i].(*ast.BasicLit); ok {
 					if deps == nil {
-						deps = make([]string, 0, len(list.Values))
+						deps = make(pathutil.ReposPathList, 0, len(list.Values))
 					}
 					if str.Kind == token.STRING {
-						deps = append(deps, str.Value[1:len(str.Value)-1])
+						reposPath, err := pathutil.NormalizeRepos(str.Value[1 : len(str.Value)-1])
+						if err != nil {
+							parseErr = err
+							return false
+						}
+						deps = append(deps, reposPath)
 					}
 				}
 			}
@@ -199,18 +209,18 @@ func getDependencies(fn *ast.Function, src string) []string {
 		return true
 	})
 
-	return deps
+	return deps, parseErr
 }
 
 // s:loaded_on() function is not included
-func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[string]*Plugconf) []byte {
+func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.ReposPath]*Plugconf) []byte {
 	functions := make([]string, 0, 64)
 	loadCmds := make([]string, 0, len(reposList))
 
 	for _, repos := range reposList {
 		p, exists := plugconf[repos.Path]
 		// :packadd <repos>
-		optName := filepath.Base(pathutil.PackReposPathOf(repos.Path))
+		optName := filepath.Base(pathutil.EncodeReposPath(repos.Path))
 		packadd := fmt.Sprintf("packadd %s", optName)
 		// autocommand event & patterns
 		var loadOn string
@@ -268,11 +278,11 @@ let g:loaded_volt_system_bundled_plugconf = 1`)
 
 var rxFuncName = regexp.MustCompile(`^(fu\w+!?\s+s:\w+)`)
 
-func convertToDecodableFunc(funcBody string, reposPath string, reposID int) string {
+func convertToDecodableFunc(funcBody string, reposPath pathutil.ReposPath, reposID int) string {
 	// Change function name (e.g. s:loaded_on() -> s:loaded_on_1())
 	funcBody = rxFuncName.ReplaceAllString(funcBody, fmt.Sprintf("${1}_%d", reposID))
 	// Add repos path as comment
-	funcBody = "\" " + reposPath + "\n" + funcBody
+	funcBody = "\" " + reposPath.String() + "\n" + funcBody
 	return funcBody
 }
 
@@ -296,7 +306,7 @@ func GenerateBundlePlugconf(reposList []lockjson.Repos) ([]byte, *multierror.Err
 	return makeBundledPlugconf(reposList, plugconfMap), nil
 }
 
-func RdepsOf(reposPath string, reposList []lockjson.Repos) ([]string, error) {
+func RdepsOf(reposPath pathutil.ReposPath, reposList []lockjson.Repos) (pathutil.ReposPathList, error) {
 	plugconfMap, merr := parsePlugconfAsMap(reposList)
 	if merr.ErrorOrNil() != nil {
 		return nil, merr
@@ -304,20 +314,20 @@ func RdepsOf(reposPath string, reposList []lockjson.Repos) ([]string, error) {
 	_, _, rdepsMap := getDepMaps(reposList, plugconfMap)
 	rdeps := rdepsMap[reposPath]
 	if rdeps == nil {
-		rdeps = make([]string, 0)
+		rdeps = make(pathutil.ReposPathList, 0)
 	}
 	return rdeps, nil
 }
 
 // Parse plugconf of reposList and return parsed plugconf info as map
-func parsePlugconfAsMap(reposList []lockjson.Repos) (map[string]*Plugconf, *multierror.Error) {
+func parsePlugconfAsMap(reposList []lockjson.Repos) (map[pathutil.ReposPath]*Plugconf, *multierror.Error) {
 	var merr *multierror.Error
-	plugconfMap := make(map[string]*Plugconf, len(reposList))
+	plugconfMap := make(map[pathutil.ReposPath]*Plugconf, len(reposList))
 	reposID := 1
 	for _, repos := range reposList {
 		var parsed *Plugconf
 		var err error
-		path := pathutil.PlugconfOf(repos.Path)
+		path := pathutil.Plugconf(repos.Path)
 		if pathutil.Exists(path) {
 			parsed, err = ParsePlugconfFile(path, reposID, repos.Path)
 		} else {
@@ -335,9 +345,9 @@ func parsePlugconfAsMap(reposList []lockjson.Repos) (map[string]*Plugconf, *mult
 
 // Move the plugins which was depended to previous plugin which depends to them.
 // reposList is sorted in-place.
-func sortByDepends(reposList []lockjson.Repos, plugconfMap map[string]*Plugconf) {
+func sortByDepends(reposList []lockjson.Repos, plugconfMap map[pathutil.ReposPath]*Plugconf) {
 	reposMap, depsMap, rdepsMap := getDepMaps(reposList, plugconfMap)
-	rank := make(map[string]int, len(reposList))
+	rank := make(map[pathutil.ReposPath]int, len(reposList))
 	for i := range reposList {
 		if _, exists := rank[reposList[i].Path]; !exists {
 			tree := makeDepTree(reposList[i].Path, reposMap, depsMap, rdepsMap)
@@ -351,10 +361,10 @@ func sortByDepends(reposList []lockjson.Repos, plugconfMap map[string]*Plugconf)
 	})
 }
 
-func getDepMaps(reposList []lockjson.Repos, plugconfMap map[string]*Plugconf) (map[string]*lockjson.Repos, map[string][]string, map[string][]string) {
-	reposMap := make(map[string]*lockjson.Repos, len(reposList))
-	depsMap := make(map[string][]string, len(reposList))
-	rdepsMap := make(map[string][]string, len(reposList))
+func getDepMaps(reposList []lockjson.Repos, plugconfMap map[pathutil.ReposPath]*Plugconf) (map[pathutil.ReposPath]*lockjson.Repos, map[pathutil.ReposPath]pathutil.ReposPathList, map[pathutil.ReposPath]pathutil.ReposPathList) {
+	reposMap := make(map[pathutil.ReposPath]*lockjson.Repos, len(reposList))
+	depsMap := make(map[pathutil.ReposPath]pathutil.ReposPathList, len(reposList))
+	rdepsMap := make(map[pathutil.ReposPath]pathutil.ReposPathList, len(reposList))
 	for i := range reposList {
 		reposPath := reposList[i].Path
 		reposMap[reposPath] = &reposList[i]
@@ -368,8 +378,8 @@ func getDepMaps(reposList []lockjson.Repos, plugconfMap map[string]*Plugconf) (m
 	return reposMap, depsMap, rdepsMap
 }
 
-func makeDepTree(reposPath string, reposMap map[string]*lockjson.Repos, depsMap map[string][]string, rdepsMap map[string][]string) *reposDepTree {
-	visited := make(map[string]*reposDepNode, len(reposMap))
+func makeDepTree(reposPath pathutil.ReposPath, reposMap map[pathutil.ReposPath]*lockjson.Repos, depsMap map[pathutil.ReposPath]pathutil.ReposPathList, rdepsMap map[pathutil.ReposPath]pathutil.ReposPathList) *reposDepTree {
+	visited := make(map[pathutil.ReposPath]*reposDepNode, len(reposMap))
 	node := makeNodes(visited, reposPath, reposMap, depsMap, rdepsMap)
 	leaves := make([]reposDepNode, 0, 10)
 	visitNode(node, func(n *reposDepNode) {
@@ -380,7 +390,7 @@ func makeDepTree(reposPath string, reposMap map[string]*lockjson.Repos, depsMap 
 	return &reposDepTree{leaves: leaves}
 }
 
-func makeNodes(visited map[string]*reposDepNode, reposPath string, reposMap map[string]*lockjson.Repos, depsMap map[string][]string, rdepsMap map[string][]string) *reposDepNode {
+func makeNodes(visited map[pathutil.ReposPath]*reposDepNode, reposPath pathutil.ReposPath, reposMap map[pathutil.ReposPath]*lockjson.Repos, depsMap map[pathutil.ReposPath]pathutil.ReposPathList, rdepsMap map[pathutil.ReposPath]pathutil.ReposPathList) *reposDepNode {
 	if node, exists := visited[reposPath]; exists {
 		return node
 	}
@@ -398,11 +408,11 @@ func makeNodes(visited map[string]*reposDepNode, reposPath string, reposMap map[
 }
 
 func visitNode(node *reposDepNode, callback func(*reposDepNode)) {
-	visited := make(map[string]bool, 10)
+	visited := make(map[pathutil.ReposPath]bool, 10)
 	doVisitNode(visited, node, callback)
 }
 
-func doVisitNode(visited map[string]bool, node *reposDepNode, callback func(*reposDepNode)) {
+func doVisitNode(visited map[pathutil.ReposPath]bool, node *reposDepNode, callback func(*reposDepNode)) {
 	if node == nil || node.repos == nil || visited[node.repos.Path] {
 		return
 	}
@@ -416,15 +426,15 @@ func doVisitNode(visited map[string]bool, node *reposDepNode, callback func(*rep
 	}
 }
 
-func makeRank(rank map[string]int, node *reposDepNode, value int) {
+func makeRank(rank map[pathutil.ReposPath]int, node *reposDepNode, value int) {
 	rank[node.repos.Path] = value
 	for i := range node.dependedBy {
 		makeRank(rank, &node.dependedBy[i], value+1)
 	}
 }
 
-func FetchPlugconf(reposPath string) (string, error) {
-	url := path.Join("https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates", reposPath+".vim")
+func FetchPlugconf(reposPath pathutil.ReposPath) (string, error) {
+	url := path.Join("https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates", reposPath.String()+".vim")
 	return httputil.GetContentString(url)
 }
 

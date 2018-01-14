@@ -12,6 +12,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/vim-volt/volt/cmd/buildinfo"
+	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -23,7 +24,7 @@ type symlinkBuilder struct {
 }
 
 // TODO: rollback when return err (!= nil)
-func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[string]*buildinfo.Repos) error {
+func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos) error {
 	// Exit if vim executable was not found in PATH
 	if _, err := pathutil.VimExecutable(); err != nil {
 		return err
@@ -34,7 +35,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	if err != nil {
 		return errors.New("could not read lock.json: " + err.Error())
 	}
-	profile, reposList, err := builder.getCurrentProfileAndReposList(lockJSON)
+	reposList, err := builder.getCurrentReposList(lockJSON)
 	if err != nil {
 		return err
 	}
@@ -45,7 +46,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	vimrcPath := filepath.Join(vimDir, pathutil.Vimrc)
 	gvimrcPath := filepath.Join(vimDir, pathutil.Gvimrc)
 	err = builder.installVimrcAndGvimrc(
-		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath, profile.UseVimrc, profile.UseGvimrc,
+		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath,
 	)
 	if err != nil {
 		return err
@@ -80,7 +81,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 			return err
 		}
 		if result.repos != nil {
-			logger.Debug("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
+			logger.Debug("Installing " + string(result.repos.Type) + " repository " + result.repos.Path.String() + " ... Done.")
 		}
 	}
 
@@ -101,10 +102,26 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 }
 
 func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
-	src := pathutil.FullReposPathOf(repos.Path)
-	dst := pathutil.PackReposPathOf(repos.Path)
+	src := pathutil.FullReposPath(repos.Path)
+	dst := pathutil.EncodeReposPath(repos.Path)
+
 	copied := false
 	if repos.Type == lockjson.ReposGitType {
+		// Show warning when HEAD and locked revision are different
+		head, err := gitutil.GetHEAD(repos.Path)
+		if err != nil {
+			done <- actionReposResult{
+				err: fmt.Errorf("failed to get HEAD revision of %q: %s", src, err.Error()),
+			}
+			return
+		}
+		if head != repos.Version {
+			logger.Warnf("%s: HEAD and locked revision are different", repos.Path)
+			logger.Warn("  HEAD: " + head)
+			logger.Warn("  locked revision: " + repos.Version)
+			logger.Warn("  Please run 'volt get -l' to update locked revision.")
+		}
+
 		// Open a repository to determine it is bare repository or not
 		r, err := git.PlainOpen(src)
 		if err != nil {

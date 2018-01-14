@@ -33,19 +33,17 @@ const (
 )
 
 type Repos struct {
-	Type    ReposType `json:"type"`
-	TrxID   int64     `json:"trx_id"`
-	Path    string    `json:"path"`
-	Version string    `json:"version"`
+	Type    ReposType          `json:"type"`
+	TrxID   int64              `json:"trx_id"`
+	Path    pathutil.ReposPath `json:"path"`
+	Version string             `json:"version"`
 }
 
-type profReposPath []string
+type profReposPath []pathutil.ReposPath
 
 type Profile struct {
 	Name      string        `json:"name"`
 	ReposPath profReposPath `json:"repos_path"`
-	UseVimrc  bool          `json:"use_vimrc"`
-	UseGvimrc bool          `json:"use_gvimrc"`
 }
 
 const lockJSONVersion = 2
@@ -59,9 +57,7 @@ func initialLockJSON() *LockJSON {
 		Profiles: []Profile{
 			Profile{
 				Name:      "default",
-				ReposPath: make([]string, 0),
-				UseVimrc:  true,
-				UseGvimrc: true,
+				ReposPath: make([]pathutil.ReposPath, 0),
 			},
 		},
 	}
@@ -128,14 +124,18 @@ func validate(lockJSON *LockJSON) error {
 		return err
 	}
 
-	// Validate if duplicate repos[]/path exist
 	dup := make(map[string]bool, len(lockJSON.Repos))
 	for i := range lockJSON.Repos {
 		repos := &lockJSON.Repos[i]
-		if _, exists := dup[repos.Path]; exists {
-			return errors.New("duplicate repos '" + repos.Path + "'")
+		// Validate if repos[]/path is invalid format
+		if _, err := pathutil.NormalizeRepos(repos.Path.String()); err != nil {
+			return errors.New("'" + repos.Path.String() + "' is invalid repos path")
 		}
-		dup[repos.Path] = true
+		// Validate if duplicate repos[]/path exist
+		if _, exists := dup[repos.Path.String()]; exists {
+			return errors.New("duplicate repos '" + repos.Path.String() + "'")
+		}
+		dup[repos.Path.String()] = true
 	}
 
 	// Validate if duplicate profiles[]/name exist
@@ -148,15 +148,19 @@ func validate(lockJSON *LockJSON) error {
 		dup[profile.Name] = true
 	}
 
-	// Validate if duplicate profiles[]/repos_path[] exist
 	for i := range lockJSON.Profiles {
 		profile := &lockJSON.Profiles[i]
 		dup = make(map[string]bool, len(lockJSON.Profiles)*10)
 		for _, reposPath := range profile.ReposPath {
-			if _, exists := dup[reposPath]; exists {
-				return errors.New("duplicate '" + reposPath + "' (repos_path) in profile '" + profile.Name + "'")
+			// Validate if profiles[]/repos_path[] is invalid format
+			if _, err := pathutil.NormalizeRepos(reposPath.String()); err != nil {
+				return errors.New("'" + reposPath.String() + "' is invalid repos path")
 			}
-			dup[reposPath] = true
+			// Validate if duplicate profiles[]/repos_path[] exist
+			if _, exists := dup[reposPath.String()]; exists {
+				return errors.New("duplicate '" + reposPath.String() + "' (repos_path) in profile '" + profile.Name + "'")
+			}
+			dup[reposPath.String()] = true
 		}
 	}
 
@@ -176,14 +180,14 @@ func validate(lockJSON *LockJSON) error {
 	// Validate if profiles[]/repos_path[] exists in repos[]/path
 	reposMap := make(map[string]*Repos, len(lockJSON.Repos))
 	for i := range lockJSON.Repos {
-		reposMap[lockJSON.Repos[i].Path] = &lockJSON.Repos[i]
+		reposMap[lockJSON.Repos[i].Path.String()] = &lockJSON.Repos[i]
 	}
 	for i := range lockJSON.Profiles {
 		profile := &lockJSON.Profiles[i]
 		for j, reposPath := range profile.ReposPath {
-			if _, exists := reposMap[reposPath]; !exists {
+			if _, exists := reposMap[reposPath.String()]; !exists {
 				return errors.New(
-					"'" + reposPath + "' (profiles[" + strconv.Itoa(i) +
+					"'" + reposPath.String() + "' (profiles[" + strconv.Itoa(i) +
 						"].repos_path[" + strconv.Itoa(j) + "]) doesn't exist in repos")
 			}
 		}
@@ -232,7 +236,7 @@ func validateMissing(lockJSON *LockJSON) error {
 			if repos.TrxID == 0 {
 				return errors.New("missing: repos[" + strconv.Itoa(i) + "].trx_id")
 			}
-			if repos.Path == "" {
+			if repos.Path.String() == "" {
 				return errors.New("missing: repos[" + strconv.Itoa(i) + "].path")
 			}
 		default:
@@ -251,7 +255,7 @@ func validateMissing(lockJSON *LockJSON) error {
 			return errors.New("missing: profile[" + strconv.Itoa(i) + "].repos_path")
 		}
 		for j, reposPath := range profile.ReposPath {
-			if reposPath == "" {
+			if reposPath.String() == "" {
 				return errors.New("missing: profile[" + strconv.Itoa(i) + "].repos_path[" + strconv.Itoa(j) + "]")
 			}
 		}
@@ -301,7 +305,7 @@ func (profs *ProfileList) FindIndexByName(name string) int {
 	return -1
 }
 
-func (profs *ProfileList) RemoveAllReposPath(reposPath string) error {
+func (profs *ProfileList) RemoveAllReposPath(reposPath pathutil.ReposPath) error {
 	removed := false
 	for i := range *profs {
 		for j := 0; j < len((*profs)[i].ReposPath); {
@@ -317,41 +321,41 @@ func (profs *ProfileList) RemoveAllReposPath(reposPath string) error {
 		}
 	}
 	if !removed {
-		return errors.New("no matching profiles[]/repos_path[]: " + reposPath)
+		return errors.New("no matching profiles[]/repos_path[]: " + reposPath.String())
 	}
 	return nil
 }
 
-func (reposList *ReposList) Contains(reposPath string) bool {
+func (reposList *ReposList) Contains(reposPath pathutil.ReposPath) bool {
 	_, err := reposList.FindByPath(reposPath)
 	return err == nil
 }
 
-func (reposList *ReposList) FindByPath(reposPath string) (*Repos, error) {
+func (reposList *ReposList) FindByPath(reposPath pathutil.ReposPath) (*Repos, error) {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
 		if repos.Path == reposPath {
 			return repos, nil
 		}
 	}
-	return nil, errors.New("repos '" + reposPath + "' does not exist")
+	return nil, errors.New("repos '" + reposPath.String() + "' does not exist")
 }
 
-func (reposList *ReposList) RemoveAllByPath(reposPath string) error {
+func (reposList *ReposList) RemoveAllByPath(reposPath pathutil.ReposPath) error {
 	for i := range *reposList {
 		if (*reposList)[i].Path == reposPath {
 			*reposList = append((*reposList)[:i], (*reposList)[i+1:]...)
 			return nil
 		}
 	}
-	return errors.New("no matching repos[]/path: " + reposPath)
+	return errors.New("no matching repos[]/path: " + reposPath.String())
 }
 
-func (reposPathList *profReposPath) Contains(reposPath string) bool {
+func (reposPathList *profReposPath) Contains(reposPath pathutil.ReposPath) bool {
 	return reposPathList.IndexOf(reposPath) >= 0
 }
 
-func (reposPathList *profReposPath) IndexOf(reposPath string) int {
+func (reposPathList *profReposPath) IndexOf(reposPath pathutil.ReposPath) int {
 	for i := range *reposPathList {
 		if (*reposPathList)[i] == reposPath {
 			return i

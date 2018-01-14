@@ -41,7 +41,8 @@ Quick example
   $ volt rm -r -p tyru/caw.vim # Remove tyru/caw.vim plugin from lock.json, and remove repository directory, plugconf
 
 Description
-  Uninstall {repository} on every profile.
+  Uninstall one or more {repository} from every profile.
+  This results in removing vim plugins from ~/.vim/pack/volt/opt/ directory.
   If {repository} is depended by other repositories, this command exits with an error.
 
   If -r option was given, remove also repository directories of specified repositories.
@@ -84,7 +85,7 @@ func (cmd *rmCmd) Run(args []string) int {
 	return 0
 }
 
-func (cmd *rmCmd) parseArgs(args []string) ([]string, error) {
+func (cmd *rmCmd) parseArgs(args []string) ([]pathutil.ReposPath, error) {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {
@@ -96,7 +97,7 @@ func (cmd *rmCmd) parseArgs(args []string) ([]string, error) {
 		return nil, errors.New("repository was not given")
 	}
 
-	var reposPathList []string
+	var reposPathList []pathutil.ReposPath
 	for _, arg := range fs.Args() {
 		reposPath, err := pathutil.NormalizeRepos(arg)
 		if err != nil {
@@ -107,7 +108,7 @@ func (cmd *rmCmd) parseArgs(args []string) ([]string, error) {
 	return reposPathList, nil
 }
 
-func (cmd *rmCmd) doRemove(reposPathList []string) error {
+func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -130,7 +131,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string) error {
 		}
 		if len(rdeps) > 0 {
 			return fmt.Errorf("cannot remove '%s' because it's depended by '%s'",
-				reposPath, strings.Join(rdeps, "', '"))
+				reposPath, strings.Join(rdeps.Strings(), "', '"))
 		}
 	}
 
@@ -138,7 +139,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string) error {
 	for _, reposPath := range reposPathList {
 		// Remove repository directory
 		if cmd.rmRepos {
-			fullReposPath := pathutil.FullReposPathOf(reposPath)
+			fullReposPath := pathutil.FullReposPath(reposPath)
 			if pathutil.Exists(fullReposPath) {
 				if err = cmd.removeRepos(fullReposPath); err != nil {
 					return err
@@ -151,7 +152,7 @@ func (cmd *rmCmd) doRemove(reposPathList []string) error {
 
 		// Remove plugconf file
 		if cmd.rmPlugconf {
-			plugconfPath := pathutil.PlugconfOf(reposPath)
+			plugconfPath := pathutil.Plugconf(reposPath)
 			if pathutil.Exists(plugconfPath) {
 				if err = cmd.removePlugconf(plugconfPath); err != nil {
 					return err

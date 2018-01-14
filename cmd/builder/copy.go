@@ -2,6 +2,7 @@ package builder
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/cmd/buildinfo"
 	"github.com/vim-volt/volt/fileutil"
+	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -23,7 +25,7 @@ type copyBuilder struct {
 	BaseBuilder
 }
 
-func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[string]*buildinfo.Repos) error {
+func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos) error {
 	// Exit if vim executable was not found in PATH
 	vimExePath, err := pathutil.VimExecutable()
 	if err != nil {
@@ -37,7 +39,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	}
 
 	// Get current profile's repos list
-	profile, reposList, err := builder.getCurrentProfileAndReposList(lockJSON)
+	reposList, err := builder.getCurrentReposList(lockJSON)
 	if err != nil {
 		return err
 	}
@@ -48,7 +50,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	vimrcPath := filepath.Join(vimDir, pathutil.Vimrc)
 	gvimrcPath := filepath.Join(vimDir, pathutil.Gvimrc)
 	err = builder.installVimrcAndGvimrc(
-		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath, profile.UseVimrc, profile.UseGvimrc,
+		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath,
 	)
 	if err != nil {
 		return err
@@ -75,7 +77,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	// Wait copy
 	var copyModified bool
 	copyErr := builder.waitCopyRepos(copyDone, copyCount, func(result *actionReposResult) error {
-		logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path + " ... Done.")
+		logger.Info("Installing " + string(result.repos.Type) + " repository " + result.repos.Path.String() + " ... Done.")
 		// Construct buildInfo from the result
 		builder.constructBuildInfo(buildInfo, result)
 		copyModified = true
@@ -118,7 +120,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	return nil
 }
 
-func (builder *copyBuilder) copyReposList(buildReposMap map[string]*buildinfo.Repos, reposList []lockjson.Repos, optDir, vimExePath string) (chan actionReposResult, int) {
+func (builder *copyBuilder) copyReposList(buildReposMap map[pathutil.ReposPath]*buildinfo.Repos, reposList []lockjson.Repos, optDir, vimExePath string) (chan actionReposResult, int) {
 	copyDone := make(chan actionReposResult, len(reposList))
 	copyCount := 0
 	for i := range reposList {
@@ -144,8 +146,21 @@ func (builder *copyBuilder) copyReposList(buildReposMap map[string]*buildinfo.Re
 }
 
 func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buildinfo.Repos, vimExePath string, done chan actionReposResult) (int, error) {
+	src := pathutil.FullReposPath(repos.Path)
+
+	// Show warning when HEAD and locked revision are different
+	head, err := gitutil.GetHEAD(repos.Path)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get HEAD revision of %q: %s", src, err.Error())
+	}
+	if head != repos.Version {
+		logger.Warnf("%s: HEAD and locked revision are different", repos.Path)
+		logger.Warn("  HEAD: " + head)
+		logger.Warn("  locked revision: " + repos.Version)
+		logger.Warn("  Please run 'volt get -l' to update locked revision.")
+	}
+
 	// Open ~/volt/repos/{repos}
-	src := pathutil.FullReposPathOf(repos.Path)
 	r, err := git.PlainOpen(src)
 	if err != nil {
 		return 0, errors.New("failed to open repository: " + err.Error())
@@ -184,17 +199,17 @@ func (builder *copyBuilder) copyReposStatic(repos *lockjson.Repos, buildRepos *b
 
 // Remove vim repos not found in lock.json current repos list
 func (builder *copyBuilder) removeReposList(reposList lockjson.ReposList, reposDirList []os.FileInfo) (chan actionReposResult, int) {
-	removeList := make([]string, 0, len(reposList))
+	removeList := make([]pathutil.ReposPath, 0, len(reposList))
 	for i := range reposDirList {
-		reposPath := pathutil.UnpackPathOf(reposDirList[i].Name())
+		reposPath := pathutil.DecodeReposPath(reposDirList[i].Name())
 		if !reposList.Contains(reposPath) {
 			removeList = append(removeList, reposPath)
 		}
 	}
 	removeDone := make(chan actionReposResult, len(removeList))
 	for i := range removeList {
-		go func(reposPath string) {
-			err := os.RemoveAll(pathutil.PackReposPathOf(reposPath))
+		go func(reposPath pathutil.ReposPath) {
+			err := os.RemoveAll(pathutil.EncodeReposPath(reposPath))
 			logger.Info("Removing " + reposPath + " ... Done.")
 			removeDone <- actionReposResult{
 				err:   err,
@@ -213,7 +228,7 @@ func (*copyBuilder) waitCopyRepos(copyDone chan actionReposResult, copyCount int
 			merr = multierror.Append(
 				merr,
 				errors.New(
-					"failed to copy repository '"+result.repos.Path+
+					"failed to copy repository '"+result.repos.Path.String()+
 						"': "+result.err.Error()))
 		} else {
 			err := callback(&result)
@@ -270,7 +285,7 @@ func (*copyBuilder) waitRemoveRepos(removeDone chan actionReposResult, removeCou
 		if result.err != nil {
 			target := "files"
 			if result.repos != nil {
-				target = result.repos.Path
+				target = result.repos.Path.String()
 			}
 			merr = multierror.Append(
 				merr, errors.New(
@@ -316,8 +331,8 @@ func (*copyBuilder) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *buildi
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
 func (builder *copyBuilder) updateGitRepos(repos *lockjson.Repos, r *git.Repository, copyFromGitObjects bool, vimExePath string, done chan actionReposResult) {
-	src := pathutil.FullReposPathOf(repos.Path)
-	dst := pathutil.PackReposPathOf(repos.Path)
+	src := pathutil.FullReposPath(repos.Path)
+	dst := pathutil.EncodeReposPath(repos.Path)
 
 	// Remove ~/.vim/volt/opt/{repos}
 	// TODO: Do not remove here, copy newer files only after
@@ -472,7 +487,7 @@ func (builder *copyBuilder) hasChangedStaticRepos(repos *lockjson.Repos, buildRe
 		return true
 	}
 
-	src := pathutil.FullReposPathOf(repos.Path)
+	src := pathutil.FullReposPath(repos.Path)
 
 	// Get latest mtime of src
 	// TODO: Don't check mtime here, do it when copy altogether
@@ -499,8 +514,8 @@ func (builder *copyBuilder) hasChangedStaticRepos(repos *lockjson.Repos, buildRe
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
 func (builder *copyBuilder) updateStaticRepos(repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
-	src := pathutil.FullReposPathOf(repos.Path)
-	dst := pathutil.PackReposPathOf(repos.Path)
+	src := pathutil.FullReposPath(repos.Path)
+	dst := pathutil.EncodeReposPath(repos.Path)
 
 	// Remove ~/.vim/volt/opt/{repos}
 	// TODO: Do not remove here, copy newer files only after

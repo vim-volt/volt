@@ -21,19 +21,19 @@ Usage
   volt COMMAND ARGS
 
 Command
-  get [-l] [-u] [-v] [{repository} ...]
+  get [-l] [-u] [{repository} ...]
     Install or upgrade given {repository} list, or add local {repository} list as plugins
 
-  rm {repository} [{repository2} ...]
-    Uninstall vim plugin and plugconf files
+  rm [-r] [-p] {repository} [{repository2} ...]
+    Remove vim plugin from ~/.vim/pack/volt/opt/ directory
+
+  list [-f {text/template string}]
+    Vim plugin information extractor.
+    Unless -f flag was given, this command shows vim plugins of **current profile** (not all installed plugins) by default.
 
   enable {repository} [{repository2} ...]
     This is shortcut of:
     volt profile add -current {repository} [{repository2} ...]
-
-  list
-    This is shortcut of:
-    volt profile show -current
 
   disable {repository} [{repository2} ...]
     This is shortcut of:
@@ -63,10 +63,6 @@ Command
   profile rm {name} {repository} [{repository2} ...]
     Remove one or more repositories to profile
 
-  profile use [-current | {name}] vimrc [true | false]
-  profile use [-current | {name}] gvimrc [true | false]
-    Set vimrc / gvimrc flag to true or false.
-
   build [-full]
     Build ~/.vim/pack/volt/ directory
 
@@ -78,7 +74,7 @@ Command
 
   version
     Show volt command version
- ```
+```
 
 See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.md) for more details.
 
@@ -175,7 +171,7 @@ This is `$HOME/volt` by default.
 For example, installing [tyru/caw.vim](https://github.com/tyru/caw.vim) plugin:
 
 ```
-$ volt get https://github.com/tyru/caw.vim   # most verbose way
+$ volt get https://github.com/tyru/caw.vim   # most verbose way (but handy when you copy & paste from browser address bar :)
 $ volt get github.com/tyru/caw.vim           # you can omit https:// of repository URL
 $ volt get tyru/caw.vim                      # you can omit github.com/ if the repository is on GitHub
 ```
