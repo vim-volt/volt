@@ -328,6 +328,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 	// true:upgrade, false:install
 	fullReposPath := pathutil.FullReposPath(reposPath)
 	doUpgrade := cmd.upgrade && pathutil.Exists(fullReposPath)
+	doInstall := !pathutil.Exists(fullReposPath)
 
 	var fromHash string
 	var err error
@@ -386,7 +387,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		} else {
 			upgraded = true
 		}
-	} else if !pathutil.Exists(fullReposPath) {
+	} else if doInstall {
 		// Install plugin
 		logger.Debug("Installing " + reposPath + " ...")
 		err := cmd.fetchPlugin(reposPath)
