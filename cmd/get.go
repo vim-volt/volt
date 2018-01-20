@@ -353,6 +353,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 
 	var status string
 	var upgraded bool
+	var checkRevision bool
 
 	if doUpgrade {
 		// when cmd.upgrade is true, repos must not be nil.
@@ -391,8 +392,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		// Install plugin
 		logger.Debug("Installing " + reposPath + " ...")
 		err := cmd.fetchPlugin(reposPath)
-		// if err == errRepoExists, silently skip
-		if err != nil && err != errRepoExists {
+		if err != nil {
 			result := errors.New("failed to install plugin: " + err.Error())
 			logger.Debug("Rollbacking " + fullReposPath + " ...")
 			err = cmd.rollbackRepos(fullReposPath)
@@ -406,11 +406,10 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			}
 			return
 		}
-		if err == errRepoExists {
-			status = fmt.Sprintf(fmtAlreadyExists, statusPrefixNoChange, reposPath)
-		} else {
-			status = fmt.Sprintf(fmtInstalled, statusPrefixInstalled, reposPath)
-		}
+		status = fmt.Sprintf(fmtInstalled, statusPrefixInstalled, reposPath)
+	} else {
+		status = fmt.Sprintf(fmtAlreadyExists, statusPrefixNoChange, reposPath)
+		checkRevision = true
 	}
 
 	var toHash string
@@ -439,10 +438,8 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		status = fmt.Sprintf(fmtUpgraded, statusPrefixUpgraded, reposPath, fromHash, toHash)
 	}
 
-	if repos != nil && repos.Version != toHash {
+	if checkRevision && repos != nil && repos.Version != toHash {
 		status = fmt.Sprintf(fmtRevUpdate, statusPrefixUpgraded, reposPath, repos.Version, toHash)
-	} else {
-		status = fmt.Sprintf(fmtNoChange, statusPrefixNoChange, reposPath)
 	}
 
 	done <- getParallelResult{
