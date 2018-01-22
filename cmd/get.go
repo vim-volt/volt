@@ -564,7 +564,7 @@ func (cmd *getCmd) fetchPlugconf(reposPath pathutil.ReposPath) error {
 	}
 	content, err := plugconf.GenPlugconfByTemplate(tmpl, filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse error in fetched plugconf %s: %s", reposPath, err.Error())
 	}
 	os.MkdirAll(filepath.Dir(filename), 0755)
 	err = ioutil.WriteFile(filename, content, 0644)

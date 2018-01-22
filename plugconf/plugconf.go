@@ -65,7 +65,7 @@ func ParsePlugconfFile(plugConf string, reposID int, reposPath pathutil.ReposPat
 	}
 	parsed, err := ParsePlugconf(file, src)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse error in %s: %s", plugConf, err.Error())
 	}
 	parsed.reposID = reposID
 	parsed.reposPath = reposPath
