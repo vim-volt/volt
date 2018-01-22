@@ -30,6 +30,17 @@ const (
 	loadOnExcmd               = "(loadOnExcmd)"
 )
 
+const (
+	excmdLoadPlugin   = "s:__volt_excmd_load_plugin"
+	lazyLoadExcmdFunc = "s:__volt_lazy_load_excmd"
+	completeFunc      = "s:__volt_complete"
+)
+
+func isProhibitedFuncName(name string) bool {
+	return name == lazyLoadExcmdFunc ||
+		name == completeFunc
+}
+
 type Plugconf struct {
 	reposID     int
 	reposPath   pathutil.ReposPath
@@ -89,23 +100,25 @@ func ParsePlugconf(file *ast.File, src string) (*Plugconf, error) {
 			name = ident.Name
 		}
 
-		switch name {
-		case "s:loaded_on":
+		switch {
+		case name == "s:loaded_on":
 			loadOnFunc = extractBody(fn, src)
 			var err error
 			loadOn, loadOnArg, err = inspectReturnValue(fn)
 			if err != nil {
 				parseErr = err
 			}
-		case "s:config":
+		case name == "s:config":
 			configFunc = extractBody(fn, src)
-		case "s:depends":
+		case name == "s:depends":
 			dependsFunc = extractBody(fn, src)
 			var err error
 			depends, err = getDependencies(fn, src)
 			if err != nil {
 				parseErr = err
 			}
+		case isProhibitedFuncName(name):
+			parseErr = fmt.Errorf("'%s' is prohibited function name. Please use other function name.", name)
 		default:
 			functions = append(functions, extractBody(fn, src))
 		}
@@ -246,7 +259,7 @@ func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.Repos
 			for _, excmd := range strings.Split(p.loadOnArg, ",") {
 				lazyExcmd[excmd] = invokedCmd
 				loadCmds = append(loadCmds,
-					fmt.Sprintf("  command -complete=customlist,s:_complete -bang -bar -range -nargs=* %[1]s call s:_lazy_load_excmd('%[1]s', <q-args>, expand('<bang>'), expand('<line1>'), expand('<line2>'))", excmd))
+					fmt.Sprintf("  command -complete=customlist,%[1]s -bang -bar -range -nargs=* %[3]s call %[2]s('%[3]s', <q-args>, expand('<bang>'), expand('<line1>'), expand('<line2>'))", completeFunc, lazyLoadExcmdFunc, excmd))
 			}
 		}
 
@@ -276,13 +289,13 @@ let g:loaded_volt_system_bundled_plugconf = 1`)
 		//   https://github.com/Shougo/dein.vim/blob/2adba7655b23f2fc1ddcd35e15d380c5069a3712/autoload/dein/autoload.vim#L216-L232
 		buf.WriteString(`
 
-let s:_excmd_load_plugin = ` + string(lazyExcmdJSON) + `
+let ` + excmdLoadPlugin + ` = ` + string(lazyExcmdJSON) + `
 
-function! s:_lazy_load_excmd(command, args, bang, line1, line2) abort
+function ` + lazyLoadExcmdFunc + `(command, args, bang, line1, line2) abort
   if exists(':' . a:command) is# 2
     execute 'delcommand' a:command
   endif
-  execute get(s:_excmd_load_plugin, a:command, '')
+  execute get(` + excmdLoadPlugin + `, a:command, '')
   if exists(':' . a:command) isnot# 2
     echohl ErrorMsg
     echomsg printf('[volt] Lazy loading of Ex command '%s' failed: '%s' is not found', a:command, a:command)
@@ -300,12 +313,12 @@ function! s:_lazy_load_excmd(command, args, bang, line1, line2) abort
   endtry
 endfunction
 
-function! s:_complete(arglead, cmdline, cursorpos) abort
+function ` + completeFunc + `(arglead, cmdline, cursorpos) abort
   let command = matchstr(a:cmdline, '\h\w*')
   if exists(':' . command) is# 2
     execute 'delcommand' command
   endif
-  execute get(s:_excmd_load_plugin, command, '')
+  execute get(` + excmdLoadPlugin + `, command, '')
   if exists(':' . command) is# 2
     call feedkeys("\<C-d>", 'n')
   endif
