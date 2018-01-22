@@ -24,7 +24,7 @@ import (
 type loadOnType string
 
 const (
-	loadOnStart    loadOnType = "VimEnter"
+	loadOnStart    loadOnType = "(loadOnStart)"
 	loadOnFileType            = "FileType"
 	loadOnExcmd               = "CmdUndefined"
 )
@@ -218,39 +218,33 @@ func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.Repos
 	loadCmds := make([]string, 0, len(reposList))
 
 	for _, repos := range reposList {
-		p, exists := plugconf[repos.Path]
+		p, hasPlugconf := plugconf[repos.Path]
 		// :packadd <repos>
 		optName := filepath.Base(pathutil.EncodeReposPath(repos.Path))
 		packadd := fmt.Sprintf("packadd %s", optName)
-		// autocommand event & patterns
-		var loadOn string
-		var patterns []string
-		if !exists || p.loadOn == loadOnStart {
-			loadOn = string(loadOnStart)
-		} else if p.loadOnArg == "" {
-			loadOn = string(p.loadOn)
-			patterns = []string{"*"}
-		} else {
-			loadOn = string(p.loadOn)
-			patterns = strings.Split(p.loadOnArg, ",")
-		}
+
 		// s:config() and invoked command
 		var invokedCmd string
-		if exists && p.configFunc != "" {
+		if hasPlugconf && p.configFunc != "" {
 			functions = append(functions, convertToDecodableFunc(p.configFunc, p.reposPath, p.reposID))
 			invokedCmd = fmt.Sprintf("call s:config_%d() | %s", p.reposID, packadd)
 		} else {
 			invokedCmd = packadd
 		}
-		if loadOn == string(loadOnStart) {
+
+		// Bootstrap statements
+		switch {
+		case !hasPlugconf || p.loadOn == loadOnStart:
 			loadCmds = append(loadCmds, "  "+invokedCmd)
-		} else {
-			for i := range patterns {
-				autocmd := fmt.Sprintf("  autocmd %s %s %s", loadOn, patterns[i], invokedCmd)
-				loadCmds = append(loadCmds, autocmd)
-			}
+		case p.loadOn == loadOnFileType:
+			fallthrough
+		case p.loadOn == loadOnExcmd:
+			autocmd := fmt.Sprintf("  autocmd %s %s %s", string(p.loadOn), p.loadOnArg, invokedCmd)
+			loadCmds = append(loadCmds, autocmd)
 		}
-		if exists {
+
+		// User defined functions in plugconf
+		if hasPlugconf {
 			functions = append(functions, p.functions...)
 		}
 	}
