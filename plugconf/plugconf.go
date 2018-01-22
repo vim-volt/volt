@@ -2,6 +2,7 @@ package plugconf
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -26,8 +27,19 @@ type loadOnType string
 const (
 	loadOnStart    loadOnType = "(loadOnStart)"
 	loadOnFileType            = "FileType"
-	loadOnExcmd               = "CmdUndefined"
+	loadOnExcmd               = "(loadOnExcmd)"
 )
+
+const (
+	excmdLoadPlugin   = "s:__volt_excmd_load_plugin"
+	lazyLoadExcmdFunc = "s:__volt_lazy_load_excmd"
+	completeFunc      = "s:__volt_complete"
+)
+
+func isProhibitedFuncName(name string) bool {
+	return name == lazyLoadExcmdFunc ||
+		name == completeFunc
+}
 
 type Plugconf struct {
 	reposID     int
@@ -53,7 +65,7 @@ func ParsePlugconfFile(plugConf string, reposID int, reposPath pathutil.ReposPat
 	}
 	parsed, err := ParsePlugconf(file, src)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse error in %s: %s", plugConf, err.Error())
 	}
 	parsed.reposID = reposID
 	parsed.reposPath = reposPath
@@ -88,23 +100,25 @@ func ParsePlugconf(file *ast.File, src string) (*Plugconf, error) {
 			name = ident.Name
 		}
 
-		switch name {
-		case "s:loaded_on":
+		switch {
+		case name == "s:loaded_on":
 			loadOnFunc = extractBody(fn, src)
 			var err error
 			loadOn, loadOnArg, err = inspectReturnValue(fn)
 			if err != nil {
 				parseErr = err
 			}
-		case "s:config":
+		case name == "s:config":
 			configFunc = extractBody(fn, src)
-		case "s:depends":
+		case name == "s:depends":
 			dependsFunc = extractBody(fn, src)
 			var err error
 			depends, err = getDependencies(fn, src)
 			if err != nil {
 				parseErr = err
 			}
+		case isProhibitedFuncName(name):
+			parseErr = fmt.Errorf("'%s' is prohibited function name. Please use other function name.", name)
 		default:
 			functions = append(functions, extractBody(fn, src))
 		}
@@ -213,9 +227,10 @@ func getDependencies(fn *ast.Function, src string) (pathutil.ReposPathList, erro
 }
 
 // s:loaded_on() function is not included
-func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.ReposPath]*Plugconf) []byte {
+func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.ReposPath]*Plugconf) ([]byte, error) {
 	functions := make([]string, 0, 64)
 	loadCmds := make([]string, 0, len(reposList))
+	lazyExcmd := make(map[string]string, len(reposList))
 
 	for _, repos := range reposList {
 		p, hasPlugconf := plugconf[repos.Path]
@@ -237,10 +252,15 @@ func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.Repos
 		case !hasPlugconf || p.loadOn == loadOnStart:
 			loadCmds = append(loadCmds, "  "+invokedCmd)
 		case p.loadOn == loadOnFileType:
-			fallthrough
+			loadCmds = append(loadCmds,
+				fmt.Sprintf("  autocmd %s %s %s", string(p.loadOn), p.loadOnArg, invokedCmd))
 		case p.loadOn == loadOnExcmd:
-			autocmd := fmt.Sprintf("  autocmd %s %s %s", string(p.loadOn), p.loadOnArg, invokedCmd)
-			loadCmds = append(loadCmds, autocmd)
+			// Define dummy Ex commands
+			for _, excmd := range strings.Split(p.loadOnArg, ",") {
+				lazyExcmd[excmd] = invokedCmd
+				loadCmds = append(loadCmds,
+					fmt.Sprintf("  command -complete=customlist,%[1]s -bang -bar -range -nargs=* %[3]s call %[2]s('%[3]s', <q-args>, expand('<bang>'), expand('<line1>'), expand('<line2>'))", completeFunc, lazyLoadExcmdFunc, excmd))
+			}
 		}
 
 		// User defined functions in plugconf
@@ -258,6 +278,54 @@ let g:loaded_volt_system_bundled_plugconf = 1`)
 		buf.WriteString("\n\n")
 		buf.WriteString(strings.Join(functions, "\n\n"))
 	}
+	if len(lazyExcmd) > 0 {
+		lazyExcmdJSON, err := json.Marshal(lazyExcmd)
+		if err != nil {
+			return nil, err
+		}
+		// * dein#autoload#_on_cmd()
+		//   https://github.com/Shougo/dein.vim/blob/2adba7655b23f2fc1ddcd35e15d380c5069a3712/autoload/dein/autoload.vim#L157-L175
+		// * dein#autoload#_dummy_complete()
+		//   https://github.com/Shougo/dein.vim/blob/2adba7655b23f2fc1ddcd35e15d380c5069a3712/autoload/dein/autoload.vim#L216-L232
+		buf.WriteString(`
+
+let ` + excmdLoadPlugin + ` = ` + string(lazyExcmdJSON) + `
+
+function ` + lazyLoadExcmdFunc + `(command, args, bang, line1, line2) abort
+  if exists(':' . a:command) is# 2
+    execute 'delcommand' a:command
+  endif
+  execute get(` + excmdLoadPlugin + `, a:command, '')
+  if exists(':' . a:command) isnot# 2
+    echohl ErrorMsg
+    echomsg printf('[volt] Lazy loading of Ex command '%s' failed: '%s' is not found', a:command, a:command)
+    echohl None
+    return
+  endif
+  let range = (a:line1 is# a:line2) ? '' :
+        \ (a:line1 is# line("'<") && a:line2 is# line("'>")) ?
+        \ "'<,'>" : a:line1 . ',' . a:line2
+  try
+    execute range . a:command . a:bang a:args
+  catch /^Vim\%((\a\+)\)\=:E481/
+    " E481: No range allowed
+    execute a:command . a:bang a:args
+  endtry
+endfunction
+
+function ` + completeFunc + `(arglead, cmdline, cursorpos) abort
+  let command = matchstr(a:cmdline, '\h\w*')
+  if exists(':' . command) is# 2
+    execute 'delcommand' command
+  endif
+  execute get(` + excmdLoadPlugin + `, command, '')
+  if exists(':' . command) is# 2
+    call feedkeys("\<C-d>", 'n')
+  endif
+  return [a:arglead]
+endfunction
+`)
+	}
 	if len(loadCmds) > 0 {
 		buf.WriteString("\n\n")
 		buf.WriteString(`augroup volt-bundled-plugconf
@@ -267,7 +335,7 @@ let g:loaded_volt_system_bundled_plugconf = 1`)
 		buf.WriteString("\naugroup END")
 	}
 
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }
 
 var rxFuncName = regexp.MustCompile(`^(fu\w+!?\s+s:\w+)`)
@@ -297,7 +365,8 @@ func GenerateBundlePlugconf(reposList []lockjson.Repos) ([]byte, *multierror.Err
 		return nil, merr
 	}
 	sortByDepends(reposList, plugconfMap)
-	return makeBundledPlugconf(reposList, plugconfMap), nil
+	content, err := makeBundledPlugconf(reposList, plugconfMap)
+	return content, multierror.Append(nil, err)
 }
 
 func RdepsOf(reposPath pathutil.ReposPath, reposList []lockjson.Repos) (pathutil.ReposPathList, error) {
