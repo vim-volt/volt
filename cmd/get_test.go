@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -19,12 +20,20 @@ import (
 // (E) Directories are copied to `~/.vim/pack/volt/<repos>/`, and the contents are same
 // (F) Entries are added to lock.json
 // (G) tags files are created at `~/.vim/pack/volt/<repos>/doc/tags`
+// (H) Output contains "! {repos} > install failed"
+// (I) Output contains "! {repos} > upgrade failed"
+// (J) Output contains "# {repos} > no change"
+// (K) Output contains "# {repos} > already exists"
+// (L) Output contains "+ {repos} > added repository to current profile"
+// (M) Output contains "+ {repos} > installed"
+// (N) Output contains "* {repos} > updated lock.json revision ({from}..{to})"
+// (O) Output contains "* {repos} > upgraded ({from}..{to})"
 
 // TODO: Add test cases
 // * Specify plugins which have dependency plugins without help (A, B, C, D, E, F, !G) / with help (A, B, C, D, E, F, G)
 // * Specify plugins which have dependency plugins and plugins which have no dependency plugins without help (A, B, C, D, E, F, !G) / with help (A, B, C, D, E, F, G)
 
-// Specify one plugin with help (A, B, C, D, E, F, G) / without help (A, B, C, D, E, F, !G)
+// Specify one plugin with help (A, B, C, D, E, F, G, M) / without help (A, B, C, D, E, F, !G, M)
 func TestVoltGetOnePlugin(t *testing.T) {
 	for _, tt := range []struct {
 		withHelp  bool
@@ -84,12 +93,18 @@ func TestVoltGetOnePlugin(t *testing.T) {
 						t.Error("doc/tags was created: " + tags)
 					}
 				}
+
+				// (M)
+				msg := fmt.Sprintf(fmtInstalled, tt.reposPath)
+				if !bytes.Contains(out, []byte(msg)) {
+					t.Errorf("Output does not contain %q", msg)
+				}
 			})
 		})
 	}
 }
 
-// Specify two or more plugins without help (A, B, C, D, E, F, !G) / with help (A, B, C, D, E, F, G)
+// Specify two or more plugins without help (A, B, C, D, E, F, !G, M) / with help (A, B, C, D, E, F, G, M)
 func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 	for _, tt := range []struct {
 		withHelp      bool
@@ -156,6 +171,12 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 							t.Error("doc/tags was created: " + tags)
 						}
 					}
+
+					// (M)
+					msg := fmt.Sprintf(fmtInstalled, reposPath)
+					if !bytes.Contains(out, []byte(msg)) {
+						t.Errorf("Output does not contain %q", msg)
+					}
 				}
 			})
 		})
@@ -207,7 +228,7 @@ func TestErrVoltGetInvalidArgs(t *testing.T) {
 	}
 }
 
-// [error] Specify plugin which does not exist (!A, !B, !C, !D, !E, !F, !G)
+// [error] Specify plugin which does not exist (!A, !B, !C, !D, !E, !F, !G, H)
 func TestErrVoltGetNotFound(t *testing.T) {
 	// =============== setup =============== //
 
@@ -245,6 +266,12 @@ func TestErrVoltGetNotFound(t *testing.T) {
 	tags := filepath.Join(vimReposDir, "doc", "tags")
 	if pathutil.Exists(tags) {
 		t.Error("doc/tags was created: " + tags)
+	}
+
+	// (H)
+	msg := fmt.Sprintf(fmtInstallFailed, reposPath, "")
+	if !bytes.Contains(out, []byte(msg)) {
+		t.Errorf("Output does not contain %q", msg)
 	}
 }
 
