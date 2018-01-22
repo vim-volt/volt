@@ -102,20 +102,26 @@ func ParsePlugconf(file *ast.File, src string) (*Plugconf, error) {
 
 		switch {
 		case name == "s:loaded_on":
-			loadOnFunc = extractBody(fn, src)
-			var err error
-			loadOn, loadOnArg, err = inspectReturnValue(fn)
-			if err != nil {
-				parseErr = err
+			if !isEmptyFunc(fn) {
+				loadOnFunc = extractBody(fn, src)
+				var err error
+				loadOn, loadOnArg, err = inspectReturnValue(fn)
+				if err != nil {
+					parseErr = err
+				}
 			}
 		case name == "s:config":
-			configFunc = extractBody(fn, src)
+			if !isEmptyFunc(fn) {
+				configFunc = extractBody(fn, src)
+			}
 		case name == "s:depends":
-			dependsFunc = extractBody(fn, src)
-			var err error
-			depends, err = getDependencies(fn, src)
-			if err != nil {
-				parseErr = err
+			if !isEmptyFunc(fn) {
+				dependsFunc = extractBody(fn, src)
+				var err error
+				depends, err = getDependencies(fn, src)
+				if err != nil {
+					parseErr = err
+				}
 			}
 		case isProhibitedFuncName(name):
 			parseErr = fmt.Errorf("'%s' is prohibited function name. Please use other function name.", name)
@@ -178,6 +184,24 @@ func inspectReturnValue(fn *ast.Function) (loadOnType, string, error) {
 		return "", "", errors.New("can't detect return value of s:loaded_on()")
 	}
 	return loadOn, loadOnArg, err
+}
+
+// Returns true if fn.Body is empty or has only comment nodes
+func isEmptyFunc(fn *ast.Function) bool {
+	for i := range fn.Body {
+		empty := true
+		ast.Inspect(fn.Body[i], func(node ast.Node) bool {
+			if _, ok := node.(*ast.Comment); ok {
+				return true
+			}
+			empty = false
+			return false
+		})
+		if !empty {
+			return false
+		}
+	}
+	return true
 }
 
 func extractBody(fn *ast.Function, src string) string {
