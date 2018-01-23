@@ -1,14 +1,21 @@
 package cmd
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
-	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 // Checks:
@@ -19,12 +26,21 @@ import (
 // (E) Directories are copied to `~/.vim/pack/volt/<repos>/`, and the contents are same
 // (F) Entries are added to lock.json
 // (G) tags files are created at `~/.vim/pack/volt/<repos>/doc/tags`
+// (H) Output contains "! {repos} > install failed"
+// (I) Output contains "! {repos} > upgrade failed"
+// (J) Output contains "# {repos} > no change"
+// (K) Output contains "# {repos} > already exists"
+// (L) Output contains "+ {repos} > added repository to current profile"
+// (M) Output contains "+ {repos} > installed"
+// (N) Output contains "* {repos} > updated lock.json revision ({from}..{to})"
+// (O) Output contains "* {repos} > upgraded ({from}..{to})"
+// (P) Output contains "{repos}: HEAD and locked revision are different ..."
 
 // TODO: Add test cases
 // * Specify plugins which have dependency plugins without help (A, B, C, D, E, F, !G) / with help (A, B, C, D, E, F, G)
 // * Specify plugins which have dependency plugins and plugins which have no dependency plugins without help (A, B, C, D, E, F, !G) / with help (A, B, C, D, E, F, G)
 
-// Specify one plugin with help (A, B, C, D, E, F, G) / without help (A, B, C, D, E, F, !G)
+// Specify one plugin with help (A, B, C, D, E, F, G, M) / without help (A, B, C, D, E, F, !G, M)
 func TestVoltGetOnePlugin(t *testing.T) {
 	for _, tt := range []struct {
 		withHelp  bool
@@ -89,7 +105,196 @@ func TestVoltGetOnePlugin(t *testing.T) {
 	}
 }
 
-// Specify two or more plugins without help (A, B, C, D, E, F, !G) / with help (A, B, C, D, E, F, G)
+// (J, K, L, M, N, O, P)
+func TestVoltGetMsg(t *testing.T) {
+	testGetMatrix(t, func(t *testing.T, strategy string) {
+		// =============== setup =============== //
+
+		testutil.SetUpEnv(t)
+		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
+		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+
+		// ===================================
+		// Install plugin (installed)
+		// ===================================
+
+		out, err := testutil.RunVolt("get", reposPath.String())
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (M)
+		msg := fmt.Sprintf(fmtInstalled, reposPath)
+		if !bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output does not contain %q\n%s", msg, string(out))
+		}
+
+		// ===================================
+		// Install again (already exists)
+		// ===================================
+
+		out, err = testutil.RunVolt("get", reposPath.String())
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (K)
+		msg = fmt.Sprintf(fmtAlreadyExists, reposPath)
+		if !bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output does not contain %q\n%s", msg, string(out))
+		}
+
+		// ===================================
+		// Upgrade one plugin (no change)
+		// ===================================
+
+		out, err = testutil.RunVolt("get", "-u", reposPath.String())
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (J)
+		msg = fmt.Sprintf(fmtNoChange, reposPath)
+		if !bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output does not contain %q\n%s", msg, string(out))
+		}
+
+		// ===================================
+		// Remove plugin from current profile
+		// ===================================
+
+		out, err = testutil.RunVolt("disable", reposPath.String())
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// =====================================================================
+		// Add plugin to current profile (added repository to current profile")
+		// =====================================================================
+
+		out, err = testutil.RunVolt("get", reposPath.String())
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (L)
+		msg = fmt.Sprintf(fmtAddedRepos, reposPath)
+		if !bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output does not contain %q\n%s", msg, string(out))
+		}
+
+		// ================
+		// Commit on repos
+		// ================
+
+		head, next, err := gitCommitOne(reposPath)
+		if err != nil {
+			t.Error("gitCommitOne() failed: " + err.Error())
+		}
+
+		// ================================================================
+		// volt build outputs "HEAD and locked revision are different ..."
+		// ================================================================
+
+		out, err = testutil.RunVolt("build")
+		outstr := string(out)
+		// (!A, B)
+		if !strings.Contains(outstr, "[WARN]") && !strings.Contains(outstr, "[ERROR]") {
+			t.Errorf("expected error but no error: %s", outstr)
+		}
+		if err != nil {
+			t.Error("expected success exit but exited with failure: " + err.Error())
+		}
+
+		// (P)
+		for _, msg := range []string{
+			string(reposPath) + ": HEAD and locked revision are different",
+			"  HEAD: " + next.String(),
+			"  locked revision: " + head.String(),
+			"  Please run 'volt get -l' to update locked revision.",
+		} {
+			if !bytes.Contains(out, []byte(msg)) {
+				t.Errorf("Output does not contain %q\n%s", msg, string(out))
+			}
+		}
+
+		// ===========================================
+		// Update lock.json revision
+		// ===========================================
+
+		out, err = testutil.RunVolt("get", reposPath.String())
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (N)
+		msg = fmt.Sprintf(fmtRevUpdate, reposPath, head.String(), next.String())
+		if !bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output does not contain %q\n%s", msg, string(out))
+		}
+
+		// ================================
+		// Install again (already exists)
+		// ================================
+
+		out, err = testutil.RunVolt("get", reposPath.String())
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (K)
+		msg = fmt.Sprintf(fmtAlreadyExists, reposPath)
+		if !bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output does not contain %q\n%s", msg, string(out))
+		}
+
+		// ========================================================================
+		// volt build DOES NOT output "HEAD and locked revision are different ..."
+		// ========================================================================
+
+		out, err = testutil.RunVolt("build")
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (!P)
+		msg = "HEAD and locked revision are different"
+		if bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output contains %q\n%s", msg, string(out))
+		}
+
+		// ==================================
+		// "git reset --hard HEAD~2" on repos
+		// ==================================
+
+		prev, _, err := gitResetHard(reposPath, "HEAD~2")
+		if err != nil {
+			t.Error("gitResetHard() failed: " + err.Error())
+		}
+
+		// ===========================================
+		// Update lock.json revision
+		// ===========================================
+
+		out, err = testutil.RunVolt("get", reposPath.String())
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (N)
+		msg = fmt.Sprintf(fmtRevUpdate, reposPath, next.String(), prev.String())
+		if !bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output does not contain %q\n%s", msg, string(out))
+		}
+
+		// ================================
+		// Upgrade plugin (upgraded)
+		// ================================
+
+		out, err = testutil.RunVolt("get", "-u", reposPath.String())
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (O)
+		msg = fmt.Sprintf(fmtUpgraded, reposPath, prev.String(), head.String())
+		if !bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output does not contain %q\n%s", msg, string(out))
+		}
+	})
+}
+
+// Specify two or more plugins without help (A, B, C, D, E, F, !G, M) / with help (A, B, C, D, E, F, G, M)
 func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 	for _, tt := range []struct {
 		withHelp      bool
@@ -156,6 +361,12 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 							t.Error("doc/tags was created: " + tags)
 						}
 					}
+
+					// (M)
+					msg := fmt.Sprintf(fmtInstalled, reposPath)
+					if !bytes.Contains(out, []byte(msg)) {
+						t.Errorf("Output does not contain %q\n%s", msg, string(out))
+					}
 				}
 			})
 		})
@@ -207,7 +418,7 @@ func TestErrVoltGetInvalidArgs(t *testing.T) {
 	}
 }
 
-// [error] Specify plugin which does not exist (!A, !B, !C, !D, !E, !F, !G)
+// [error] Specify plugin which does not exist (!A, !B, !C, !D, !E, !F, !G, H)
 func TestErrVoltGetNotFound(t *testing.T) {
 	// =============== setup =============== //
 
@@ -245,6 +456,12 @@ func TestErrVoltGetNotFound(t *testing.T) {
 	tags := filepath.Join(vimReposDir, "doc", "tags")
 	if pathutil.Exists(tags) {
 		t.Error("doc/tags was created: " + tags)
+	}
+
+	// (H)
+	msg := fmt.Sprintf(fmtInstallFailed, reposPath, "")
+	if !bytes.Contains(out, []byte(msg)) {
+		t.Errorf("Output does not contain %q\n%s", msg, string(out))
 	}
 }
 
@@ -286,4 +503,73 @@ func testGetMatrix(t *testing.T, f func(*testing.T, string)) {
 			f(t, strategy)
 		})
 	}
+}
+
+func gitCommitOne(reposPath pathutil.ReposPath) (prev plumbing.Hash, current plumbing.Hash, err error) {
+	var (
+		relPath       = "hello"
+		content       = []byte("hello world!")
+		commitMsg     = "hello world"
+		commitOptions = &git.CommitOptions{
+			Author: &object.Signature{
+				Name:  "John Doe",
+				Email: "john@doe.org",
+				When:  time.Now(),
+			},
+		}
+	)
+
+	filename := filepath.Join(pathutil.FullReposPath(reposPath), relPath)
+	if err = ioutil.WriteFile(filename, content, 0644); err != nil {
+		err = errors.New("ioutil.WriteFile() failed: " + err.Error())
+		return
+	}
+	r, err := git.PlainOpen(pathutil.FullReposPath(reposPath))
+	if err != nil {
+		return
+	}
+	head, err := r.Head()
+	if err != nil {
+		return
+	} else {
+		prev = head.Hash()
+	}
+	w, err := r.Worktree()
+	if err != nil {
+		return
+	}
+	_, err = w.Add(relPath)
+	if err != nil {
+		return
+	}
+	current, err = w.Commit(commitMsg, commitOptions)
+	return
+}
+
+func gitResetHard(reposPath pathutil.ReposPath, ref string) (current plumbing.Hash, next plumbing.Hash, err error) {
+	r, err := git.PlainOpen(pathutil.FullReposPath(reposPath))
+	if err != nil {
+		return
+	}
+	w, err := r.Worktree()
+	if err != nil {
+		return
+	}
+	head, err := r.Head()
+	if err != nil {
+		return
+	} else {
+		next = head.Hash()
+	}
+	rev, err := r.ResolveRevision(plumbing.Revision(ref))
+	if err != nil {
+		return
+	} else {
+		current = *rev
+	}
+	err = w.Reset(&git.ResetOptions{
+		Commit: current,
+		Mode:   git.HardReset,
+	})
+	return
 }
