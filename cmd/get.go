@@ -229,7 +229,7 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 		} else {
 			added := cmd.updateReposVersion(lockJSON, r.reposPath, r.reposType, r.hash, profile)
 			if added && strings.Contains(status, "already exists") {
-				status = fmt.Sprintf(fmtAddedRepos, statusPrefixInstalled, r.reposPath)
+				status = fmt.Sprintf(fmtAddedRepos, r.reposPath)
 			}
 			updatedLockJSON = true
 		}
@@ -291,21 +291,19 @@ type getParallelResult struct {
 }
 
 const (
-	statusPrefixFailed    = "!"
-	statusPrefixNoChange  = "#"
-	statusPrefixInstalled = "+"
-	statusPrefixUpgraded  = "*"
-)
-
-const (
-	fmtInstallFailed = "%s %s > install failed > %s"
-	fmtUpgradeFailed = "%s %s > upgrade failed > %s"
-	fmtNoChange      = "%s %s > no change"
-	fmtAlreadyExists = "%s %s > already exists"
-	fmtAddedRepos    = "%s %s > added repository to current profile"
-	fmtInstalled     = "%s %s > installed"
-	fmtRevUpdate     = "%s %s > updated lock.json revision (%s..%s)"
-	fmtUpgraded      = "%s %s > upgraded (%s..%s)"
+	statusPrefixFailed = "!"
+	// Failed
+	fmtInstallFailed = "! %s > install failed > %s"
+	fmtUpgradeFailed = "! %s > upgrade failed > %s"
+	// No change
+	fmtNoChange      = "# %s > no change"
+	fmtAlreadyExists = "# %s > already exists"
+	// Installed
+	fmtAddedRepos = "+ %s > added repository to current profile"
+	fmtInstalled  = "+ %s > installed"
+	// Upgraded
+	fmtRevUpdate = "* %s > updated lock.json revision (%s..%s)"
+	fmtUpgraded  = "* %s > upgraded (%s..%s)"
 )
 
 // This function is executed in goroutine of each plugin.
@@ -328,6 +326,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 	// true:upgrade, false:install
 	fullReposPath := pathutil.FullReposPath(reposPath)
 	doUpgrade := cmd.upgrade && pathutil.Exists(fullReposPath)
+	doInstall := !pathutil.Exists(fullReposPath)
 
 	var fromHash string
 	var err error
@@ -343,7 +342,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
+				status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
 				err:       result,
 			}
 			return
@@ -352,6 +351,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 
 	var status string
 	var upgraded bool
+	var checkRevision bool
 
 	if doUpgrade {
 		// when cmd.upgrade is true, repos must not be nil.
@@ -359,7 +359,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			msg := "-u was specified but repos == nil"
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtUpgradeFailed, statusPrefixFailed, reposPath, msg),
+				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath, msg),
 				err:       errors.New("failed to upgrade plugin: " + msg),
 			}
 			return
@@ -376,22 +376,21 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtUpgradeFailed, statusPrefixFailed, reposPath, err.Error()),
+				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath, err.Error()),
 				err:       result,
 			}
 			return
 		}
 		if err == git.NoErrAlreadyUpToDate {
-			status = fmt.Sprintf(fmtNoChange, statusPrefixNoChange, reposPath)
+			status = fmt.Sprintf(fmtNoChange, reposPath)
 		} else {
 			upgraded = true
 		}
-	} else if !pathutil.Exists(fullReposPath) {
+	} else if doInstall {
 		// Install plugin
 		logger.Debug("Installing " + reposPath + " ...")
 		err := cmd.fetchPlugin(reposPath)
-		// if err == errRepoExists, silently skip
-		if err != nil && err != errRepoExists {
+		if err != nil {
 			result := errors.New("failed to install plugin: " + err.Error())
 			logger.Debug("Rollbacking " + fullReposPath + " ...")
 			err = cmd.rollbackRepos(fullReposPath)
@@ -400,16 +399,15 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
+				status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
 				err:       result,
 			}
 			return
 		}
-		if err == errRepoExists {
-			status = fmt.Sprintf(fmtAlreadyExists, statusPrefixNoChange, reposPath)
-		} else {
-			status = fmt.Sprintf(fmtInstalled, statusPrefixInstalled, reposPath)
-		}
+		status = fmt.Sprintf(fmtInstalled, reposPath)
+	} else {
+		status = fmt.Sprintf(fmtAlreadyExists, reposPath)
+		checkRevision = true
 	}
 
 	var toHash string
@@ -426,7 +424,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
+				status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
 				err:       result,
 			}
 			return
@@ -435,13 +433,11 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 
 	// Show old and new revisions: "upgraded ({from}..{to})".
 	if upgraded {
-		status = fmt.Sprintf(fmtUpgraded, statusPrefixUpgraded, reposPath, fromHash, toHash)
+		status = fmt.Sprintf(fmtUpgraded, reposPath, fromHash, toHash)
 	}
 
-	if repos != nil && repos.Version != toHash {
-		status = fmt.Sprintf(fmtRevUpdate, statusPrefixUpgraded, reposPath, repos.Version, toHash)
-	} else {
-		status = fmt.Sprintf(fmtNoChange, statusPrefixNoChange, reposPath)
+	if checkRevision && repos != nil && repos.Version != toHash {
+		status = fmt.Sprintf(fmtRevUpdate, reposPath, repos.Version, toHash)
 	}
 
 	done <- getParallelResult{
@@ -466,7 +462,7 @@ func (cmd *getCmd) installPlugconf(reposPath pathutil.ReposPath, pluginResult *g
 		}
 		done <- getParallelResult{
 			reposPath: reposPath,
-			status:    fmt.Sprintf(fmtInstallFailed, statusPrefixFailed, reposPath, result.Error()),
+			status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
 			err:       result,
 		}
 		return
@@ -566,7 +562,7 @@ func (cmd *getCmd) fetchPlugconf(reposPath pathutil.ReposPath) error {
 	}
 	content, err := plugconf.GenPlugconfByTemplate(tmpl, filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse error in fetched plugconf %s: %s", reposPath, err.Error())
 	}
 	os.MkdirAll(filepath.Dir(filename), 0755)
 	err = ioutil.WriteFile(filename, content, 0644)

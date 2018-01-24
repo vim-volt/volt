@@ -5,28 +5,43 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
+)
+
+var rxReposPath = regexp.MustCompile(
+	// scheme
+	`^((?:https?|git)://)?` +
+		// host
+		`(?:([^/]+)/)?` +
+		// user
+		`(?:([^/]+)/)` +
+		// name
+		`([^/]+?)` +
+		// trailing garbages
+		`(?:\.git)?(/?)$`,
 )
 
 // Normalize the following forms into "github.com/user/name":
 // 1. user/name[.git]
 // 2. github.com/user/name[.git]
-// 3. [git|http|https]://github.com/user/name[.git]
+// 3. [git|http|https]://github.com/user/name[.git][/]
 func NormalizeRepos(rawReposPath string) (ReposPath, error) {
-	rawReposPath = filepath.ToSlash(rawReposPath)
-	paths := strings.Split(rawReposPath, "/")
-	if len(paths) == 3 {
-		return ReposPath(strings.TrimSuffix(rawReposPath, ".git")), nil
+	p := filepath.ToSlash(rawReposPath)
+	m := rxReposPath.FindStringSubmatch(p)
+	if len(m) == 0 {
+		return "", errors.New("invalid format of repository: " + rawReposPath)
 	}
-	if len(paths) == 2 {
-		return ReposPath(strings.TrimSuffix("github.com/"+rawReposPath, ".git")), nil
+	if m[2] == "" {
+		m[2] = "github.com"
 	}
-	if paths[0] == "https:" || paths[0] == "http:" || paths[0] == "git:" {
-		path := strings.Join(paths[len(paths)-3:], "/")
-		return ReposPath(strings.TrimSuffix(path, ".git")), nil
+	disallowSlash := m[1] == ""
+	if disallowSlash && m[5] == "/" {
+		return "", errors.New("invalid format of repository: " + rawReposPath)
 	}
-	return ReposPath(""), errors.New("invalid format of repository: " + rawReposPath)
+	hostUserName := m[2:5]
+	return ReposPath(strings.Join(hostUserName, "/")), nil
 }
 
 type ReposPath string
