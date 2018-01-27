@@ -19,9 +19,10 @@ precompile:
 	rm $(BIN_DIR)/$(NAME)
 
 install-dep:
-	curl -L -o bin/dep https://github.com/golang/dep/releases/download/v0.3.2/dep-linux-amd64
-	chmod +x bin/dep
-	echo 'Installed dep v0.3.2 to bin/dep'
+	[ -x bin/dep ] || go build -o bin/dep github.com/golang/dep/cmd/dep
+
+dep-ensure: install-dep
+	bin/dep ensure -v
 
 test:
 	make
@@ -45,4 +46,4 @@ update-doc: all
 	go run _scripts/update-readme.go README.md
 	go run _scripts/update-cmdref.go CMDREF.md
 
-.PHONY: all precompile install-dep test release update-doc
+.PHONY: all precompile install-dep dep-ensure test release update-doc
