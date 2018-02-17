@@ -304,6 +304,7 @@ const (
 	// Upgraded
 	fmtRevUpdate = "* %s > updated lock.json revision (%s..%s)"
 	fmtUpgraded  = "* %s > upgraded (%s..%s)"
+	fmtFetched   = "* %s > fetched objects (worktree is not updated)"
 )
 
 // This function is executed in goroutine of each plugin.
@@ -431,9 +432,12 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		}
 	}
 
-	// Show old and new revisions: "upgraded ({from}..{to})".
 	if upgraded {
-		status = fmt.Sprintf(fmtUpgraded, reposPath, fromHash, toHash)
+		if fromHash != toHash {
+			status = fmt.Sprintf(fmtUpgraded, reposPath, fromHash, toHash)
+		} else {
+			status = fmt.Sprintf(fmtFetched, reposPath)
+		}
 	}
 
 	if checkRevision && repos != nil && repos.Version != toHash {
