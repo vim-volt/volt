@@ -142,6 +142,11 @@ strategy = "symlink"
 # * true (default): "volt get" creates skeleton plugconf file at "$VOLTPATH/plugconf/<repos>.vim"
 # * false: It does not creates skeleton plugconf file
 create_skeleton_plugconf = true
+
+# * true (default): When "volt get" or "volt get -u" fail and "git" command is
+#                   installed, it tries to execute "git clone" or "git pull" as a fallback
+# * false: "volt get" or "volt get -u" won't try to execute fallback commands
+fallback_git_cmd = true
 ```
 
 ## Self upgrade
