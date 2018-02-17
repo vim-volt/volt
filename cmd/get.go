@@ -376,7 +376,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath, err.Error()),
+				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath, result.Error()),
 				err:       result,
 			}
 			return
