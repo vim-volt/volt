@@ -293,8 +293,8 @@ type getParallelResult struct {
 const (
 	statusPrefixFailed = "!"
 	// Failed
-	fmtInstallFailed = "! %s > install failed > %s"
-	fmtUpgradeFailed = "! %s > upgrade failed > %s"
+	fmtInstallFailed = "! %s > install failed"
+	fmtUpgradeFailed = "! %s > upgrade failed"
 	// No change
 	fmtNoChange      = "# %s > no change"
 	fmtAlreadyExists = "# %s > already exists"
@@ -343,7 +343,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
+				status:    fmt.Sprintf(fmtInstallFailed, reposPath),
 				err:       result,
 			}
 			return
@@ -357,11 +357,10 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 	if doUpgrade {
 		// when cmd.upgrade is true, repos must not be nil.
 		if repos == nil {
-			msg := "-u was specified but repos == nil"
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath, msg),
-				err:       errors.New("failed to upgrade plugin: " + msg),
+				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath),
+				err:       errors.New("failed to upgrade plugin: -u was specified but repos == nil"),
 			}
 			return
 		}
@@ -377,7 +376,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath, result.Error()),
+				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath),
 				err:       result,
 			}
 			return
@@ -400,7 +399,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
+				status:    fmt.Sprintf(fmtInstallFailed, reposPath),
 				err:       result,
 			}
 			return
@@ -425,7 +424,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
+				status:    fmt.Sprintf(fmtInstallFailed, reposPath),
 				err:       result,
 			}
 			return
@@ -466,7 +465,7 @@ func (cmd *getCmd) installPlugconf(reposPath pathutil.ReposPath, pluginResult *g
 		}
 		done <- getParallelResult{
 			reposPath: reposPath,
-			status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
+			status:    fmt.Sprintf(fmtInstallFailed, reposPath),
 			err:       result,
 		}
 		return
