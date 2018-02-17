@@ -509,9 +509,14 @@ func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath) error {
 		return err
 	}
 
+	remote, err := gitutil.GetUpstreamRemote(repos)
+	if err != nil {
+		return err
+	}
+
 	if cfg.Core.IsBare {
 		return repos.Fetch(&git.FetchOptions{
-			RemoteName: "origin",
+			RemoteName: remote,
 		})
 	} else {
 		wt, err := repos.Worktree()
@@ -519,7 +524,7 @@ func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath) error {
 			return err
 		}
 		return wt.Pull(&git.PullOptions{
-			RemoteName:        "origin",
+			RemoteName:        remote,
 			RecurseSubmodules: 10,
 		})
 	}
@@ -548,7 +553,7 @@ func (cmd *getCmd) clonePlugin(reposPath pathutil.ReposPath) error {
 		return err
 	}
 
-	return gitutil.SetUpstreamBranch(r)
+	return gitutil.SetUpstreamRemote(r, "origin")
 }
 
 func (cmd *getCmd) fetchPlugconf(reposPath pathutil.ReposPath) error {

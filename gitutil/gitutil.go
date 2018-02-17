@@ -2,6 +2,7 @@ package gitutil
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 
 	"github.com/vim-volt/volt/pathutil"
@@ -56,7 +57,8 @@ func GetHEAD(reposPath pathutil.ReposPath) (string, error) {
 	return ref.Hash().String(), nil
 }
 
-func SetUpstreamBranch(r *git.Repository) error {
+// SetUpstreamRemote sets current branch's upstream remote name to remote.
+func SetUpstreamRemote(r *git.Repository, remote string) error {
 	cfg, err := r.Config()
 	if err != nil {
 		return err
@@ -73,10 +75,35 @@ func SetUpstreamBranch(r *git.Repository) error {
 		return errors.New("HEAD is not matched to refs/heads/...: " + refBranch)
 	}
 
-	sec := cfg.Raw.Section("branch")
-	subsec := sec.Subsection(branch[1])
-	subsec.AddOption("remote", "origin")
+	subsec := cfg.Raw.Section("branch").Subsection(branch[1])
+	subsec.AddOption("remote", remote)
 	subsec.AddOption("merge", refBranch)
 
 	return r.Storer.SetConfig(cfg)
+}
+
+// GetUpstreamRemote gets current branch's upstream remote name (e.g. "origin").
+func GetUpstreamRemote(r *git.Repository) (string, error) {
+	cfg, err := r.Config()
+	if err != nil {
+		return "", err
+	}
+
+	head, err := r.Head()
+	if err != nil {
+		return "", err
+	}
+
+	refBranch := head.Name().String()
+	branch := refHeadsRx.FindStringSubmatch(refBranch)
+	if len(branch) == 0 {
+		return "", errors.New("HEAD is not matched to refs/heads/...: " + refBranch)
+	}
+
+	subsec := cfg.Raw.Section("branch").Subsection(branch[1])
+	remote := subsec.Option("remote")
+	if remote == "" {
+		return "", fmt.Errorf("gitconfig 'branch.%s.remote' is not found", subsec.Name)
+	}
+	return remote, nil
 }
