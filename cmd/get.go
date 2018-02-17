@@ -390,7 +390,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 	} else if doInstall {
 		// Install plugin
 		logger.Debug("Installing " + reposPath + " ...")
-		err := cmd.fetchPlugin(reposPath)
+		err := cmd.clonePlugin(reposPath)
 		if err != nil {
 			result := errors.New("failed to install plugin: " + err.Error())
 			logger.Debug("Rollbacking " + fullReposPath + " ...")
@@ -527,7 +527,7 @@ func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath) error {
 
 var errRepoExists = errors.New("repository exists")
 
-func (cmd *getCmd) fetchPlugin(reposPath pathutil.ReposPath) error {
+func (cmd *getCmd) clonePlugin(reposPath pathutil.ReposPath) error {
 	fullpath := pathutil.FullReposPath(reposPath)
 	if pathutil.Exists(fullpath) {
 		return errRepoExists
