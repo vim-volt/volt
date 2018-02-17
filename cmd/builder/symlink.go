@@ -107,8 +107,17 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 
 	copied := false
 	if repos.Type == lockjson.ReposGitType {
+		// Open a repository to determine it is bare repository or not
+		r, err := git.PlainOpen(src)
+		if err != nil {
+			done <- actionReposResult{
+				err: fmt.Errorf("repository %q: %s", src, err.Error()),
+			}
+			return
+		}
+
 		// Show warning when HEAD and locked revision are different
-		head, err := gitutil.GetHEAD(repos.Path)
+		head, err := gitutil.GetHEADRepository(r)
 		if err != nil {
 			done <- actionReposResult{
 				err: fmt.Errorf("failed to get HEAD revision of %q: %s", src, err.Error()),
@@ -122,14 +131,6 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 			logger.Warn("  Please run 'volt get -l' to update locked revision.")
 		}
 
-		// Open a repository to determine it is bare repository or not
-		r, err := git.PlainOpen(src)
-		if err != nil {
-			done <- actionReposResult{
-				err: fmt.Errorf("repository %q: %s", src, err.Error()),
-			}
-			return
-		}
 		cfg, err := r.Config()
 		if err != nil {
 			done <- actionReposResult{
@@ -150,6 +151,7 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 			copied = true
 		}
 	}
+
 	if !copied {
 		// Make symlinks under vim dir
 		if err := builder.symlink(src, dst); err != nil {

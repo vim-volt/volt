@@ -22,7 +22,10 @@ func GetHEAD(reposPath pathutil.ReposPath) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return GetHEADRepository(repos)
+}
 
+func GetHEADRepository(repos *git.Repository) (string, error) {
 	head, err := repos.Head()
 	if err != nil {
 		return "", err
