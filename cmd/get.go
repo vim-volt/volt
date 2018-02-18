@@ -339,11 +339,6 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		fromHash, err = gitutil.GetHEAD(reposPath)
 		if err != nil {
 			result := errors.New("failed to get HEAD commit hash: " + err.Error())
-			logger.Debug("Rollbacking " + fullReposPath + " ...")
-			err = cmd.rollbackRepos(fullReposPath)
-			if err != nil {
-				result = multierror.Append(result, err)
-			}
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf(fmtInstallFailed, reposPath),
@@ -372,11 +367,6 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		err := cmd.upgradePlugin(reposPath, cfg)
 		if err != git.NoErrAlreadyUpToDate && err != nil {
 			result := errors.New("failed to upgrade plugin: " + err.Error())
-			logger.Debug("Rollbacking " + fullReposPath + " ...")
-			err = cmd.rollbackRepos(fullReposPath)
-			if err != nil {
-				result = multierror.Append(result, err)
-			}
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath),
@@ -396,7 +386,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		if err != nil {
 			result := errors.New("failed to install plugin: " + err.Error())
 			logger.Debug("Rollbacking " + fullReposPath + " ...")
-			err = cmd.rollbackRepos(fullReposPath)
+			err = cmd.removeDir(fullReposPath)
 			if err != nil {
 				result = multierror.Append(result, err)
 			}
@@ -420,10 +410,12 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		toHash, err = gitutil.GetHEAD(reposPath)
 		if err != nil {
 			result := errors.New("failed to get HEAD commit hash: " + err.Error())
-			logger.Debug("Rollbacking " + fullReposPath + " ...")
-			err = cmd.rollbackRepos(fullReposPath)
-			if err != nil {
-				result = multierror.Append(result, err)
+			if doInstall {
+				logger.Debug("Rollbacking " + fullReposPath + " ...")
+				err = cmd.removeDir(fullReposPath)
+				if err != nil {
+					result = multierror.Append(result, err)
+				}
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
@@ -460,12 +452,14 @@ func (cmd *getCmd) installPlugconf(reposPath pathutil.ReposPath, pluginResult *g
 	err := cmd.fetchPlugconf(reposPath)
 	if err != nil {
 		result := errors.New("failed to install plugconf: " + err.Error())
-		fullReposPath := pathutil.FullReposPath(reposPath)
-		logger.Debug("Rollbacking " + fullReposPath + " ...")
-		err = cmd.rollbackRepos(fullReposPath)
-		if err != nil {
-			result = multierror.Append(result, err)
-		}
+		// TODO: Call cmd.removeDir() only when the repos *did not* exist previously
+		// and was installed newly.
+		// fullReposPath := pathutil.FullReposPath(reposPath)
+		// logger.Debug("Rollbacking " + fullReposPath + " ...")
+		// err = cmd.removeDir(fullReposPath)
+		// if err != nil {
+		// 	result = multierror.Append(result, err)
+		// }
 		done <- getParallelResult{
 			reposPath: reposPath,
 			status:    fmt.Sprintf(fmtInstallFailed, reposPath),
@@ -486,7 +480,7 @@ func (*getCmd) detectReposType(fullpath string) (lockjson.ReposType, error) {
 	return lockjson.ReposStaticType, nil
 }
 
-func (*getCmd) rollbackRepos(fullReposPath string) error {
+func (*getCmd) removeDir(fullReposPath string) error {
 	if pathutil.Exists(fullReposPath) {
 		err := os.RemoveAll(fullReposPath)
 		if err != nil {
