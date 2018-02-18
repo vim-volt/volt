@@ -148,8 +148,14 @@ func (builder *copyBuilder) copyReposList(buildReposMap map[pathutil.ReposPath]*
 func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buildinfo.Repos, vimExePath string, done chan actionReposResult) (int, error) {
 	src := pathutil.FullReposPath(repos.Path)
 
+	// Open ~/volt/repos/{repos}
+	r, err := git.PlainOpen(src)
+	if err != nil {
+		return 0, errors.New("failed to open repository: " + err.Error())
+	}
+
 	// Show warning when HEAD and locked revision are different
-	head, err := gitutil.GetHEAD(repos.Path)
+	head, err := gitutil.GetHEADRepository(r)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get HEAD revision of %q: %s", src, err.Error())
 	}
@@ -158,12 +164,6 @@ func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buil
 		logger.Warn("  HEAD: " + head)
 		logger.Warn("  locked revision: " + repos.Version)
 		logger.Warn("  Please run 'volt get -l' to update locked revision.")
-	}
-
-	// Open ~/volt/repos/{repos}
-	r, err := git.PlainOpen(src)
-	if err != nil {
-		return 0, errors.New("failed to open repository: " + err.Error())
 	}
 
 	cfg, err := r.Config()

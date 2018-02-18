@@ -459,7 +459,7 @@ func TestErrVoltGetNotFound(t *testing.T) {
 	}
 
 	// (H)
-	msg := fmt.Sprintf(fmtInstallFailed, reposPath, "")
+	msg := fmt.Sprintf(fmtInstallFailed, reposPath)
 	if !bytes.Contains(out, []byte(msg)) {
 		t.Errorf("Output does not contain %q\n%s", msg, string(out))
 	}

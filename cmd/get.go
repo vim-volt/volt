@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
+
+	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
@@ -20,7 +24,6 @@ import (
 	"github.com/vim-volt/volt/transaction"
 
 	multierror "github.com/hashicorp/go-multierror"
-	"gopkg.in/src-d/go-git.v4"
 )
 
 func init() {
@@ -211,7 +214,7 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 			repos = nil
 		}
 		if repos == nil || repos.Type == lockjson.ReposGitType {
-			go cmd.getParallel(reposPath, repos, *cfg.Get.CreateSkeletonPlugconf, done)
+			go cmd.getParallel(reposPath, repos, cfg, done)
 			getCount++
 		}
 	}
@@ -293,8 +296,8 @@ type getParallelResult struct {
 const (
 	statusPrefixFailed = "!"
 	// Failed
-	fmtInstallFailed = "! %s > install failed > %s"
-	fmtUpgradeFailed = "! %s > upgrade failed > %s"
+	fmtInstallFailed = "! %s > install failed"
+	fmtUpgradeFailed = "! %s > upgrade failed"
 	// No change
 	fmtNoChange      = "# %s > no change"
 	fmtAlreadyExists = "# %s > already exists"
@@ -304,16 +307,17 @@ const (
 	// Upgraded
 	fmtRevUpdate = "* %s > updated lock.json revision (%s..%s)"
 	fmtUpgraded  = "* %s > upgraded (%s..%s)"
+	fmtFetched   = "* %s > fetched objects (worktree is not updated)"
 )
 
 // This function is executed in goroutine of each plugin.
 // 1. install plugin if it does not exist
 // 2. install plugconf if it does not exist and createPlugconf=true
-func (cmd *getCmd) getParallel(reposPath pathutil.ReposPath, repos *lockjson.Repos, createPlugconf bool, done chan<- getParallelResult) {
+func (cmd *getCmd) getParallel(reposPath pathutil.ReposPath, repos *lockjson.Repos, cfg *config.Config, done chan<- getParallelResult) {
 	pluginDone := make(chan getParallelResult)
-	go cmd.installPlugin(reposPath, repos, pluginDone)
+	go cmd.installPlugin(reposPath, repos, cfg, pluginDone)
 	pluginResult := <-pluginDone
-	if pluginResult.err != nil || !createPlugconf {
+	if pluginResult.err != nil || !*cfg.Get.CreateSkeletonPlugconf {
 		done <- pluginResult
 		return
 	}
@@ -322,7 +326,7 @@ func (cmd *getCmd) getParallel(reposPath pathutil.ReposPath, repos *lockjson.Rep
 	done <- (<-plugconfDone)
 }
 
-func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.Repos, done chan<- getParallelResult) {
+func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.Repos, cfg *config.Config, done chan<- getParallelResult) {
 	// true:upgrade, false:install
 	fullReposPath := pathutil.FullReposPath(reposPath)
 	doUpgrade := cmd.upgrade && pathutil.Exists(fullReposPath)
@@ -335,14 +339,9 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		fromHash, err = gitutil.GetHEAD(reposPath)
 		if err != nil {
 			result := errors.New("failed to get HEAD commit hash: " + err.Error())
-			logger.Debug("Rollbacking " + fullReposPath + " ...")
-			err = cmd.rollbackRepos(fullReposPath)
-			if err != nil {
-				result = multierror.Append(result, err)
-			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
+				status:    fmt.Sprintf(fmtInstallFailed, reposPath),
 				err:       result,
 			}
 			return
@@ -356,27 +355,21 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 	if doUpgrade {
 		// when cmd.upgrade is true, repos must not be nil.
 		if repos == nil {
-			msg := "-u was specified but repos == nil"
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath, msg),
-				err:       errors.New("failed to upgrade plugin: " + msg),
+				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath),
+				err:       errors.New("failed to upgrade plugin: -u was specified but repos == nil"),
 			}
 			return
 		}
 		// Upgrade plugin
 		logger.Debug("Upgrading " + reposPath + " ...")
-		err := cmd.upgradePlugin(reposPath)
+		err := cmd.upgradePlugin(reposPath, cfg)
 		if err != git.NoErrAlreadyUpToDate && err != nil {
 			result := errors.New("failed to upgrade plugin: " + err.Error())
-			logger.Debug("Rollbacking " + fullReposPath + " ...")
-			err = cmd.rollbackRepos(fullReposPath)
-			if err != nil {
-				result = multierror.Append(result, err)
-			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath, err.Error()),
+				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath),
 				err:       result,
 			}
 			return
@@ -389,17 +382,17 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 	} else if doInstall {
 		// Install plugin
 		logger.Debug("Installing " + reposPath + " ...")
-		err := cmd.fetchPlugin(reposPath)
+		err := cmd.clonePlugin(reposPath, cfg)
 		if err != nil {
 			result := errors.New("failed to install plugin: " + err.Error())
 			logger.Debug("Rollbacking " + fullReposPath + " ...")
-			err = cmd.rollbackRepos(fullReposPath)
+			err = cmd.removeDir(fullReposPath)
 			if err != nil {
 				result = multierror.Append(result, err)
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
+				status:    fmt.Sprintf(fmtInstallFailed, reposPath),
 				err:       result,
 			}
 			return
@@ -417,23 +410,28 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		toHash, err = gitutil.GetHEAD(reposPath)
 		if err != nil {
 			result := errors.New("failed to get HEAD commit hash: " + err.Error())
-			logger.Debug("Rollbacking " + fullReposPath + " ...")
-			err = cmd.rollbackRepos(fullReposPath)
-			if err != nil {
-				result = multierror.Append(result, err)
+			if doInstall {
+				logger.Debug("Rollbacking " + fullReposPath + " ...")
+				err = cmd.removeDir(fullReposPath)
+				if err != nil {
+					result = multierror.Append(result, err)
+				}
 			}
 			done <- getParallelResult{
 				reposPath: reposPath,
-				status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
+				status:    fmt.Sprintf(fmtInstallFailed, reposPath),
 				err:       result,
 			}
 			return
 		}
 	}
 
-	// Show old and new revisions: "upgraded ({from}..{to})".
 	if upgraded {
-		status = fmt.Sprintf(fmtUpgraded, reposPath, fromHash, toHash)
+		if fromHash != toHash {
+			status = fmt.Sprintf(fmtUpgraded, reposPath, fromHash, toHash)
+		} else {
+			status = fmt.Sprintf(fmtFetched, reposPath)
+		}
 	}
 
 	if checkRevision && repos != nil && repos.Version != toHash {
@@ -454,15 +452,17 @@ func (cmd *getCmd) installPlugconf(reposPath pathutil.ReposPath, pluginResult *g
 	err := cmd.fetchPlugconf(reposPath)
 	if err != nil {
 		result := errors.New("failed to install plugconf: " + err.Error())
-		fullReposPath := pathutil.FullReposPath(reposPath)
-		logger.Debug("Rollbacking " + fullReposPath + " ...")
-		err = cmd.rollbackRepos(fullReposPath)
-		if err != nil {
-			result = multierror.Append(result, err)
-		}
+		// TODO: Call cmd.removeDir() only when the repos *did not* exist previously
+		// and was installed newly.
+		// fullReposPath := pathutil.FullReposPath(reposPath)
+		// logger.Debug("Rollbacking " + fullReposPath + " ...")
+		// err = cmd.removeDir(fullReposPath)
+		// if err != nil {
+		// 	result = multierror.Append(result, err)
+		// }
 		done <- getParallelResult{
 			reposPath: reposPath,
-			status:    fmt.Sprintf(fmtInstallFailed, reposPath, result.Error()),
+			status:    fmt.Sprintf(fmtInstallFailed, reposPath),
 			err:       result,
 		}
 		return
@@ -480,7 +480,7 @@ func (*getCmd) detectReposType(fullpath string) (lockjson.ReposType, error) {
 	return lockjson.ReposStaticType, nil
 }
 
-func (*getCmd) rollbackRepos(fullReposPath string) error {
+func (*getCmd) removeDir(fullReposPath string) error {
 	if pathutil.Exists(fullReposPath) {
 		err := os.RemoveAll(fullReposPath)
 		if err != nil {
@@ -492,7 +492,7 @@ func (*getCmd) rollbackRepos(fullReposPath string) error {
 	return nil
 }
 
-func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath) error {
+func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath, cfg *config.Config) error {
 	fullpath := pathutil.FullReposPath(reposPath)
 
 	repos, err := git.PlainOpen(fullpath)
@@ -500,30 +500,26 @@ func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath) error {
 		return err
 	}
 
-	cfg, err := repos.Config()
+	reposCfg, err := repos.Config()
 	if err != nil {
 		return err
 	}
 
-	if cfg.Core.IsBare {
-		return repos.Fetch(&git.FetchOptions{
-			RemoteName: "origin",
-		})
+	remote, err := gitutil.GetUpstreamRemote(repos)
+	if err != nil {
+		return err
+	}
+
+	if reposCfg.Core.IsBare {
+		return cmd.gitFetch(repos, fullpath, remote, cfg)
 	} else {
-		wt, err := repos.Worktree()
-		if err != nil {
-			return err
-		}
-		return wt.Pull(&git.PullOptions{
-			RemoteName:        "origin",
-			RecurseSubmodules: 10,
-		})
+		return cmd.gitPull(repos, fullpath, remote, cfg)
 	}
 }
 
 var errRepoExists = errors.New("repository exists")
 
-func (cmd *getCmd) fetchPlugin(reposPath pathutil.ReposPath) error {
+func (cmd *getCmd) clonePlugin(reposPath pathutil.ReposPath, cfg *config.Config) error {
 	fullpath := pathutil.FullReposPath(reposPath)
 	if pathutil.Exists(fullpath) {
 		return errRepoExists
@@ -535,16 +531,7 @@ func (cmd *getCmd) fetchPlugin(reposPath pathutil.ReposPath) error {
 	}
 
 	// Clone repository to $VOLTPATH/repos/{site}/{user}/{name}
-	isBare := false
-	r, err := git.PlainClone(fullpath, isBare, &git.CloneOptions{
-		URL:               pathutil.CloneURL(reposPath),
-		RecurseSubmodules: 10,
-	})
-	if err != nil {
-		return err
-	}
-
-	return gitutil.SetUpstreamBranch(r)
+	return cmd.gitClone(pathutil.CloneURL(reposPath), fullpath, cfg)
 }
 
 func (cmd *getCmd) fetchPlugconf(reposPath pathutil.ReposPath) error {
@@ -607,4 +594,112 @@ func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath pathuti
 		added = true
 	}
 	return added
+}
+
+func (cmd *getCmd) gitFetch(r *git.Repository, workDir string, remote string, cfg *config.Config) error {
+	err := r.Fetch(&git.FetchOptions{
+		RemoteName: remote,
+	})
+	if err == nil || err == git.NoErrAlreadyUpToDate {
+		return err
+	}
+
+	// When fallback_git_cmd is true and git command is installed,
+	// try to invoke git-fetch command
+	if !*cfg.Get.FallbackGitCmd || !cmd.hasGitCmd() {
+		return err
+	}
+	logger.Warnf("failed to fetch, try to execute \"git fetch %s\" instead...: %s", remote, err.Error())
+
+	before, err := gitutil.GetHEADRepository(r)
+	fetch := exec.Command("git", "fetch", remote)
+	fetch.Dir = workDir
+	err = fetch.Run()
+	if err != nil {
+		return err
+	}
+	if changed, err := cmd.getWorktreeChanges(r, before); err != nil {
+		return err
+	} else if !changed {
+		return git.NoErrAlreadyUpToDate
+	}
+	return nil
+}
+
+func (cmd *getCmd) gitPull(r *git.Repository, workDir string, remote string, cfg *config.Config) error {
+	wt, err := r.Worktree()
+	if err != nil {
+		return err
+	}
+	err = wt.Pull(&git.PullOptions{
+		RemoteName:        remote,
+		RecurseSubmodules: 10,
+	})
+	if err == nil || err == git.NoErrAlreadyUpToDate {
+		return err
+	}
+
+	// When fallback_git_cmd is true and git command is installed,
+	// try to invoke git-pull command
+	if !*cfg.Get.FallbackGitCmd || !cmd.hasGitCmd() {
+		return err
+	}
+	logger.Warnf("failed to pull, try to execute \"git pull\" instead...: %s", err.Error())
+
+	before, err := gitutil.GetHEADRepository(r)
+	pull := exec.Command("git", "pull")
+	pull.Dir = workDir
+	err = pull.Run()
+	if err != nil {
+		return err
+	}
+	if changed, err := cmd.getWorktreeChanges(r, before); err != nil {
+		return err
+	} else if !changed {
+		return git.NoErrAlreadyUpToDate
+	}
+	return nil
+}
+
+func (cmd *getCmd) getWorktreeChanges(r *git.Repository, before string) (bool, error) {
+	after, err := gitutil.GetHEADRepository(r)
+	if err != nil {
+		return false, err
+	}
+	return before != after, nil
+}
+
+func (cmd *getCmd) gitClone(cloneURL, dstDir string, cfg *config.Config) error {
+	isBare := false
+	r, err := git.PlainClone(dstDir, isBare, &git.CloneOptions{
+		URL:               cloneURL,
+		RecurseSubmodules: 10,
+	})
+	if err != nil {
+		// When fallback_git_cmd is true and git command is installed,
+		// try to invoke git-clone command
+		if !*cfg.Get.FallbackGitCmd || !cmd.hasGitCmd() {
+			return err
+		}
+		logger.Warnf("failed to clone, try to execute \"git clone --recursive %s %s\" instead...: %s", cloneURL, dstDir, err.Error())
+		err = os.RemoveAll(dstDir)
+		if err != nil {
+			return err
+		}
+		out, err := exec.Command("git", "clone", "--recursive", cloneURL, dstDir).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("\"git clone --recursive %s %s\" failed, out=%s: %s", cloneURL, dstDir, string(out), err.Error())
+		}
+	}
+
+	return gitutil.SetUpstreamRemote(r, "origin")
+}
+
+func (cmd *getCmd) hasGitCmd() bool {
+	exeName := "git"
+	if runtime.GOOS == "windows" {
+		exeName = "git.exe"
+	}
+	_, err := exec.LookPath(exeName)
+	return err == nil
 }

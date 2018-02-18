@@ -18,6 +18,7 @@ type ConfigBuild struct {
 
 type ConfigGet struct {
 	CreateSkeletonPlugconf *bool `toml:"create_skeleton_plugconf"`
+	FallbackGitCmd         *bool `toml:"fallback_git_cmd"`
 }
 
 const (
@@ -33,6 +34,7 @@ func initialConfigTOML() *Config {
 		},
 		Get: ConfigGet{
 			CreateSkeletonPlugconf: &trueValue,
+			FallbackGitCmd:         &trueValue,
 		},
 	}
 }
@@ -62,6 +64,9 @@ func merge(cfg, initCfg *Config) {
 	}
 	if cfg.Get.CreateSkeletonPlugconf == nil {
 		cfg.Get.CreateSkeletonPlugconf = initCfg.Get.CreateSkeletonPlugconf
+	}
+	if cfg.Get.FallbackGitCmd == nil {
+		cfg.Get.FallbackGitCmd = initCfg.Get.FallbackGitCmd
 	}
 }
 
