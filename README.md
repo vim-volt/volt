@@ -283,7 +283,7 @@ The files are placed at:
 
 * `$VOLTPATH/plugconf/<repository>.vim`
 
-For example, [tyru/open-browser-github.vim](https://github.com/tyru/open-browser-github.vim) configuration is `$VOLTPATH/plugconf/user/github.com/tyru/open-browser.vim.vim` because "github.com/tyru/open-browser-github.vim" is the repository URL.
+For example, [tyru/open-browser-github.vim](https://github.com/tyru/open-browser-github.vim) configuration is `$VOLTPATH/plugconf/github.com/tyru/open-browser.vim.vim` because "github.com/tyru/open-browser-github.vim" is the repository URL.
 
 Some special functions can be defined in plugconf file:
 
