@@ -173,9 +173,6 @@ Structures
     // lock.json structure compatibility version
     "version": <int64>,
 
-    // Unique number of transaction
-    "trx_id": <int64>,
-
     // Current profile name (e.g. "default")
     "current_profile_name": <string>,
 
@@ -185,9 +182,6 @@ Structures
       {
         // "git" (git repository) or "static" (static repository)
         "type": <string>,
-
-        // Unique number of transaction
-        "trx_id": <int64>,
 
         // Repository path like "github.com/vim-volt/vim-volt"
         "path": <string>,

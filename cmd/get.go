@@ -197,7 +197,6 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 		return err
 	}
 	defer transaction.Remove()
-	lockJSON.TrxID++
 
 	// Read config.toml
 	cfg, err := config.Read()
@@ -226,7 +225,7 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 	for i := 0; i < getCount; i++ {
 		r := <-done
 		status := cmd.formatStatus(&r)
-		// Update repos[]/trx_id, repos[]/version
+		// Update repos[]/version
 		if strings.HasPrefix(status, statusPrefixFailed) {
 			failed = true
 		} else {
@@ -574,7 +573,6 @@ func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath pathuti
 		// -> previous operation is install
 		repos = &lockjson.Repos{
 			Type:    reposType,
-			TrxID:   lockJSON.TrxID,
 			Path:    reposPath,
 			Version: version,
 		}
@@ -584,7 +582,6 @@ func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath pathuti
 	} else {
 		// repos is found in lock.json
 		// -> previous operation is upgrade
-		repos.TrxID = lockJSON.TrxID
 		repos.Version = version
 	}
 
