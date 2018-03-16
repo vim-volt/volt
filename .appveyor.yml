@@ -7,11 +7,11 @@ clone_folder: c:\gopath\src\github.com\vim-volt\volt
 
 environment:
   GOPATH: c:\gopath
-  MYGODIR: C:\go19
+  GOROOT: C:\go19
   VIM_URL: http://vim-jp.org/redirects/koron/vim-kaoriya/vim80/oldest/win64/
 
 install:
-  - set PATH=%GOPATH%\bin;%MYGODIR%\bin;%PATH%
+  - set PATH=%GOPATH%\bin;%GOROOT%\bin;%PATH%
   - echo %PATH%
   - echo %GOPATH%
   - go version
