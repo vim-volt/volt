@@ -121,7 +121,6 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 		return err
 	}
 	defer transaction.Remove()
-	lockJSON.TrxID++
 
 	// Check if specified plugins are depended by some plugins
 	for _, reposPath := range reposPathList {

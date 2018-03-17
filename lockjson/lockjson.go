@@ -18,7 +18,6 @@ type ProfileList []Profile
 
 type LockJSON struct {
 	Version            int64       `json:"version"`
-	TrxID              int64       `json:"trx_id"`
 	CurrentProfileName string      `json:"current_profile_name"`
 	Repos              ReposList   `json:"repos"`
 	Profiles           ProfileList `json:"profiles"`
@@ -34,7 +33,6 @@ const (
 
 type Repos struct {
 	Type    ReposType          `json:"type"`
-	TrxID   int64              `json:"trx_id"`
 	Path    pathutil.ReposPath `json:"path"`
 	Version string             `json:"version"`
 }
@@ -51,7 +49,6 @@ const lockJSONVersion = 2
 func initialLockJSON() *LockJSON {
 	return &LockJSON{
 		Version:            lockJSONVersion,
-		TrxID:              1,
 		CurrentProfileName: "default",
 		Repos:              make([]Repos, 0),
 		Profiles: []Profile{
@@ -193,21 +190,6 @@ func validate(lockJSON *LockJSON) error {
 		}
 	}
 
-	// Validate if trx_id is equal or greater than repos[]/trx_id
-	index := -1
-	var max int64
-	for i := range lockJSON.Repos {
-		repos := &lockJSON.Repos[i]
-		if max < repos.TrxID {
-			index = i
-			max = repos.TrxID
-		}
-	}
-	if max > lockJSON.TrxID {
-		return errors.New("'" + strconv.FormatInt(max, 10) + "' (repos[" + strconv.Itoa(index) + "].trx_id) " +
-			"is greater than '" + strconv.FormatInt(lockJSON.TrxID, 10) + "' (trx_id)")
-	}
-
 	return nil
 }
 
@@ -215,9 +197,7 @@ func validateMissing(lockJSON *LockJSON) error {
 	if lockJSON.Version == 0 {
 		return errors.New("missing: version")
 	}
-	if lockJSON.TrxID == 0 {
-		return errors.New("missing: trx_id")
-	}
+
 	if lockJSON.Repos == nil {
 		return errors.New("missing: repos")
 	}
@@ -233,9 +213,6 @@ func validateMissing(lockJSON *LockJSON) error {
 			}
 			fallthrough
 		case ReposStaticType:
-			if repos.TrxID == 0 {
-				return errors.New("missing: repos[" + strconv.Itoa(i) + "].trx_id")
-			}
 			if repos.Path.String() == "" {
 				return errors.New("missing: repos[" + strconv.Itoa(i) + "].path")
 			}
