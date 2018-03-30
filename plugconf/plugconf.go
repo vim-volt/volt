@@ -30,6 +30,7 @@ const (
 	loadOnExcmd               = "(loadOnExcmd)"
 )
 
+// TODO: Check uplicate variables / functions
 const (
 	excmdLoadPlugin   = "s:__volt_excmd_load_plugin"
 	lazyLoadExcmdFunc = "s:__volt_lazy_load_excmd"
