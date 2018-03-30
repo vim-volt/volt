@@ -21,8 +21,6 @@
 #  version = "2.4.0"
 
 
-required = ["github.com/golang/dep/cmd/dep"]
-
 [[constraint]]
   name = "gopkg.in/src-d/go-git.v4"
   version = "=v4.0.0-rc15"
