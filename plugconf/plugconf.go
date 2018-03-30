@@ -323,7 +323,7 @@ function ` + lazyLoadExcmdFunc + `(command, args, bang, line1, line2) abort
   execute get(` + excmdLoadPlugin + `, a:command, '')
   if exists(':' . a:command) isnot# 2
     echohl ErrorMsg
-    echomsg printf('[volt] Lazy loading of Ex command '%s' failed: '%s' is not found', a:command, a:command)
+    echomsg printf('[volt] Lazy loading of Ex command ''%s'' failed: ''%s'' is not found', a:command, a:command)
     echohl None
     return
   endif
