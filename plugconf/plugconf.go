@@ -44,15 +44,16 @@ func isProhibitedFuncName(name string) bool {
 }
 
 type Plugconf struct {
-	reposID       int
-	reposPath     pathutil.ReposPath
-	functions     []string
-	onLoadPreFunc string
-	loadOnFunc    string
-	loadOn        loadOnType
-	loadOnArg     string
-	dependsFunc   string
-	depends       pathutil.ReposPathList
+	reposID        int
+	reposPath      pathutil.ReposPath
+	functions      []string
+	onLoadPreFunc  string
+	onLoadPostFunc string
+	loadOnFunc     string
+	loadOn         loadOnType
+	loadOnArg      string
+	dependsFunc    string
+	depends        pathutil.ReposPathList
 }
 
 // This type does not provide Error() because I don't want let it pretend like
@@ -220,6 +221,7 @@ func ParsePlugconf(file *ast.File, src, filename string) (*Plugconf, *ParseError
 	var loadOnArg string
 	var loadOnFunc string
 	var onLoadPreFunc string
+	var onLoadPostFunc string
 	var functions []string
 	var dependsFunc string
 	var depends pathutil.ReposPathList
@@ -282,6 +284,15 @@ func ParsePlugconf(file *ast.File, src, filename string) (*Plugconf, *ParseError
 			if !isEmptyFunc(fn) {
 				onLoadPreFunc = extractBody(fn, src)
 			}
+		case name == "s:on_load_post":
+			if onLoadPostFunc != "" {
+				parseErr.Errs = multierror.Append(parseErr.Errs,
+					errors.New("duplicate s:on_load_post()"))
+				return true
+			}
+			if !isEmptyFunc(fn) {
+				onLoadPostFunc = extractBody(fn, src)
+			}
 		case name == "s:depends":
 			if dependsFunc != "" {
 				parseErr.Errs = multierror.Append(parseErr.Errs,
@@ -312,13 +323,14 @@ func ParsePlugconf(file *ast.File, src, filename string) (*Plugconf, *ParseError
 	}
 
 	return &Plugconf{
-		functions:     functions,
-		onLoadPreFunc: onLoadPreFunc,
-		loadOnFunc:    loadOnFunc,
-		loadOn:        loadOn,
-		loadOnArg:     loadOnArg,
-		dependsFunc:   dependsFunc,
-		depends:       depends,
+		functions:      functions,
+		onLoadPreFunc:  onLoadPreFunc,
+		onLoadPostFunc: onLoadPostFunc,
+		loadOnFunc:     loadOnFunc,
+		loadOn:         loadOn,
+		loadOnArg:      loadOnArg,
+		dependsFunc:    dependsFunc,
+		depends:        depends,
 	}, parseErr
 }
 
@@ -437,7 +449,7 @@ func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.Repos
 		optName := filepath.Base(pathutil.EncodeReposPath(repos.Path))
 		packadd := fmt.Sprintf("packadd %s", optName)
 
-		// s:on_load_pre(), invoked command
+		// s:on_load_pre(), invoked command, s:on_load_post()
 		var invokedCmd string
 		if hasPlugconf {
 			cmds := make([]string, 0, 3)
@@ -446,6 +458,10 @@ func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.Repos
 				cmds = append(cmds, fmt.Sprintf("call s:on_load_pre_%d()", p.reposID))
 			}
 			cmds = append(cmds, packadd)
+			if p.onLoadPostFunc != "" {
+				functions = append(functions, convertToDecodableFunc(p.onLoadPostFunc, p.reposPath, p.reposID))
+				cmds = append(cmds, fmt.Sprintf("call s:on_load_post_%d()", p.reposID))
+			}
 			invokedCmd = strings.Join(cmds, " | ")
 		} else {
 			invokedCmd = packadd
@@ -735,6 +751,11 @@ const skeletonPlugconfOnLoadPre = `function! s:on_load_pre()
   " This configuration is executed before a plugin is loaded.
 endfunction`
 
+const skeletonPlugconfOnLoadPost = `function! s:on_load_post()
+  " Plugin configuration like the code written in vimrc.
+  " This configuration is executed after a plugin is loaded.
+endfunction`
+
 const skeletonPlugconfLoadOn = `function! s:loaded_on()
   " This function determines when a plugin is loaded.
   "
@@ -787,6 +808,19 @@ func generatePlugconf(result *Plugconf) ([]byte, error) {
 		_, err = buf.WriteString(result.onLoadPreFunc)
 	} else {
 		_, err = buf.WriteString(skeletonPlugconfOnLoadPre)
+	}
+	if err != nil {
+		return nil, err
+	}
+	_, err = buf.WriteString("\n\n")
+	if err != nil {
+		return nil, err
+	}
+	// s:on_load_post()
+	if result.onLoadPostFunc != "" {
+		_, err = buf.WriteString(result.onLoadPostFunc)
+	} else {
+		_, err = buf.WriteString(skeletonPlugconfOnLoadPost)
 	}
 	if err != nil {
 		return nil, err
