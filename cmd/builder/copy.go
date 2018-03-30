@@ -107,11 +107,16 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	if path := filepath.Join(rcDir, pathutil.ProfileGvimrc); pathutil.Exists(path) {
 		gvimrc = path
 	}
-	content, merr := plugconf.GenerateBundlePlugconf(reposList, vimrc, gvimrc)
-	if merr.ErrorOrNil() != nil {
-		// Return vim script parse errors
-		return merr
+	plugconfs, parseErr := plugconf.ParseEachPlugconf(reposList)
+	if parseErr.HasErrs() {
+		// Vim script parse errors / other errors
+		return parseErr.Errors()
 	}
+	if parseErr.HasWarns() {
+		// Vim script parse warnings
+		logger.Warn(parseErr.Warns())
+	}
+	content, err := plugconfs.GenerateBundlePlugconf(vimrc, gvimrc)
 	os.MkdirAll(filepath.Dir(pathutil.BundledPlugConf()), 0755)
 	err = ioutil.WriteFile(pathutil.BundledPlugConf(), content, 0644)
 	if err != nil {
