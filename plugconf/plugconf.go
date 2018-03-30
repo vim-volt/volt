@@ -246,6 +246,11 @@ func ParsePlugconf(file *ast.File, src, filename string) (*Plugconf, *ParseError
 
 		switch {
 		case name == "s:loaded_on":
+			if loadOnFunc != "" {
+				parseErr.Errs = multierror.Append(parseErr.Errs,
+					errors.New("duplicate s:loaded_on()"))
+				return true
+			}
 			if !isEmptyFunc(fn) {
 				loadOnFunc = extractBody(fn, src)
 				var err error
@@ -255,6 +260,11 @@ func ParsePlugconf(file *ast.File, src, filename string) (*Plugconf, *ParseError
 				}
 			}
 		case name == "s:config":
+			if onLoadPreFunc != "" {
+				parseErr.Errs = multierror.Append(parseErr.Errs,
+					errors.New("duplicate s:on_load_pre() and s:config()"))
+				return true
+			}
 			parseErr.Warns = multierror.Append(parseErr.Warns,
 				errors.New("s:config() is deprecated. please use s:on_load_pre() instead"))
 			if !isEmptyFunc(fn) {
@@ -264,10 +274,20 @@ func ParsePlugconf(file *ast.File, src, filename string) (*Plugconf, *ParseError
 				)
 			}
 		case name == "s:on_load_pre":
+			if onLoadPreFunc != "" {
+				parseErr.Errs = multierror.Append(parseErr.Errs,
+					errors.New("duplicate s:on_load_pre() and s:config()"))
+				return true
+			}
 			if !isEmptyFunc(fn) {
 				onLoadPreFunc = extractBody(fn, src)
 			}
 		case name == "s:depends":
+			if dependsFunc != "" {
+				parseErr.Errs = multierror.Append(parseErr.Errs,
+					errors.New("duplicate s:depends()"))
+				return true
+			}
 			if !isEmptyFunc(fn) {
 				dependsFunc = extractBody(fn, src)
 				var err error
