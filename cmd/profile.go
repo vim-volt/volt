@@ -146,9 +146,10 @@ func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
 	if cmd.helped {
 		return nil, ErrShowedHelp
 	}
-
 	if len(fs.Args()) == 0 {
-		return nil, errors.New("must specify subcommand: volt profile")
+		fs.Usage()
+		logger.Error("must specify subcommand")
+		return nil, ErrShowedHelp
 	}
 	return fs.Args(), nil
 }
