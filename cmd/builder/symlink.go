@@ -35,7 +35,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	if err != nil {
 		return errors.New("could not read lock.json: " + err.Error())
 	}
-	reposList, err := builder.getCurrentReposList(lockJSON)
+	reposList, err := lockJSON.GetCurrentReposList()
 	if err != nil {
 		return err
 	}

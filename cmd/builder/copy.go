@@ -39,7 +39,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	}
 
 	// Get current profile's repos list
-	reposList, err := builder.getCurrentReposList(lockJSON)
+	reposList, err := lockJSON.GetCurrentReposList()
 	if err != nil {
 		return err
 	}

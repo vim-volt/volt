@@ -264,6 +264,19 @@ func (lockJSON *LockJSON) Write() error {
 	return ioutil.WriteFile(pathutil.LockJSON(), bytes, 0644)
 }
 
+func (lockJSON *LockJSON) GetCurrentReposList() (ReposList, error) {
+	// Find current profile
+	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
+	if err != nil {
+		// this must not be occurred because lockjson.Read()
+		// validates that the matching profile exists
+		return nil, err
+	}
+
+	reposList, err := lockJSON.GetReposListByProfile(profile)
+	return reposList, err
+}
+
 func (profs *ProfileList) FindByName(name string) (*Profile, error) {
 	for i := range *profs {
 		if (*profs)[i].Name == name {
