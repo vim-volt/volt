@@ -416,6 +416,8 @@ You can create a vimrc & gvimrc file for each profile:
 * vimrc: `$VOLTPATH/rc/<profile name>/vimrc.vim`
 * gvimrc: `$VOLTPATH/rc/<profile name>/gvimrc.vim`
 
+NOTE: If the path(s) exists, `$MYVIMRC` and `$MYGVIMRC` are set. So `:edit $MYVIMRC` does not open generated vimrc (`~/.vim/vimrc`), but above vimrc/gvimrc.
+
 This file is copied to `~/.vim/vimrc` and `~/.vim/gvimrc` with magic comment (shows error if existing vimrc/gvimrc files exist with no magic comment).
 
 And you can enable/disable vimrc by `volt profile use` (or you can simply remove `$VOLTPATH/rc/<profile name>/vimrc.vim` file if you don't want vimrc for the profile).

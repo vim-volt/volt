@@ -252,7 +252,7 @@ func getDependencies(fn *ast.Function, src string) (pathutil.ReposPathList, erro
 }
 
 // s:loaded_on() function is not included
-func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.ReposPath]*Plugconf) ([]byte, error) {
+func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.ReposPath]*Plugconf, vimrcPath, gvimrcPath string) ([]byte, error) {
 	functions := make([]string, 0, 64)
 	loadCmds := make([]string, 0, len(reposList))
 	lazyExcmd := make(map[string]string, len(reposList))
@@ -360,6 +360,18 @@ endfunction
 		buf.WriteString("\naugroup END")
 	}
 
+	if vimrcPath != "" || gvimrcPath != "" {
+		buf.WriteString("\n\n")
+		if vimrcPath != "" {
+			vimrcPath = strings.Replace(vimrcPath, "'", "''", -1)
+			buf.WriteString("let $MYVIMRC = '" + vimrcPath + "'")
+		}
+		if gvimrcPath != "" {
+			gvimrcPath = strings.Replace(gvimrcPath, "'", "''", -1)
+			buf.WriteString("let $MYGVIMRC = '" + gvimrcPath + "'")
+		}
+	}
+
 	return buf.Bytes(), nil
 }
 
@@ -384,13 +396,15 @@ type reposDepNode struct {
 	dependedBy []reposDepNode
 }
 
-func GenerateBundlePlugconf(reposList []lockjson.Repos) ([]byte, *multierror.Error) {
+// vimrcPath and gvimrcPath become an empty string when each path does not
+// exist.
+func GenerateBundlePlugconf(reposList []lockjson.Repos, vimrcPath, gvimrcPath string) ([]byte, *multierror.Error) {
 	plugconfMap, merr := parsePlugconfAsMap(reposList)
 	if merr.ErrorOrNil() != nil {
 		return nil, merr
 	}
 	sortByDepends(reposList, plugconfMap)
-	content, err := makeBundledPlugconf(reposList, plugconfMap)
+	content, err := makeBundledPlugconf(reposList, plugconfMap, vimrcPath, gvimrcPath)
 	return content, multierror.Append(nil, err)
 }
 

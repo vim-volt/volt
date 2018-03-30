@@ -98,7 +98,16 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	}
 
 	// Write bundled plugconf file
-	content, merr := plugconf.GenerateBundlePlugconf(reposList)
+	rcDir := pathutil.RCDir(lockJSON.CurrentProfileName)
+	vimrc := ""
+	if path := filepath.Join(rcDir, pathutil.ProfileVimrc); pathutil.Exists(path) {
+		vimrc = path
+	}
+	gvimrc := ""
+	if path := filepath.Join(rcDir, pathutil.ProfileGvimrc); pathutil.Exists(path) {
+		gvimrc = path
+	}
+	content, merr := plugconf.GenerateBundlePlugconf(reposList, vimrc, gvimrc)
 	if merr.ErrorOrNil() != nil {
 		// Return vim script parse errors
 		return merr
