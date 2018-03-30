@@ -47,7 +47,7 @@ Usage
 Quick example
   $ volt get tyru/caw.vim     # will install tyru/caw.vim plugin
   $ volt get -u tyru/caw.vim  # will upgrade tyru/caw.vim plugin
-  $ volt get -l -u            # will upgrade all installed plugins
+  $ volt get -l -u            # will upgrade all plugins in current profile
   $ VOLT_DEBUG=1 volt get tyru/caw.vim  # will output more verbosely
 
   $ mkdir -p ~/volt/repos/localhost/local/hello/plugin
@@ -65,7 +65,7 @@ Description
 
 Repository List
   {repository} list (=target to perform installing, upgrading, and so on) is determined as followings:
-  * If -l option is specified, all installed vim plugins (regardless current profile) are used
+  * If -l option is specified, all plugins in current profile are used
   * If one or more {repository} arguments are specified, the arguments are used
 
 Action
@@ -107,8 +107,8 @@ Options`)
 		fmt.Println()
 		cmd.helped = true
 	}
-	fs.BoolVar(&cmd.lockJSON, "l", false, "use all installed repositories as targets")
-	fs.BoolVar(&cmd.upgrade, "u", false, "upgrade repositories")
+	fs.BoolVar(&cmd.lockJSON, "l", false, "use all plugins in current profile as targets")
+	fs.BoolVar(&cmd.upgrade, "u", false, "upgrade plugins")
 	return fs
 }
 
@@ -165,12 +165,18 @@ func (cmd *getCmd) parseArgs(args []string) ([]string, error) {
 }
 
 func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) ([]pathutil.ReposPath, error) {
-	reposPathList := make([]pathutil.ReposPath, 0, 32)
 	if cmd.lockJSON {
-		for _, repos := range lockJSON.Repos {
-			reposPathList = append(reposPathList, repos.Path)
+		reposList, err := lockJSON.GetCurrentReposList()
+		if err != nil {
+			return nil, err
 		}
+		reposPathList := make([]pathutil.ReposPath, 0, len(reposList))
+		for i := range reposList {
+			reposPathList = append(reposPathList, reposList[i].Path)
+		}
+		return reposPathList, nil
 	} else {
+		reposPathList := make([]pathutil.ReposPath, 0, len(args))
 		for _, arg := range args {
 			reposPath, err := pathutil.NormalizeRepos(arg)
 			if err != nil {
@@ -178,8 +184,8 @@ func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) 
 			}
 			reposPathList = append(reposPathList, reposPath)
 		}
+		return reposPathList, nil
 	}
-	return reposPathList, nil
 }
 
 func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) error {

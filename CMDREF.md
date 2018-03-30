@@ -62,7 +62,7 @@ Usage
 Quick example
   $ volt get tyru/caw.vim     # will install tyru/caw.vim plugin
   $ volt get -u tyru/caw.vim  # will upgrade tyru/caw.vim plugin
-  $ volt get -l -u            # will upgrade all installed plugins
+  $ volt get -l -u            # will upgrade all plugins in current profile
   $ VOLT_DEBUG=1 volt get tyru/caw.vim  # will output more verbosely
 
   $ mkdir -p ~/volt/repos/localhost/local/hello/plugin
@@ -80,7 +80,7 @@ Description
 
 Repository List
   {repository} list (=target to perform installing, upgrading, and so on) is determined as followings:
-  * If -l option is specified, all installed vim plugins (regardless current profile) are used
+  * If -l option is specified, all plugins in current profile are used
   * If one or more {repository} arguments are specified, the arguments are used
 
 Action
@@ -118,8 +118,8 @@ Repository path
   4. http://{site}/{user}/{name}
 
 Options
-  -l    use all installed repositories as targets
-  -u    upgrade repositories
+  -l    use all plugins in current profile as targets
+  -u    upgrade plugins
 ```
 
 # volt list

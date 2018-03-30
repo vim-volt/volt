@@ -205,7 +205,9 @@ You can update all plugins as follows:
 $ volt get -l -u
 ```
 
-`-l` works like all installed plugins are specified (the repositories list is read from `$VOLTPATH/lock.json`).
+`-l` works like all plugins in current profile are specified (the repositories list is read from `$VOLTPATH/lock.json`).
+If you do not use profile feature, or `enable` and `disable` commands, you can
+think that `-l` specifies all plugins what you have installed.
 `-u` updates specified plugins.
 
 Or, update only specified plugin(s) as follows:
@@ -249,7 +251,7 @@ Normally `volt build` synchronizes correctly, but if you met the bug, try `volt 
 If you want to install set of plugins which you have installed by `volt get`, you can use `volt get -l`.
 
 ```
-$ volt get -l   # install plugins listed in $VOLTPATH/lock.json
+$ volt get -l   # install missing plugins in current profile in $VOLTPATH/lock.json
 ```
 
 First, you have to manage the following files under `$VOLTPATH`.

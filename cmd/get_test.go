@@ -373,6 +373,36 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 	}
 }
 
+// 'volt get -l' must not add disabled plugins
+func TestVoltGetLoptMustNotAddDisabledPlugins(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
+	// (A, B)
+	out, err := testutil.RunVolt("get", "tyru/dummy", "tyru/dummy2")
+	testutil.SuccessExit(t, out, err)
+
+	testReposPathWereEnabled(t, pathutil.ReposPath("github.com/tyru/dummy"))
+	testReposPathWereEnabled(t, pathutil.ReposPath("github.com/tyru/dummy2"))
+
+	// (A, B)
+	out, err = testutil.RunVolt("disable", "tyru/dummy2")
+	testutil.SuccessExit(t, out, err)
+
+	testReposPathWereEnabled(t, pathutil.ReposPath("github.com/tyru/dummy"))
+	testReposPathWereDisabled(t, pathutil.ReposPath("github.com/tyru/dummy2"))
+
+	// (A, B)
+	out, err = testutil.RunVolt("get", "-l")
+	testutil.SuccessExit(t, out, err)
+
+	testReposPathWereEnabled(t, pathutil.ReposPath("github.com/tyru/dummy"))
+	testReposPathWereDisabled(t, pathutil.ReposPath("github.com/tyru/dummy2"))
+}
+
 // [error] Specify invalid argument (!A, !B, !C, !D, !E, !F, !G)
 func TestErrVoltGetInvalidArgs(t *testing.T) {
 	// =============== setup =============== //
@@ -477,6 +507,38 @@ func testReposPathWereAdded(t *testing.T, reposPath pathutil.ReposPath) {
 	for i := range lockJSON.Profiles {
 		if !lockJSON.Profiles[i].ReposPath.Contains(reposPath) {
 			t.Error("repos was not added to lock.json/profiles/repos_path: " + reposPath)
+		}
+	}
+}
+
+func testReposPathWereEnabled(t *testing.T, reposPath pathutil.ReposPath) {
+	t.Helper()
+	checkTestReposPath(t, reposPath, true)
+}
+
+func testReposPathWereDisabled(t *testing.T, reposPath pathutil.ReposPath) {
+	t.Helper()
+	checkTestReposPath(t, reposPath, false)
+}
+
+func checkTestReposPath(t *testing.T, reposPath pathutil.ReposPath, enabled bool) {
+	t.Helper()
+	lockJSON, err := lockjson.Read()
+	if err != nil {
+		t.Error("lockjson.Read() returned non-nil error: " + err.Error())
+	}
+	if !lockJSON.Repos.Contains(reposPath) {
+		t.Error("repos was not added to lock.json/repos: " + reposPath)
+	}
+	for i := range lockJSON.Profiles {
+		if enabled {
+			if !lockJSON.Profiles[i].ReposPath.Contains(reposPath) {
+				t.Error("repos was not added to lock.json/profiles/repos_path: " + reposPath)
+			}
+		} else {
+			if lockJSON.Profiles[i].ReposPath.Contains(reposPath) {
+				t.Error("repos was added to lock.json/profiles/repos_path: " + reposPath)
+			}
 		}
 	}
 }
