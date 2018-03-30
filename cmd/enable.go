@@ -18,6 +18,8 @@ type enableCmd struct {
 	helped bool
 }
 
+func (cmd *enableCmd) ProhibitRootExecution(args []string) bool { return true }
+
 func (cmd *enableCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)

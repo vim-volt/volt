@@ -28,6 +28,8 @@ type selfUpgradeCmd struct {
 	check  bool
 }
 
+func (cmd *selfUpgradeCmd) ProhibitRootExecution(args []string) bool { return true }
+
 func (cmd *selfUpgradeCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)

@@ -23,6 +23,21 @@ func init() {
 	cmdMap["profile"] = &profileCmd{}
 }
 
+func (cmd *profileCmd) ProhibitRootExecution(args []string) bool {
+	if len(args) == 0 {
+		return true
+	}
+	subCmd := args[0]
+	switch subCmd {
+	case "show":
+		return false
+	case "list":
+		return false
+	default:
+		return true
+	}
+}
+
 func (cmd *profileCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)

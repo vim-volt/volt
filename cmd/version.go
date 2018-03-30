@@ -19,6 +19,8 @@ type versionCmd struct {
 	helped bool
 }
 
+func (cmd *versionCmd) ProhibitRootExecution(args []string) bool { return false }
+
 func (cmd *versionCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)

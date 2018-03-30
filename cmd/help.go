@@ -17,6 +17,8 @@ func init() {
 
 type helpCmd struct{}
 
+func (cmd *helpCmd) ProhibitRootExecution(args []string) bool { return false }
+
 func (cmd *helpCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)

@@ -21,6 +21,8 @@ type listCmd struct {
 	format string
 }
 
+func (cmd *listCmd) ProhibitRootExecution(args []string) bool { return false }
+
 func (cmd *listCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)

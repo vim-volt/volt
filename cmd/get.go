@@ -36,6 +36,8 @@ type getCmd struct {
 	upgrade  bool
 }
 
+func (cmd *getCmd) ProhibitRootExecution(args []string) bool { return true }
+
 func (cmd *getCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)

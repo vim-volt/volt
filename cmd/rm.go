@@ -26,6 +26,8 @@ type rmCmd struct {
 	rmPlugconf bool
 }
 
+func (cmd *rmCmd) ProhibitRootExecution(args []string) bool { return true }
+
 func (cmd *rmCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)

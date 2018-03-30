@@ -19,6 +19,8 @@ type migrateCmd struct {
 	helped bool
 }
 
+func (cmd *migrateCmd) ProhibitRootExecution(args []string) bool { return true }
+
 func (cmd *migrateCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
