@@ -102,7 +102,10 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	}
 	if parseErr.HasWarns() {
 		// Vim script parse warnings
-		logger.Warn(parseErr.Warns())
+		merr := parseErr.Warns()
+		for _, err := range merr.Errors {
+			logger.Warn(err)
+		}
 	}
 	content, err := plugconfs.GenerateBundlePlugconf(vimrc, gvimrc)
 	os.MkdirAll(filepath.Dir(pathutil.BundledPlugConf()), 0755)
