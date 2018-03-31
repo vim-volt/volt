@@ -766,12 +766,12 @@ func FetchPlugconfTemplate(reposPath pathutil.ReposPath) (*Template, error) {
 
 const skeletonPlugconfOnLoadPre = `function! s:on_load_pre()
   " Plugin configuration like the code written in vimrc.
-  " This configuration is executed before a plugin is loaded.
+  " This configuration is executed *before* a plugin is loaded.
 endfunction`
 
 const skeletonPlugconfOnLoadPost = `function! s:on_load_post()
   " Plugin configuration like the code written in vimrc.
-  " This configuration is executed after a plugin is loaded.
+  " This configuration is executed *after* a plugin is loaded.
 endfunction`
 
 const skeletonPlugconfLoadOn = `function! s:loaded_on()
