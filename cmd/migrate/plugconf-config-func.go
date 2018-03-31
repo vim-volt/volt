@@ -26,8 +26,17 @@ func (*plugconfConfigMigrater) Name() string {
 	return "plugconf/config-func"
 }
 
-func (*plugconfConfigMigrater) Description() string {
-	return "converts s:config() function name to s:on_load_pre() in all plugconf files"
+func (m *plugconfConfigMigrater) Description(brief bool) string {
+	if brief {
+		return "converts s:config() function name to s:on_load_pre() in all plugconf files"
+	}
+	return `Usage
+  volt migrate [-help] ` + m.Name() + `
+
+Description
+  Perform migration of the function name of s:config() functions in plugconf files of all plugins. All s:config() functions are renamed to s:on_load_pre().
+  "s:config()" is a old function name (see https://github.com/vim-volt/volt/issues/196).
+  All plugconf files are replaced with new contents.`
 }
 
 func (*plugconfConfigMigrater) Migrate() error {

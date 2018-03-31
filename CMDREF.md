@@ -211,12 +211,17 @@ Description
 
 ```
 Usage
-  volt migrate [-help]
+  volt migrate [-help] {migration operation}
 
 Description
-    Perform migration of $VOLTPATH/lock.json, which means volt converts old version lock.json structure into the latest version. This is always done automatically when reading lock.json content. For example, 'volt get <repos>' will install plugin, and migrate lock.json structure, and write it to lock.json after all. so the migrated content is written to lock.json automatically.
-    But, for example, 'volt list' does not write to lock.json but does read, so every time when running 'volt list' shows warning about lock.json is old.
-    To suppress this, running this command simply reads and writes migrated structure to lock.json.
+  Perform miscellaneous migration operations.
+  See detailed help for 'volt migrate -help {migration operation}'.
+
+Available operations
+  lockjson
+    converts old lock.json format to the latest format
+  plugconf/config-func
+    converts s:config() function name to s:on_load_pre() in all plugconf files
 ```
 
 # volt profile

@@ -9,7 +9,7 @@ import (
 type Migrater interface {
 	Migrate() error
 	Name() string
-	Description() string
+	Description(brief bool) string
 }
 
 var migrateOps = make(map[string]Migrater)

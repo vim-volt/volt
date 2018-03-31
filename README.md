@@ -66,8 +66,9 @@ Command
   build [-full]
     Build ~/.vim/pack/volt/ directory
 
-  migrate
-    Convert old version $VOLTPATH/lock.json structure into the latest version
+  migrate {migration operation}
+    Perform miscellaneous migration operations.
+    See 'volt migrate -help' for all available operations
 
   self-upgrade [-check]
     Upgrade to the latest volt command, or if -check was given, it only checks the newer version is available
