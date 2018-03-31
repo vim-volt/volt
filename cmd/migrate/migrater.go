@@ -1,10 +1,15 @@
 package migrate
 
-import "errors"
+import (
+	"errors"
+	"sort"
+)
 
 // Migrater migrates many kinds of data.
 type Migrater interface {
 	Migrate() error
+	Name() string
+	Description() string
 }
 
 var migrateOps = make(map[string]Migrater)
@@ -16,4 +21,16 @@ func GetMigrater(name string) (Migrater, error) {
 		return nil, errors.New("no such migration operation: " + name)
 	}
 	return m, nil
+}
+
+// ListMigraters lists all migraters.
+func ListMigraters() []Migrater {
+	migraters := make([]Migrater, 0, len(migrateOps))
+	for _, m := range migrateOps {
+		migraters = append(migraters, m)
+	}
+	sort.Slice(migraters, func(i, j int) bool {
+		return migraters[i].Name() < migraters[j].Name()
+	})
+	return migraters
 }

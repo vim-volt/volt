@@ -57,6 +57,64 @@ type ParsedInfo struct {
 	depends        pathutil.ReposPathList
 }
 
+// ConvertConfigToOnLoadPreFunc converts s:config() function name to
+// s:on_load_pre() (see 'volt migrate plugconf/config-func' function).
+// If no s:config() function is found, returns false.
+// If found, returns true.
+func (pi *ParsedInfo) ConvertConfigToOnLoadPreFunc() bool {
+	newStr := rxFuncName.ReplaceAllString(pi.onLoadPreFunc, "${1}on_load_pre")
+	if pi.onLoadPreFunc != newStr {
+		return false
+	}
+	pi.onLoadPreFunc = newStr
+	return true
+}
+
+// GeneratePlugconf generates a plugconf file placed at
+// "$VOLTPATH/plugconf/{repos}.vim".
+func (pi *ParsedInfo) GeneratePlugconf() ([]byte, error) {
+	// Merge result and return it
+	var buf bytes.Buffer
+
+	// s:on_load_pre()
+	if pi.onLoadPreFunc != "" {
+		buf.WriteString(pi.onLoadPreFunc)
+	} else {
+		buf.WriteString(skeletonPlugconfOnLoadPre)
+	}
+	buf.WriteString("\n\n")
+
+	// s:on_load_post()
+	if pi.onLoadPostFunc != "" {
+		buf.WriteString(pi.onLoadPostFunc)
+	} else {
+		buf.WriteString(skeletonPlugconfOnLoadPost)
+	}
+	buf.WriteString("\n\n")
+
+	// s:loaded_on()
+	if pi.loadOnFunc != "" {
+		buf.WriteString(pi.loadOnFunc)
+	} else {
+		buf.WriteString(skeletonPlugconfLoadOn)
+	}
+	buf.WriteString("\n\n")
+
+	// s:depends()
+	if pi.dependsFunc != "" {
+		buf.WriteString(pi.dependsFunc)
+	} else {
+		buf.WriteString(skeletonPlugconfDepends)
+	}
+
+	for _, f := range pi.functions {
+		buf.WriteString("\n\n")
+		buf.WriteString(f)
+	}
+
+	return buf.Bytes(), nil
+}
+
 // ParseError does not provide Error() because I don't want let it pretend like
 // error type. Receivers of a value of this type must decide how to handle.
 type ParseError struct {
@@ -103,6 +161,14 @@ func (e *ParseError) HasErrs() bool {
 // HasWarns returns true when 1 or more warnings.
 func (e *ParseError) HasWarns() bool {
 	return e != nil && e.mwarn.ErrorOrNil() != nil
+}
+
+// Errors returns multierror.Error of errors.
+func (e *ParseError) Errors() *multierror.Error {
+	if e == nil {
+		return nil
+	}
+	return e.mwarn
 }
 
 // ErrorsAndWarns returns multierror.Error which errors and warnings are mixed in.
@@ -445,6 +511,9 @@ func getDependencies(fn *ast.Function) (pathutil.ReposPathList, error) {
 	return deps, parseErr
 }
 
+// rxFuncName is a pattern which matches to function name.
+// Note that $2 is a function name.
+// $1 is a string before a function name.
 var rxFuncName = regexp.MustCompile(`\A(fu\w+!?\s+s:)(\w+)`)
 
 func convertToDecodableFunc(funcBody string, reposPath pathutil.ReposPath, reposID int) string {
@@ -622,6 +691,13 @@ endfunction
 	}
 
 	return buf.Bytes(), nil
+}
+
+// Each iterates each repository by given func.
+func (mp *MultiParsedInfo) Each(f func(pathutil.ReposPath, *ParsedInfo)) {
+	for reposPath, info := range mp.plugconfMap {
+		f(reposPath, info)
+	}
 }
 
 // RdepsOf returns depended (required) plugins of reposPath.
@@ -815,65 +891,9 @@ func (pt *Template) Generate(path string) ([]byte, *multierror.Error) {
 			return nil, parseErr.ErrorsAndWarns()
 		}
 	}
-	content, err := generatePlugconf(result)
+	content, err := result.GeneratePlugconf()
 	if err != nil {
 		return nil, multierror.Append(nil, err)
 	}
 	return content, nil
-}
-
-func generatePlugconf(result *ParsedInfo) ([]byte, error) {
-	// Merge result and return it
-	var buf bytes.Buffer
-	var err error
-	// s:on_load_pre()
-	if result.onLoadPreFunc != "" {
-		_, err = buf.WriteString(result.onLoadPreFunc)
-	} else {
-		_, err = buf.WriteString(skeletonPlugconfOnLoadPre)
-	}
-	if err != nil {
-		return nil, err
-	}
-	_, err = buf.WriteString("\n\n")
-	if err != nil {
-		return nil, err
-	}
-	// s:on_load_post()
-	if result.onLoadPostFunc != "" {
-		_, err = buf.WriteString(result.onLoadPostFunc)
-	} else {
-		_, err = buf.WriteString(skeletonPlugconfOnLoadPost)
-	}
-	if err != nil {
-		return nil, err
-	}
-	_, err = buf.WriteString("\n\n")
-	if err != nil {
-		return nil, err
-	}
-	// s:loaded_on()
-	if result.loadOnFunc != "" {
-		_, err = buf.WriteString(result.loadOnFunc)
-	} else {
-		_, err = buf.WriteString(skeletonPlugconfLoadOn)
-	}
-	if err != nil {
-		return nil, err
-	}
-	_, err = buf.WriteString("\n\n")
-	if err != nil {
-		return nil, err
-	}
-	// s:depends()
-	if result.dependsFunc != "" {
-		_, err = buf.WriteString(result.dependsFunc)
-	} else {
-		_, err = buf.WriteString(skeletonPlugconfDepends)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
 }

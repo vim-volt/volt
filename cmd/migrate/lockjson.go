@@ -8,10 +8,19 @@ import (
 )
 
 func init() {
-	migrateOps["lockjson"] = &lockjsonMigrater{}
+	m := &lockjsonMigrater{}
+	migrateOps[m.Name()] = m
 }
 
 type lockjsonMigrater struct{}
+
+func (*lockjsonMigrater) Name() string {
+	return "lockjson"
+}
+
+func (*lockjsonMigrater) Description() string {
+	return "converts old lock.json format to the latest format"
+}
 
 func (*lockjsonMigrater) Migrate() error {
 	// Read lock.json

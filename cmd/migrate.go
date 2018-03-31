@@ -47,6 +47,7 @@ func (cmd *migrateCmd) Run(args []string) int {
 	}
 	if err != nil {
 		logger.Error("Failed to parse args: " + err.Error())
+		cmd.showAvailableOps()
 		return 10
 	}
 
@@ -55,6 +56,7 @@ func (cmd *migrateCmd) Run(args []string) int {
 		return 11
 	}
 
+	logger.Infof("'%s' was successfully migrated!", op.Name())
 	return 0
 }
 
@@ -68,4 +70,11 @@ func (cmd *migrateCmd) parseArgs(args []string) (migrate.Migrater, error) {
 		return nil, errors.New("please specify migration operation")
 	}
 	return migrate.GetMigrater(args[0])
+}
+
+func (cmd *migrateCmd) showAvailableOps() {
+	logger.Info("Available migrate operations are:")
+	for _, m := range migrate.ListMigraters() {
+		logger.Infof("  %s - %s", m.Name(), m.Description())
+	}
 }
