@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/vim-volt/volt/lockjson"
+	"github.com/vim-volt/volt/cmd/migrate"
 	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/transaction"
 )
 
 func init() {
@@ -27,7 +26,7 @@ func (cmd *migrateCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt migrate [-help]
+  volt migrate [-help] {migration operation}
 
 Description
     Perform migration of $VOLTPATH/lock.json, which means volt converts old version lock.json structure into the latest version. This is always done automatically when reading lock.json content. For example, 'volt get <repos>' will install plugin, and migrate lock.json structure, and write it to lock.json after all. so the migrated content is written to lock.json automatically.
@@ -42,7 +41,7 @@ Description
 }
 
 func (cmd *migrateCmd) Run(args []string) int {
-	err := cmd.parseArgs(args)
+	op, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
 		return 0
 	}
@@ -51,8 +50,7 @@ func (cmd *migrateCmd) Run(args []string) int {
 		return 10
 	}
 
-	err = cmd.doMigrate()
-	if err != nil {
+	if err := op.Migrate(); err != nil {
 		logger.Error("Failed to migrate: " + err.Error())
 		return 11
 	}
@@ -60,33 +58,14 @@ func (cmd *migrateCmd) Run(args []string) int {
 	return 0
 }
 
-func (cmd *migrateCmd) parseArgs(args []string) error {
+func (cmd *migrateCmd) parseArgs(args []string) (migrate.Migrater, error) {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {
-		return ErrShowedHelp
+		return nil, ErrShowedHelp
 	}
-	return nil
-}
-
-func (cmd *migrateCmd) doMigrate() error {
-	// Read lock.json
-	lockJSON, err := lockjson.ReadNoMigrationMsg()
-	if err != nil {
-		return errors.New("could not read lock.json: " + err.Error())
+	if len(args) == 0 {
+		return nil, errors.New("please specify migration operation")
 	}
-
-	// Begin transaction
-	err = transaction.Create()
-	if err != nil {
-		return err
-	}
-	defer transaction.Remove()
-
-	// Write to lock.json
-	err = lockJSON.Write()
-	if err != nil {
-		return errors.New("could not write to lock.json: " + err.Error())
-	}
-	return nil
+	return migrate.GetMigrater(args[0])
 }
