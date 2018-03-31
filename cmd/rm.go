@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -78,7 +79,7 @@ func (cmd *rmCmd) Run(args []string) int {
 	}
 
 	// Build opt dir
-	err = (&buildCmd{}).doBuild(false)
+	err = builder.Build(false)
 	if err != nil {
 		logger.Error("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 		return 12

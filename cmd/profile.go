@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -224,7 +225,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	logger.Info("Changed current profile: " + profileName)
 
 	// Build ~/.vim/pack/volt dir
-	err = (&buildCmd{}).doBuild(false)
+	err = builder.Build(false)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
@@ -468,7 +469,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = (&buildCmd{}).doBuild(false)
+	err = builder.Build(false)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
@@ -512,7 +513,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = (&buildCmd{}).doBuild(false)
+	err = builder.Build(false)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}

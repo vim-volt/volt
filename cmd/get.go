@@ -14,6 +14,7 @@ import (
 
 	"gopkg.in/src-d/go-git.v4"
 
+	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/gitutil"
@@ -258,7 +259,7 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = (&buildCmd{}).doBuild(false)
+	err = builder.Build(false)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
