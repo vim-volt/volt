@@ -13,34 +13,42 @@ import (
 	"github.com/vim-volt/volt/pathutil"
 )
 
+// ReposList = []Repos
 type ReposList []Repos
+
+// ProfileList = []Profile
 type ProfileList []Profile
 
+// LockJSON is marshallable content of lock.json
 type LockJSON struct {
 	Version            int64       `json:"version"`
-	TrxID              int64       `json:"trx_id"`
 	CurrentProfileName string      `json:"current_profile_name"`
 	Repos              ReposList   `json:"repos"`
 	Profiles           ProfileList `json:"profiles"`
 }
 
+// ReposType = string
 type ReposType string
 
 const (
-	ReposGitType    ReposType = "git"
+	// ReposGitType = "git"
+	ReposGitType ReposType = "git"
+	// ReposStaticType = "static"
 	ReposStaticType ReposType = "static"
+	// ReposSystemType = "system"
 	ReposSystemType ReposType = "system"
 )
 
+// Repos is a element of LockJSON.Repos
 type Repos struct {
 	Type    ReposType          `json:"type"`
-	TrxID   int64              `json:"trx_id"`
 	Path    pathutil.ReposPath `json:"path"`
 	Version string             `json:"version"`
 }
 
 type profReposPath []pathutil.ReposPath
 
+// Profile is a element of LockJSON.Profiles
 type Profile struct {
 	Name      string        `json:"name"`
 	ReposPath profReposPath `json:"repos_path"`
@@ -51,7 +59,6 @@ const lockJSONVersion = 2
 func initialLockJSON() *LockJSON {
 	return &LockJSON{
 		Version:            lockJSONVersion,
-		TrxID:              1,
 		CurrentProfileName: "default",
 		Repos:              make([]Repos, 0),
 		Profiles: []Profile{
@@ -63,10 +70,12 @@ func initialLockJSON() *LockJSON {
 	}
 }
 
+// Read reads from lock.json and returns LockJSON
 func Read() (*LockJSON, error) {
 	return read(true)
 }
 
+// ReadNoMigrationMsg is same as Read, but no migration message is printed.
 func ReadNoMigrationMsg() (*LockJSON, error) {
 	return read(false)
 }
@@ -193,21 +202,6 @@ func validate(lockJSON *LockJSON) error {
 		}
 	}
 
-	// Validate if trx_id is equal or greater than repos[]/trx_id
-	index := -1
-	var max int64
-	for i := range lockJSON.Repos {
-		repos := &lockJSON.Repos[i]
-		if max < repos.TrxID {
-			index = i
-			max = repos.TrxID
-		}
-	}
-	if max > lockJSON.TrxID {
-		return errors.New("'" + strconv.FormatInt(max, 10) + "' (repos[" + strconv.Itoa(index) + "].trx_id) " +
-			"is greater than '" + strconv.FormatInt(lockJSON.TrxID, 10) + "' (trx_id)")
-	}
-
 	return nil
 }
 
@@ -215,9 +209,7 @@ func validateMissing(lockJSON *LockJSON) error {
 	if lockJSON.Version == 0 {
 		return errors.New("missing: version")
 	}
-	if lockJSON.TrxID == 0 {
-		return errors.New("missing: trx_id")
-	}
+
 	if lockJSON.Repos == nil {
 		return errors.New("missing: repos")
 	}
@@ -233,9 +225,6 @@ func validateMissing(lockJSON *LockJSON) error {
 			}
 			fallthrough
 		case ReposStaticType:
-			if repos.TrxID == 0 {
-				return errors.New("missing: repos[" + strconv.Itoa(i) + "].trx_id")
-			}
 			if repos.Path.String() == "" {
 				return errors.New("missing: repos[" + strconv.Itoa(i) + "].path")
 			}
@@ -287,32 +276,52 @@ func (lockJSON *LockJSON) Write() error {
 	return ioutil.WriteFile(pathutil.LockJSON(), bytes, 0644)
 }
 
-func (profs *ProfileList) FindByName(name string) (*Profile, error) {
-	for i := range *profs {
-		if (*profs)[i].Name == name {
-			return &(*profs)[i], nil
-		}
+// GetCurrentReposList returns current profile's repositories.
+func (lockJSON *LockJSON) GetCurrentReposList() (ReposList, error) {
+	// Find current profile
+	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
+	if err != nil {
+		// this must not be occurred because lockjson.Read()
+		// validates that the matching profile exists
+		return nil, err
 	}
-	return nil, errors.New("profile '" + name + "' does not exist")
+
+	reposList, err := lockJSON.GetReposListByProfile(profile)
+	return reposList, err
 }
 
-func (profs *ProfileList) FindIndexByName(name string) int {
-	for i := range *profs {
-		if (*profs)[i].Name == name {
+// FindByName finds name from all profiles and returns it.
+// Non-nil pointer is returned if found.
+// nil pointer is returned if not found.
+func (plist ProfileList) FindByName(name string) (*Profile, error) {
+	idx := plist.FindIndexByName(name)
+	if idx < 0 {
+		return nil, errors.New("profile '" + name + "' does not exist")
+	}
+	return &plist[idx], nil
+}
+
+// FindIndexByName same as FindByName but returns index.
+// idx >= 0 is returned if found.
+// idx == -1 is returned if not found.
+func (plist ProfileList) FindIndexByName(name string) int {
+	for i := range plist {
+		if plist[i].Name == name {
 			return i
 		}
 	}
 	return -1
 }
 
-func (profs *ProfileList) RemoveAllReposPath(reposPath pathutil.ReposPath) error {
+// RemoveAllReposPath removes all reposPath from all profiles' repos path list.
+func (plist ProfileList) RemoveAllReposPath(reposPath pathutil.ReposPath) error {
 	removed := false
-	for i := range *profs {
-		for j := 0; j < len((*profs)[i].ReposPath); {
-			if (*profs)[i].ReposPath[j] == reposPath {
-				(*profs)[i].ReposPath = append(
-					(*profs)[i].ReposPath[:j],
-					(*profs)[i].ReposPath[j+1:]...,
+	for i := range plist {
+		for j := 0; j < len(plist[i].ReposPath); {
+			if plist[i].ReposPath[j] == reposPath {
+				plist[i].ReposPath = append(
+					plist[i].ReposPath[:j],
+					plist[i].ReposPath[j+1:]...,
 				)
 				removed = true
 				continue
@@ -326,22 +335,26 @@ func (profs *ProfileList) RemoveAllReposPath(reposPath pathutil.ReposPath) error
 	return nil
 }
 
-func (reposList *ReposList) Contains(reposPath pathutil.ReposPath) bool {
+// Contains returns true if reposList contains reposPath.
+func (reposList ReposList) Contains(reposPath pathutil.ReposPath) bool {
 	_, err := reposList.FindByPath(reposPath)
 	return err == nil
 }
 
-func (reposList *ReposList) FindByPath(reposPath pathutil.ReposPath) (*Repos, error) {
-	for i := range *reposList {
-		repos := &(*reposList)[i]
-		if repos.Path == reposPath {
-			return repos, nil
+// FindByPath finds reposPath from reposList.
+// Non-nil pointer is returned if found.
+// nil pointer is returned if not found.
+func (reposList ReposList) FindByPath(reposPath pathutil.ReposPath) (*Repos, error) {
+	for i := range reposList {
+		if reposList[i].Path == reposPath {
+			return &reposList[i], nil
 		}
 	}
 	return nil, errors.New("repos '" + reposPath.String() + "' does not exist")
 }
 
-func (reposList *ReposList) RemoveAllByPath(reposPath pathutil.ReposPath) error {
+// RemoveAllReposPath removes all reposPath from all repos path list.
+func (reposList *ReposList) RemoveAllReposPath(reposPath pathutil.ReposPath) error {
 	for i := range *reposList {
 		if (*reposList)[i].Path == reposPath {
 			*reposList = append((*reposList)[:i], (*reposList)[i+1:]...)
@@ -351,19 +364,24 @@ func (reposList *ReposList) RemoveAllByPath(reposPath pathutil.ReposPath) error 
 	return errors.New("no matching repos[]/path: " + reposPath.String())
 }
 
-func (reposPathList *profReposPath) Contains(reposPath pathutil.ReposPath) bool {
+// Contains returns true if profReposPath contains reposPath.
+func (reposPathList profReposPath) Contains(reposPath pathutil.ReposPath) bool {
 	return reposPathList.IndexOf(reposPath) >= 0
 }
 
-func (reposPathList *profReposPath) IndexOf(reposPath pathutil.ReposPath) int {
-	for i := range *reposPathList {
-		if (*reposPathList)[i] == reposPath {
+// IndexOf finds reposPath from reposPathList:
+// idx >= 0 is returned if found.
+// idx == -1 is returned if not found.
+func (reposPathList profReposPath) IndexOf(reposPath pathutil.ReposPath) int {
+	for i := range reposPathList {
+		if reposPathList[i] == reposPath {
 			return i
 		}
 	}
 	return -1
 }
 
+// GetReposListByProfile collects each repository of given profile and returns it.
 func (lockJSON *LockJSON) GetReposListByProfile(profile *Profile) (ReposList, error) {
 	reposList := make(ReposList, 0, len(profile.ReposPath))
 	for _, reposPath := range profile.ReposPath {

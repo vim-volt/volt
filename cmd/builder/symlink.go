@@ -35,7 +35,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	if err != nil {
 		return errors.New("could not read lock.json: " + err.Error())
 	}
-	reposList, err := builder.getCurrentReposList(lockJSON)
+	reposList, err := lockJSON.GetCurrentReposList()
 	if err != nil {
 		return err
 	}
@@ -86,11 +86,28 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	}
 
 	// Write bundled plugconf file
-	content, merr := plugconf.GenerateBundlePlugconf(reposList)
-	if merr.ErrorOrNil() != nil {
-		// Return vim script parse errors
-		return merr
+	rcDir := pathutil.RCDir(lockJSON.CurrentProfileName)
+	vimrc := ""
+	if path := filepath.Join(rcDir, pathutil.ProfileVimrc); pathutil.Exists(path) {
+		vimrc = path
 	}
+	gvimrc := ""
+	if path := filepath.Join(rcDir, pathutil.ProfileGvimrc); pathutil.Exists(path) {
+		gvimrc = path
+	}
+	plugconfs, parseErr := plugconf.ParseMultiPlugconf(reposList)
+	if parseErr.HasErrs() {
+		// Vim script parse errors / other errors
+		return parseErr.Errors()
+	}
+	if parseErr.HasWarns() {
+		// Vim script parse warnings
+		merr := parseErr.Warns()
+		for _, err := range merr.Errors {
+			logger.Warn(err)
+		}
+	}
+	content, err := plugconfs.GenerateBundlePlugconf(vimrc, gvimrc)
 	os.MkdirAll(filepath.Dir(pathutil.BundledPlugConf()), 0755)
 	err = ioutil.WriteFile(pathutil.BundledPlugConf(), content, 0644)
 	if err != nil {
@@ -102,8 +119,8 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 }
 
 func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
-	src := pathutil.FullReposPath(repos.Path)
-	dst := pathutil.EncodeReposPath(repos.Path)
+	src := repos.Path.FullPath()
+	dst := repos.Path.EncodeToPlugDirName()
 
 	copied := false
 	if repos.Type == lockjson.ReposGitType {

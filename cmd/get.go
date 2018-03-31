@@ -14,6 +14,7 @@ import (
 
 	"gopkg.in/src-d/go-git.v4"
 
+	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/gitutil"
@@ -36,6 +37,8 @@ type getCmd struct {
 	upgrade  bool
 }
 
+func (cmd *getCmd) ProhibitRootExecution(args []string) bool { return true }
+
 func (cmd *getCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
@@ -47,7 +50,7 @@ Usage
 Quick example
   $ volt get tyru/caw.vim     # will install tyru/caw.vim plugin
   $ volt get -u tyru/caw.vim  # will upgrade tyru/caw.vim plugin
-  $ volt get -l -u            # will upgrade all installed plugins
+  $ volt get -l -u            # will upgrade all plugins in current profile
   $ VOLT_DEBUG=1 volt get tyru/caw.vim  # will output more verbosely
 
   $ mkdir -p ~/volt/repos/localhost/local/hello/plugin
@@ -65,7 +68,7 @@ Description
 
 Repository List
   {repository} list (=target to perform installing, upgrading, and so on) is determined as followings:
-  * If -l option is specified, all installed vim plugins (regardless current profile) are used
+  * If -l option is specified, all plugins in current profile are used
   * If one or more {repository} arguments are specified, the arguments are used
 
 Action
@@ -107,8 +110,8 @@ Options`)
 		fmt.Println()
 		cmd.helped = true
 	}
-	fs.BoolVar(&cmd.lockJSON, "l", false, "use all installed repositories as targets")
-	fs.BoolVar(&cmd.upgrade, "u", false, "upgrade repositories")
+	fs.BoolVar(&cmd.lockJSON, "l", false, "use all plugins in current profile as targets")
+	fs.BoolVar(&cmd.upgrade, "u", false, "upgrade plugins")
 	return fs
 }
 
@@ -165,12 +168,18 @@ func (cmd *getCmd) parseArgs(args []string) ([]string, error) {
 }
 
 func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) ([]pathutil.ReposPath, error) {
-	reposPathList := make([]pathutil.ReposPath, 0, 32)
+	var reposPathList []pathutil.ReposPath
 	if cmd.lockJSON {
-		for _, repos := range lockJSON.Repos {
-			reposPathList = append(reposPathList, repos.Path)
+		reposList, err := lockJSON.GetCurrentReposList()
+		if err != nil {
+			return nil, err
+		}
+		reposPathList = make([]pathutil.ReposPath, 0, len(reposList))
+		for i := range reposList {
+			reposPathList = append(reposPathList, reposList[i].Path)
 		}
 	} else {
+		reposPathList = make([]pathutil.ReposPath, 0, len(args))
 		for _, arg := range args {
 			reposPath, err := pathutil.NormalizeRepos(arg)
 			if err != nil {
@@ -197,7 +206,6 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 		return err
 	}
 	defer transaction.Remove()
-	lockJSON.TrxID++
 
 	// Read config.toml
 	cfg, err := config.Read()
@@ -226,7 +234,7 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 	for i := 0; i < getCount; i++ {
 		r := <-done
 		status := cmd.formatStatus(&r)
-		// Update repos[]/trx_id, repos[]/version
+		// Update repos[]/version
 		if strings.HasPrefix(status, statusPrefixFailed) {
 			failed = true
 		} else {
@@ -251,7 +259,7 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = (&buildCmd{}).doBuild(false)
+	err = builder.Build(false)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
@@ -328,7 +336,7 @@ func (cmd *getCmd) getParallel(reposPath pathutil.ReposPath, repos *lockjson.Rep
 
 func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.Repos, cfg *config.Config, done chan<- getParallelResult) {
 	// true:upgrade, false:install
-	fullReposPath := pathutil.FullReposPath(reposPath)
+	fullReposPath := reposPath.FullPath()
 	doUpgrade := cmd.upgrade && pathutil.Exists(fullReposPath)
 	doInstall := !pathutil.Exists(fullReposPath)
 
@@ -449,12 +457,12 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 func (cmd *getCmd) installPlugconf(reposPath pathutil.ReposPath, pluginResult *getParallelResult, done chan<- getParallelResult) {
 	// Install plugconf
 	logger.Debug("Installing plugconf " + reposPath + " ...")
-	err := cmd.fetchPlugconf(reposPath)
+	err := cmd.downloadPlugconf(reposPath)
 	if err != nil {
 		result := errors.New("failed to install plugconf: " + err.Error())
 		// TODO: Call cmd.removeDir() only when the repos *did not* exist previously
 		// and was installed newly.
-		// fullReposPath := pathutil.FullReposPath(reposPath)
+		// fullReposPath := reposPath.FullPath()
 		// logger.Debug("Rollbacking " + fullReposPath + " ...")
 		// err = cmd.removeDir(fullReposPath)
 		// if err != nil {
@@ -493,7 +501,7 @@ func (*getCmd) removeDir(fullReposPath string) error {
 }
 
 func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath, cfg *config.Config) error {
-	fullpath := pathutil.FullReposPath(reposPath)
+	fullpath := reposPath.FullPath()
 
 	repos, err := git.PlainOpen(fullpath)
 	if err != nil {
@@ -512,15 +520,14 @@ func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath, cfg *config.Confi
 
 	if reposCfg.Core.IsBare {
 		return cmd.gitFetch(repos, fullpath, remote, cfg)
-	} else {
-		return cmd.gitPull(repos, fullpath, remote, cfg)
 	}
+	return cmd.gitPull(repos, fullpath, remote, cfg)
 }
 
 var errRepoExists = errors.New("repository exists")
 
 func (cmd *getCmd) clonePlugin(reposPath pathutil.ReposPath, cfg *config.Config) error {
-	fullpath := pathutil.FullReposPath(reposPath)
+	fullpath := reposPath.FullPath()
 	if pathutil.Exists(fullpath) {
 		return errRepoExists
 	}
@@ -531,28 +538,29 @@ func (cmd *getCmd) clonePlugin(reposPath pathutil.ReposPath, cfg *config.Config)
 	}
 
 	// Clone repository to $VOLTPATH/repos/{site}/{user}/{name}
-	return cmd.gitClone(pathutil.CloneURL(reposPath), fullpath, cfg)
+	return cmd.gitClone(reposPath.CloneURL(), fullpath, cfg)
 }
 
-func (cmd *getCmd) fetchPlugconf(reposPath pathutil.ReposPath) error {
-	filename := pathutil.Plugconf(reposPath)
-	if pathutil.Exists(filename) {
-		logger.Debugf("plugconf '%s' exists... skip", filename)
+func (cmd *getCmd) downloadPlugconf(reposPath pathutil.ReposPath) error {
+	path := reposPath.Plugconf()
+	if pathutil.Exists(path) {
+		logger.Debugf("plugconf '%s' exists... skip", path)
 		return nil
 	}
 
-	// If non-nil error returned from FetchPlugconf(),
+	// If non-nil error returned from FetchPlugconfTemplate(),
 	// create skeleton plugconf file
-	tmpl, err := plugconf.FetchPlugconf(reposPath)
+	tmpl, err := plugconf.FetchPlugconfTemplate(reposPath)
 	if err != nil {
 		logger.Debug(err.Error())
+		// empty tmpl is returned when err != nil
 	}
-	content, err := plugconf.GenPlugconfByTemplate(tmpl, filename)
-	if err != nil {
-		return fmt.Errorf("parse error in fetched plugconf %s: %s", reposPath, err.Error())
+	content, merr := tmpl.Generate(path)
+	if merr.ErrorOrNil() != nil {
+		return fmt.Errorf("parse error in fetched plugconf %s: %s", reposPath, merr.Error())
 	}
-	os.MkdirAll(filepath.Dir(filename), 0755)
-	err = ioutil.WriteFile(filename, content, 0644)
+	os.MkdirAll(filepath.Dir(path), 0755)
+	err = ioutil.WriteFile(path, content, 0644)
 	if err != nil {
 		return err
 	}
@@ -574,7 +582,6 @@ func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath pathuti
 		// -> previous operation is install
 		repos = &lockjson.Repos{
 			Type:    reposType,
-			TrxID:   lockJSON.TrxID,
 			Path:    reposPath,
 			Version: version,
 		}
@@ -584,7 +591,6 @@ func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath pathuti
 	} else {
 		// repos is found in lock.json
 		// -> previous operation is upgrade
-		repos.TrxID = lockJSON.TrxID
 		repos.Version = version
 	}
 

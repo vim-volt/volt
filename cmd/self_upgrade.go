@@ -28,6 +28,8 @@ type selfUpgradeCmd struct {
 	check  bool
 }
 
+func (cmd *selfUpgradeCmd) ProhibitRootExecution(args []string) bool { return true }
+
 func (cmd *selfUpgradeCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
@@ -113,12 +115,12 @@ func (cmd *selfUpgradeCmd) waitUntilParentExits(pid int) bool {
 }
 
 func (*selfUpgradeCmd) processIsAlive(pid int) bool {
-	if process, err := os.FindProcess(pid); err != nil {
+	process, err := os.FindProcess(pid)
+	if err != nil {
 		return false
-	} else {
-		err := process.Signal(syscall.Signal(0))
-		return err == nil
 	}
+	err = process.Signal(syscall.Signal(0))
+	return err == nil
 }
 
 type latestRelease struct {

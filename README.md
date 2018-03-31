@@ -66,8 +66,9 @@ Command
   build [-full]
     Build ~/.vim/pack/volt/ directory
 
-  migrate
-    Convert old version $VOLTPATH/lock.json structure into the latest version
+  migrate {migration operation}
+    Perform miscellaneous migration operations.
+    See 'volt migrate -help' for all available operations
 
   self-upgrade [-check]
     Upgrade to the latest volt command, or if -check was given, it only checks the newer version is available
@@ -205,7 +206,9 @@ You can update all plugins as follows:
 $ volt get -l -u
 ```
 
-`-l` works like all installed plugins are specified (the repositories list is read from `$VOLTPATH/lock.json`).
+`-l` works like all plugins in current profile are specified (the repositories list is read from `$VOLTPATH/lock.json`).
+If you do not use profile feature, or `enable` and `disable` commands, you can
+think that `-l` specifies all plugins what you have installed.
 `-u` updates specified plugins.
 
 Or, update only specified plugin(s) as follows:
@@ -249,7 +252,7 @@ Normally `volt build` synchronizes correctly, but if you met the bug, try `volt 
 If you want to install set of plugins which you have installed by `volt get`, you can use `volt get -l`.
 
 ```
-$ volt get -l   # install plugins listed in $VOLTPATH/lock.json
+$ volt get -l   # install missing plugins in current profile in $VOLTPATH/lock.json
 ```
 
 First, you have to manage the following files under `$VOLTPATH`.
@@ -415,6 +418,8 @@ $ volt profile rm foo tyru/caw.vim    # disable loading tyru/caw.vim on "foo" pr
 You can create a vimrc & gvimrc file for each profile:
 * vimrc: `$VOLTPATH/rc/<profile name>/vimrc.vim`
 * gvimrc: `$VOLTPATH/rc/<profile name>/gvimrc.vim`
+
+NOTE: If the path(s) exists, `$MYVIMRC` and `$MYGVIMRC` are set. So `:edit $MYVIMRC` does not open generated vimrc (`~/.vim/vimrc`), but above vimrc/gvimrc.
 
 This file is copied to `~/.vim/vimrc` and `~/.vim/gvimrc` with magic comment (shows error if existing vimrc/gvimrc files exist with no magic comment).
 

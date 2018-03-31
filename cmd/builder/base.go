@@ -163,22 +163,9 @@ type actionReposResult struct {
 	files buildinfo.FileMap
 }
 
-func (builder *BaseBuilder) getCurrentReposList(lockJSON *lockjson.LockJSON) (lockjson.ReposList, error) {
-	// Find current profile
-	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
-	if err != nil {
-		// this must not be occurred because lockjson.Read()
-		// validates that the matching profile exists
-		return nil, err
-	}
-
-	reposList, err := lockJSON.GetReposListByProfile(profile)
-	return reposList, err
-}
-
 func (builder *BaseBuilder) helptags(reposPath pathutil.ReposPath, vimExePath string) error {
 	// Do nothing if <reposPath>/doc directory doesn't exist
-	docdir := filepath.Join(pathutil.EncodeReposPath(reposPath), "doc")
+	docdir := filepath.Join(reposPath.EncodeToPlugDirName(), "doc")
 	if !pathutil.Exists(docdir) {
 		return nil
 	}
@@ -193,7 +180,7 @@ func (builder *BaseBuilder) helptags(reposPath pathutil.ReposPath, vimExePath st
 }
 
 func (*BaseBuilder) makeVimArgs(reposPath pathutil.ReposPath) []string {
-	path := pathutil.EncodeReposPath(reposPath)
+	path := reposPath.EncodeToPlugDirName()
 	return []string{
 		"-u", "NONE", "-i", "NONE", "-N",
 		"--cmd", "cd " + path,

@@ -11,12 +11,17 @@ import (
 	"github.com/mattn/go-colorable"
 )
 
-type LogLevel int
+// LogLevel = uint
+type LogLevel uint
 
 const (
+	// ErrorLevel = 1
 	ErrorLevel LogLevel = 1
-	WarnLevel  LogLevel = 2
-	InfoLevel  LogLevel = 3
+	// WarnLevel = 2
+	WarnLevel LogLevel = 2
+	// InfoLevel = 3
+	InfoLevel LogLevel = 3
+	// DebugLevel = 4
 	DebugLevel LogLevel = 4
 )
 
@@ -47,6 +52,7 @@ func init() {
 
 var logLevel = InfoLevel
 
+// Errorf logs formatted message of arguments.
 func Errorf(format string, msgs ...interface{}) {
 	if logLevel < ErrorLevel {
 		return
@@ -57,6 +63,7 @@ func Errorf(format string, msgs ...interface{}) {
 	out.Fprintf(colorable.NewColorableStderr(), errorLabel+"%s "+format+"\n", msgs...)
 }
 
+// Error logs message of arguments.
 func Error(msgs ...interface{}) {
 	if logLevel < ErrorLevel {
 		return
@@ -68,6 +75,7 @@ func Error(msgs ...interface{}) {
 	out.Fprintln(colorable.NewColorableStderr(), msgs...)
 }
 
+// Warnf logs formatted message of arguments.
 func Warnf(format string, msgs ...interface{}) {
 	if logLevel < WarnLevel {
 		return
@@ -78,6 +86,7 @@ func Warnf(format string, msgs ...interface{}) {
 	out.Printf(warnLabel+"%s "+format+"\n", msgs...)
 }
 
+// Warn logs message of arguments.
 func Warn(msgs ...interface{}) {
 	if logLevel < WarnLevel {
 		return
@@ -89,6 +98,7 @@ func Warn(msgs ...interface{}) {
 	out.Println(msgs...)
 }
 
+// Infof logs formatted message of arguments.
 func Infof(format string, msgs ...interface{}) {
 	if logLevel < InfoLevel {
 		return
@@ -99,6 +109,7 @@ func Infof(format string, msgs ...interface{}) {
 	out.Printf(infoLabel+"%s "+format+"\n", msgs...)
 }
 
+// Info logs message of arguments.
 func Info(msgs ...interface{}) {
 	if logLevel < InfoLevel {
 		return
@@ -110,6 +121,7 @@ func Info(msgs ...interface{}) {
 	out.Println(msgs...)
 }
 
+// Debugf logs formatted message of arguments.
 func Debugf(format string, msgs ...interface{}) {
 	if logLevel < DebugLevel {
 		return
@@ -120,6 +132,7 @@ func Debugf(format string, msgs ...interface{}) {
 	out.Printf(debugLabel+"%s "+format+"\n", msgs...)
 }
 
+// Debug logs message of arguments.
 func Debug(msgs ...interface{}) {
 	if logLevel < DebugLevel {
 		return
@@ -144,6 +157,7 @@ func getDebugPrefix() string {
 	return fmt.Sprintf("[%s][%s:%d]", time.Now().UTC().Format("15:04:05.000"), fn, line)
 }
 
+// SetLevel sets current log level to level.
 func SetLevel(level LogLevel) {
 	logLevel = level
 }

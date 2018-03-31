@@ -71,7 +71,7 @@ func SuccessExit(t *testing.T, out []byte, err error) {
 		t.Errorf("expected no error but has error: %s", outstr)
 	}
 	if err != nil {
-		t.Error("expected success exit but exited with failure: " + err.Error())
+		t.Errorf("expected success exit but exited with failure: status=%q, out=%s", err, outstr)
 	}
 }
 
@@ -82,7 +82,7 @@ func FailExit(t *testing.T, out []byte, err error) {
 		t.Errorf("expected error but no error: %s", outstr)
 	}
 	if err == nil {
-		t.Error("expected failure exit but exited with success")
+		t.Errorf("expected failure exit but exited with success: out=%s", outstr)
 	}
 }
 
@@ -135,10 +135,10 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 				home := os.Getenv("HOME")
 				tmpHome, err := ioutil.TempDir("", "volt-test-home-")
 				if err != nil {
-					t.Fatal("failed to create temp dir")
+					t.Fatalf("failed to create temp dir: %s", err)
 				}
 				if err := os.Setenv("HOME", tmpHome); err != nil {
-					t.Fatal("failed to set VOLTPATH")
+					t.Fatalf("failed to set VOLTPATH: %s", err)
 				}
 				defer os.Setenv("HOME", home)
 				if err := os.Setenv("VOLTPATH", tmpVoltpath); err != nil {
@@ -150,12 +150,12 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 			case lockjson.ReposStaticType:
 				err := os.Setenv("VOLTPATH", tmpVoltpath)
 				if err != nil {
-					t.Fatal("failed to set VOLTPATH")
+					t.Fatalf("failed to set VOLTPATH: %s", err)
 				}
 				defer os.Setenv("VOLTPATH", voltpath)
 				os.MkdirAll(filepath.Dir(testRepos), 0777)
 				if err := fileutil.CopyDir(localSrcDir, testRepos, buf, 0777, 0); err != nil {
-					t.Fatalf("failed to copy %s to %s", localSrcDir, testRepos)
+					t.Fatalf("failed to copy %s to %s: %s", localSrcDir, testRepos, err)
 				}
 				out, err := RunVolt("get", localName)
 				SuccessExit(t, out, err)
@@ -168,7 +168,7 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 		repos := filepath.Join(voltpath, "repos", reposPath.String())
 		os.MkdirAll(filepath.Dir(repos), 0777)
 		if err := fileutil.CopyDir(testRepos, repos, buf, 0777, os.FileMode(0)); err != nil {
-			t.Fatalf("failed to copy %s to %s", testRepos, repos)
+			t.Fatalf("failed to copy %s to %s: %s", testRepos, repos, err)
 		}
 
 		// Copy lock.json
@@ -176,7 +176,7 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 		lockjsonPath := filepath.Join(voltpath, "lock.json")
 		os.MkdirAll(filepath.Dir(lockjsonPath), 0777)
 		if err := fileutil.CopyFile(testLockjsonPath, lockjsonPath, buf, 0777); err != nil {
-			t.Fatalf("failed to copy %s to %s", testLockjsonPath, lockjsonPath)
+			t.Fatalf("failed to copy %s to %s: %s", testLockjsonPath, lockjsonPath, err)
 		}
 	}
 	if strategy == config.SymlinkBuilder {

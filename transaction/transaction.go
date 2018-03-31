@@ -11,7 +11,7 @@ import (
 	"github.com/vim-volt/volt/pathutil"
 )
 
-// Create $VOLTPATH/trx.lock file
+// Create creates $VOLTPATH/trx.lock file
 func Create() error {
 	ownPid := []byte(strconv.Itoa(os.Getpid()))
 	trxLockFile := pathutil.TrxLock()
@@ -45,7 +45,7 @@ func Create() error {
 	return nil
 }
 
-// Remove $VOLTPATH/trx.lock file
+// Remove removes $VOLTPATH/trx.lock file
 func Remove() {
 	// Read pid from trx.lock file
 	trxLockFile := pathutil.TrxLock()

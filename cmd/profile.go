@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/hashicorp/go-multierror"
+	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -20,6 +22,21 @@ var profileSubCmd = make(map[string]func([]string) error)
 
 func init() {
 	cmdMap["profile"] = &profileCmd{}
+}
+
+func (cmd *profileCmd) ProhibitRootExecution(args []string) bool {
+	if len(args) == 0 {
+		return true
+	}
+	subCmd := args[0]
+	switch subCmd {
+	case "show":
+		return false
+	case "list":
+		return false
+	default:
+		return true
+	}
 }
 
 func (cmd *profileCmd) FlagSet() *flag.FlagSet {
@@ -130,9 +147,10 @@ func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
 	if cmd.helped {
 		return nil, ErrShowedHelp
 	}
-
 	if len(fs.Args()) == 0 {
-		return nil, errors.New("must specify subcommand: volt profile")
+		fs.Usage()
+		logger.Error("must specify subcommand")
+		return nil, ErrShowedHelp
 	}
 	return fs.Args(), nil
 }
@@ -207,7 +225,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	logger.Info("Changed current profile: " + profileName)
 
 	// Build ~/.vim/pack/volt dir
-	err = (&buildCmd{}).doBuild(false)
+	err = builder.Build(false)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
@@ -306,23 +324,11 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 		logger.Error("'volt profile destroy' receives profile name.")
 		return nil
 	}
-	profileName := args[0]
 
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
 		return errors.New("failed to read lock.json: " + err.Error())
-	}
-
-	// Return error if current profile matches profileName
-	if lockJSON.CurrentProfileName == profileName {
-		return errors.New("cannot destroy current profile: " + profileName)
-	}
-
-	// Return error if profiles[]/name does not match profileName
-	index := lockJSON.Profiles.FindIndexByName(profileName)
-	if index < 0 {
-		return errors.New("profile '" + profileName + "' does not exist")
 	}
 
 	// Begin transaction
@@ -332,14 +338,33 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 	}
 	defer transaction.Remove()
 
-	// Remove the specified profile
-	lockJSON.Profiles = append(lockJSON.Profiles[:index], lockJSON.Profiles[index+1:]...)
+	var merr *multierror.Error
+	for i := range args {
+		profileName := args[i]
 
-	// Remove $VOLTPATH/rc/{profile} dir
-	rcDir := pathutil.RCDir(profileName)
-	os.RemoveAll(rcDir)
-	if pathutil.Exists(rcDir) {
-		return errors.New("failed to remove " + rcDir)
+		// Skip if current profile matches profileName
+		if lockJSON.CurrentProfileName == profileName {
+			merr = multierror.Append(merr, errors.New("cannot destroy current profile: "+profileName))
+			continue
+		}
+		// Skip if profiles[]/name does not match profileName
+		index := lockJSON.Profiles.FindIndexByName(profileName)
+		if index < 0 {
+			merr = multierror.Append(merr, errors.New("profile '"+profileName+"' does not exist"))
+			continue
+		}
+
+		// Remove the specified profile
+		lockJSON.Profiles = append(lockJSON.Profiles[:index], lockJSON.Profiles[index+1:]...)
+
+		// Remove $VOLTPATH/rc/{profile} dir
+		rcDir := pathutil.RCDir(profileName)
+		os.RemoveAll(rcDir)
+		if pathutil.Exists(rcDir) {
+			return errors.New("failed to remove " + rcDir)
+		}
+
+		logger.Info("Deleted profile '" + profileName + "'")
 	}
 
 	// Write to lock.json
@@ -348,9 +373,7 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 		return err
 	}
 
-	logger.Info("Deleted profile '" + profileName + "'")
-
-	return nil
+	return merr.ErrorOrNil()
 }
 
 func (cmd *profileCmd) doRename(args []string) error {
@@ -446,7 +469,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = (&buildCmd{}).doBuild(false)
+	err = builder.Build(false)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
@@ -490,7 +513,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = (&buildCmd{}).doBuild(false)
+	err = builder.Build(false)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}

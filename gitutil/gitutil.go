@@ -12,19 +12,22 @@ import (
 
 var refHeadsRx = regexp.MustCompile(`^refs/heads/(.+)$`)
 
-// If the repository is bare:
-//   Return the reference of refs/remotes/origin/{branch}
-//   where {branch} is default branch
-// If the repository is non-bare:
-//   Return the reference of current branch's HEAD
+// GetHEAD gets HEAD reference hash string from reposPath.
+// See GetHEADRepository.
 func GetHEAD(reposPath pathutil.ReposPath) (string, error) {
-	repos, err := git.PlainOpen(pathutil.FullReposPath(reposPath))
+	repos, err := git.PlainOpen(reposPath.FullPath())
 	if err != nil {
 		return "", err
 	}
 	return GetHEADRepository(repos)
 }
 
+// GetHEADRepository gets HEAD reference hash string from git.Repository.
+// If the repository is bare:
+//   Return the reference of refs/remotes/origin/{branch}
+//   where {branch} is default branch
+// If the repository is non-bare:
+//   Return the reference of current branch's HEAD
 func GetHEADRepository(repos *git.Repository) (string, error) {
 	head, err := repos.Head()
 	if err != nil {

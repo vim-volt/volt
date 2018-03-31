@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
@@ -25,6 +26,8 @@ type rmCmd struct {
 	rmRepos    bool
 	rmPlugconf bool
 }
+
+func (cmd *rmCmd) ProhibitRootExecution(args []string) bool { return true }
 
 func (cmd *rmCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
@@ -76,7 +79,7 @@ func (cmd *rmCmd) Run(args []string) int {
 	}
 
 	// Build opt dir
-	err = (&buildCmd{}).doBuild(false)
+	err = builder.Build(false)
 	if err != nil {
 		logger.Error("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 		return 12
@@ -121,7 +124,6 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 		return err
 	}
 	defer transaction.Remove()
-	lockJSON.TrxID++
 
 	// Check if specified plugins are depended by some plugins
 	for _, reposPath := range reposPathList {
@@ -139,7 +141,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 	for _, reposPath := range reposPathList {
 		// Remove repository directory
 		if cmd.rmRepos {
-			fullReposPath := pathutil.FullReposPath(reposPath)
+			fullReposPath := reposPath.FullPath()
 			if pathutil.Exists(fullReposPath) {
 				if err = cmd.removeRepos(fullReposPath); err != nil {
 					return err
@@ -152,7 +154,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 
 		// Remove plugconf file
 		if cmd.rmPlugconf {
-			plugconfPath := pathutil.Plugconf(reposPath)
+			plugconfPath := reposPath.Plugconf()
 			if pathutil.Exists(plugconfPath) {
 				if err = cmd.removePlugconf(plugconfPath); err != nil {
 					return err
@@ -164,7 +166,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 		}
 
 		// Remove repository from lock.json
-		err = lockJSON.Repos.RemoveAllByPath(reposPath)
+		err = lockJSON.Repos.RemoveAllReposPath(reposPath)
 		err2 := lockJSON.Profiles.RemoveAllReposPath(reposPath)
 		if err == nil || err2 == nil {
 			removeCount++

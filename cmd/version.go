@@ -9,7 +9,8 @@ import (
 	"strconv"
 )
 
-var voltVersion string = "v0.3.2"
+// This variable is not constant for testing (to change it temporarily)
+var voltVersion = "v0.3.3"
 
 func init() {
 	cmdMap["version"] = &versionCmd{}
@@ -18,6 +19,8 @@ func init() {
 type versionCmd struct {
 	helped bool
 }
+
+func (cmd *versionCmd) ProhibitRootExecution(args []string) bool { return false }
 
 func (cmd *versionCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)

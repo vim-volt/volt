@@ -10,10 +10,10 @@ import (
 )
 
 func main() {
-	os.Exit(Main())
+	os.Exit(doMain())
 }
 
-func Main() int {
+func doMain() int {
 	if os.Getenv("VOLT_DEBUG") != "" {
 		logger.SetLevel(logger.DebugLevel)
 	}

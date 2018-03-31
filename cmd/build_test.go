@@ -543,7 +543,7 @@ func voltBuildGitVimDirOlder(t *testing.T, full bool, strategy string) {
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
-		touchFiles(t, pathutil.FullReposPath(reposPath))
+		touchFiles(t, reposPath.FullPath())
 	}
 
 	// =============== run =============== //
@@ -594,7 +594,7 @@ func voltBuildGitVimDirNewer(t *testing.T, full bool, strategy string) {
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
-		touchFiles(t, pathutil.EncodeReposPath(reposPath))
+		touchFiles(t, reposPath.EncodeToPlugDirName())
 	}
 
 	// =============== run =============== //
@@ -692,7 +692,7 @@ func voltBuildStaticVimDirOlder(t *testing.T, full bool, strategy string) {
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
-		touchFiles(t, pathutil.FullReposPath(reposPath))
+		touchFiles(t, reposPath.FullPath())
 	}
 
 	// =============== run =============== //
@@ -743,7 +743,7 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool, strategy string) {
 	out, err := testutil.RunVolt("build")
 	testutil.SuccessExit(t, out, err)
 	for _, reposPath := range reposPathList {
-		touchFiles(t, pathutil.EncodeReposPath(reposPath))
+		touchFiles(t, reposPath.EncodeToPlugDirName())
 	}
 
 	// =============== run =============== //
@@ -825,8 +825,8 @@ func checkBuildOutput(t *testing.T, full bool, out []byte, strategy string) {
 
 func checkCopied(t *testing.T, reposPath pathutil.ReposPath, strategy string) {
 	t.Helper()
-	vimReposDir := pathutil.EncodeReposPath(reposPath)
-	reposDir := pathutil.FullReposPath(reposPath)
+	vimReposDir := reposPath.EncodeToPlugDirName()
+	reposDir := reposPath.FullPath()
 	tagsFile := filepath.Join("doc", "tags")
 	filepath.Walk(vimReposDir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {

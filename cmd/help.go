@@ -9,6 +9,8 @@ import (
 	"github.com/vim-volt/volt/logger"
 )
 
+// ErrShowedHelp is used in parsing argument function of subcommand when the
+// subcommand showed help. Then caller can exit successfully and silently.
 var ErrShowedHelp = errors.New("already showed help")
 
 func init() {
@@ -16,6 +18,8 @@ func init() {
 }
 
 type helpCmd struct{}
+
+func (cmd *helpCmd) ProhibitRootExecution(args []string) bool { return false }
 
 func (cmd *helpCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
@@ -83,8 +87,9 @@ Command
   build [-full]
     Build ~/.vim/pack/volt/ directory
 
-  migrate
-    Convert old version $VOLTPATH/lock.json structure into the latest version
+  migrate {migration operation}
+    Perform miscellaneous migration operations.
+    See 'volt migrate -help' for all available operations
 
   self-upgrade [-check]
     Upgrade to the latest volt command, or if -check was given, it only checks the newer version is available
@@ -106,11 +111,12 @@ func (cmd *helpCmd) Run(args []string) int {
 		return 0
 	}
 
-	if fs, exists := cmdMap[args[0]]; exists {
-		fs.Run([]string{"-help"})
-		return 0
-	} else {
+	fs, exists := cmdMap[args[0]]
+	if !exists {
 		logger.Errorf("Unknown command '%s'", args[0])
 		return 1
 	}
+	args = append([]string{"-help"}, args[1:]...)
+	fs.Run(args)
+	return 0
 }

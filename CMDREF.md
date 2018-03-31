@@ -62,7 +62,7 @@ Usage
 Quick example
   $ volt get tyru/caw.vim     # will install tyru/caw.vim plugin
   $ volt get -u tyru/caw.vim  # will upgrade tyru/caw.vim plugin
-  $ volt get -l -u            # will upgrade all installed plugins
+  $ volt get -l -u            # will upgrade all plugins in current profile
   $ VOLT_DEBUG=1 volt get tyru/caw.vim  # will output more verbosely
 
   $ mkdir -p ~/volt/repos/localhost/local/hello/plugin
@@ -80,7 +80,7 @@ Description
 
 Repository List
   {repository} list (=target to perform installing, upgrading, and so on) is determined as followings:
-  * If -l option is specified, all installed vim plugins (regardless current profile) are used
+  * If -l option is specified, all plugins in current profile are used
   * If one or more {repository} arguments are specified, the arguments are used
 
 Action
@@ -118,8 +118,8 @@ Repository path
   4. http://{site}/{user}/{name}
 
 Options
-  -l    use all installed repositories as targets
-  -u    upgrade repositories
+  -l    use all plugins in current profile as targets
+  -u    upgrade plugins
 ```
 
 # volt list
@@ -173,9 +173,6 @@ Structures
     // lock.json structure compatibility version
     "version": <int64>,
 
-    // Unique number of transaction
-    "trx_id": <int64>,
-
     // Current profile name (e.g. "default")
     "current_profile_name": <string>,
 
@@ -185,9 +182,6 @@ Structures
       {
         // "git" (git repository) or "static" (static repository)
         "type": <string>,
-
-        // Unique number of transaction
-        "trx_id": <int64>,
 
         // Repository path like "github.com/vim-volt/vim-volt"
         "path": <string>,
@@ -217,12 +211,17 @@ Description
 
 ```
 Usage
-  volt migrate [-help]
+  volt migrate [-help] {migration operation}
 
 Description
-    Perform migration of $VOLTPATH/lock.json, which means volt converts old version lock.json structure into the latest version. This is always done automatically when reading lock.json content. For example, 'volt get <repos>' will install plugin, and migrate lock.json structure, and write it to lock.json after all. so the migrated content is written to lock.json automatically.
-    But, for example, 'volt list' does not write to lock.json but does read, so every time when running 'volt list' shows warning about lock.json is old.
-    To suppress this, running this command simply reads and writes migrated structure to lock.json.
+  Perform miscellaneous migration operations.
+  See detailed help for 'volt migrate -help {migration operation}'.
+
+Available operations
+  lockjson
+    converts old lock.json format to the latest format
+  plugconf/config-func
+    converts s:config() function name to s:on_load_pre() in all plugconf files
 ```
 
 # volt profile
