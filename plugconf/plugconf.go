@@ -346,7 +346,9 @@ func ParsePlugconf(file *ast.File, src []byte, path string) (*ParsedInfo, *Parse
 				return true
 			}
 			parseErr.mwarn = multierror.Append(parseErr.mwarn,
-				errors.New("s:config() is deprecated. please use s:on_load_pre() instead"))
+				errors.New("s:config() is deprecated. "+
+					"please use s:on_load_pre() instead, or run "+
+					"\"volt migrate plugconf/config-func\" to rewrite existing plugconf files"))
 			if !isEmptyFunc(fn) {
 				onLoadPreFunc = string(extractBody(fn, src))
 				onLoadPreFunc = rxFuncName.ReplaceAllString(
