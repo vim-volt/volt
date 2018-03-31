@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/plugconf"
+	"github.com/vim-volt/volt/transaction"
 )
 
 func init() {
@@ -76,5 +78,19 @@ func (*plugconfConfigMigrater) Migrate() error {
 			return err
 		}
 	}
+
+	// Begin transaction
+	err = transaction.Create()
+	if err != nil {
+		return err
+	}
+	defer transaction.Remove()
+
+	// Build ~/.vim/pack/volt dir
+	err = builder.Build(false)
+	if err != nil {
+		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
+	}
+
 	return nil
 }
