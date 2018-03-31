@@ -140,7 +140,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 	for _, reposPath := range reposPathList {
 		// Remove repository directory
 		if cmd.rmRepos {
-			fullReposPath := pathutil.FullReposPath(reposPath)
+			fullReposPath := reposPath.FullPath()
 			if pathutil.Exists(fullReposPath) {
 				if err = cmd.removeRepos(fullReposPath); err != nil {
 					return err
@@ -153,7 +153,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 
 		// Remove plugconf file
 		if cmd.rmPlugconf {
-			plugconfPath := pathutil.Plugconf(reposPath)
+			plugconfPath := reposPath.Plugconf()
 			if pathutil.Exists(plugconfPath) {
 				if err = cmd.removePlugconf(plugconfPath); err != nil {
 					return err
@@ -165,7 +165,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 		}
 
 		// Remove repository from lock.json
-		err = lockJSON.Repos.RemoveAllByPath(reposPath)
+		err = lockJSON.Repos.RemoveAllReposPath(reposPath)
 		err2 := lockJSON.Profiles.RemoveAllReposPath(reposPath)
 		if err == nil || err2 == nil {
 			removeCount++

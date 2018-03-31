@@ -7,7 +7,8 @@ import (
 	"net/http"
 )
 
-// caller must close reader
+// GetContentReader fetches url and returns io.ReadCloser.
+// Caller must close the reader.
 func GetContentReader(url string) (io.ReadCloser, error) {
 	// http.Get() allows up to 10 redirects
 	res, err := http.Get(url)
@@ -20,6 +21,7 @@ func GetContentReader(url string) (io.ReadCloser, error) {
 	return res.Body, nil
 }
 
+// GetContent fetches url and returns []byte.
 func GetContent(url string) ([]byte, error) {
 	r, err := GetContentReader(url)
 	if err != nil {
@@ -29,6 +31,7 @@ func GetContent(url string) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
+// GetContentString fetches url and returns string.
 func GetContentString(url string) (string, error) {
 	b, err := GetContent(url)
 	return string(b), err

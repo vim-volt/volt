@@ -115,12 +115,12 @@ func (cmd *selfUpgradeCmd) waitUntilParentExits(pid int) bool {
 }
 
 func (*selfUpgradeCmd) processIsAlive(pid int) bool {
-	if process, err := os.FindProcess(pid); err != nil {
+	process, err := os.FindProcess(pid)
+	if err != nil {
 		return false
-	} else {
-		err := process.Signal(syscall.Signal(0))
-		return err == nil
 	}
+	err = process.Signal(syscall.Signal(0))
+	return err == nil
 }
 
 type latestRelease struct {

@@ -107,7 +107,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	if path := filepath.Join(rcDir, pathutil.ProfileGvimrc); pathutil.Exists(path) {
 		gvimrc = path
 	}
-	plugconfs, parseErr := plugconf.ParseEachPlugconf(reposList)
+	plugconfs, parseErr := plugconf.ParseMultiPlugconf(reposList)
 	if parseErr.HasErrs() {
 		// Vim script parse errors / other errors
 		return parseErr.Errors()
@@ -160,7 +160,7 @@ func (builder *copyBuilder) copyReposList(buildReposMap map[pathutil.ReposPath]*
 }
 
 func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buildinfo.Repos, vimExePath string, done chan actionReposResult) (int, error) {
-	src := pathutil.FullReposPath(repos.Path)
+	src := repos.Path.FullPath()
 
 	// Open ~/volt/repos/{repos}
 	r, err := git.PlainOpen(src)
@@ -223,7 +223,7 @@ func (builder *copyBuilder) removeReposList(reposList lockjson.ReposList, reposD
 	removeDone := make(chan actionReposResult, len(removeList))
 	for i := range removeList {
 		go func(reposPath pathutil.ReposPath) {
-			err := os.RemoveAll(pathutil.EncodeReposPath(reposPath))
+			err := os.RemoveAll(reposPath.EncodeToPlugDirName())
 			logger.Info("Removing " + reposPath + " ... Done.")
 			removeDone <- actionReposResult{
 				err:   err,
@@ -345,8 +345,8 @@ func (*copyBuilder) hasChangedGitRepos(repos *lockjson.Repos, buildRepos *buildi
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
 func (builder *copyBuilder) updateGitRepos(repos *lockjson.Repos, r *git.Repository, copyFromGitObjects bool, vimExePath string, done chan actionReposResult) {
-	src := pathutil.FullReposPath(repos.Path)
-	dst := pathutil.EncodeReposPath(repos.Path)
+	src := repos.Path.FullPath()
+	dst := repos.Path.EncodeToPlugDirName()
 
 	// Remove ~/.vim/volt/opt/{repos}
 	// TODO: Do not remove here, copy newer files only after
@@ -435,6 +435,7 @@ func (builder *copyBuilder) updateBareGitRepos(r *git.Repository, src, dst strin
 	}
 }
 
+// BuildModeInvalidType is invalid types of files which copy builder cannot handle.
 var BuildModeInvalidType = os.ModeSymlink | os.ModeNamedPipe | os.ModeSocket | os.ModeDevice
 
 func (builder *copyBuilder) updateNonBareGitRepos(r *git.Repository, src, dst string, repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
@@ -501,7 +502,7 @@ func (builder *copyBuilder) hasChangedStaticRepos(repos *lockjson.Repos, buildRe
 		return true
 	}
 
-	src := pathutil.FullReposPath(repos.Path)
+	src := repos.Path.FullPath()
 
 	// Get latest mtime of src
 	// TODO: Don't check mtime here, do it when copy altogether
@@ -528,8 +529,8 @@ func (builder *copyBuilder) hasChangedStaticRepos(repos *lockjson.Repos, buildRe
 
 // Remove ~/.vim/volt/opt/{repos} and copy from ~/volt/repos/{repos}
 func (builder *copyBuilder) updateStaticRepos(repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
-	src := pathutil.FullReposPath(repos.Path)
-	dst := pathutil.EncodeReposPath(repos.Path)
+	src := repos.Path.FullPath()
+	dst := repos.Path.EncodeToPlugDirName()
 
 	// Remove ~/.vim/volt/opt/{repos}
 	// TODO: Do not remove here, copy newer files only after

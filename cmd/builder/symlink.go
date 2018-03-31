@@ -95,7 +95,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	if path := filepath.Join(rcDir, pathutil.ProfileGvimrc); pathutil.Exists(path) {
 		gvimrc = path
 	}
-	plugconfs, parseErr := plugconf.ParseEachPlugconf(reposList)
+	plugconfs, parseErr := plugconf.ParseMultiPlugconf(reposList)
 	if parseErr.HasErrs() {
 		// Vim script parse errors / other errors
 		return parseErr.Errors()
@@ -116,8 +116,8 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 }
 
 func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath string, done chan actionReposResult) {
-	src := pathutil.FullReposPath(repos.Path)
-	dst := pathutil.EncodeReposPath(repos.Path)
+	src := repos.Path.FullPath()
+	dst := repos.Path.EncodeToPlugDirName()
 
 	copied := false
 	if repos.Type == lockjson.ReposGitType {

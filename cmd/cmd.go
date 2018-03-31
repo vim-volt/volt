@@ -11,12 +11,15 @@ import (
 
 var cmdMap = make(map[string]Cmd)
 
+// Cmd represents volt's subcommand interface.
+// All subcommands must implement this.
 type Cmd interface {
 	ProhibitRootExecution(args []string) bool
 	Run(args []string) int
 	FlagSet() *flag.FlagSet
 }
 
+// Run is invoked by main(), each argument means 'volt {subcmd} {args}'.
 func Run(subCmd string, args []string) int {
 	self, exists := cmdMap[subCmd]
 	if !exists {

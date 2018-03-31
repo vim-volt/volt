@@ -9,6 +9,8 @@ import (
 	"github.com/vim-volt/volt/logger"
 )
 
+// ErrShowedHelp is used in parsing argument function of subcommand when the
+// subcommand showed help. Then caller can exit successfully and silently.
 var ErrShowedHelp = errors.New("already showed help")
 
 func init() {
@@ -108,11 +110,11 @@ func (cmd *helpCmd) Run(args []string) int {
 		return 0
 	}
 
-	if fs, exists := cmdMap[args[0]]; exists {
-		fs.Run([]string{"-help"})
-		return 0
-	} else {
+	fs, exists := cmdMap[args[0]]
+	if !exists {
 		logger.Errorf("Unknown command '%s'", args[0])
 		return 1
 	}
+	fs.Run([]string{"-help"})
+	return 0
 }

@@ -12,12 +12,12 @@ import (
 )
 
 func main() {
-	os.Exit(Main())
+	os.Exit(doMain())
 }
 
 // Embeds "volt help" output in the first code block (lines surrounded by ```)
 // of README.md
-func Main() int {
+func doMain() int {
 	if len(os.Args) <= 1 {
 		fmt.Fprintln(os.Stderr, "[WARN] Specify README.md path")
 		return 1

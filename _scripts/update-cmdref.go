@@ -11,11 +11,11 @@ import (
 )
 
 func main() {
-	os.Exit(Main())
+	os.Exit(doMain())
 }
 
 // Update CMDREF.md "volt help" output in the first code block (lines surrounded by ```)
-func Main() int {
+func doMain() int {
 	if len(os.Args) <= 1 {
 		fmt.Fprintln(os.Stderr, "[WARN] Specify CMDREF.md path")
 		return 1

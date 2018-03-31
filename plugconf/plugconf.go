@@ -43,7 +43,8 @@ func isProhibitedFuncName(name string) bool {
 		name == completeFunc
 }
 
-type Plugconf struct {
+// ParsedInfo represents parsed info of plugconf.
+type ParsedInfo struct {
 	reposID        int
 	reposPath      pathutil.ReposPath
 	functions      []string
@@ -56,28 +57,29 @@ type Plugconf struct {
 	depends        pathutil.ReposPathList
 }
 
-// This type does not provide Error() because I don't want let it pretend like
+// ParseError does not provide Error() because I don't want let it pretend like
 // error type. Receivers of a value of this type must decide how to handle.
 type ParseError struct {
-	filename string
-	Errs     *multierror.Error
-	Warns    *multierror.Error
+	path  string
+	merr  *multierror.Error
+	mwarn *multierror.Error
 }
 
-func newParseError(filename string) *ParseError {
+func newParseError(path string) *ParseError {
 	var e ParseError
-	e.Errs = newParseErrorMultiError("parse errors in ", filename)
-	e.Warns = newParseErrorMultiError("parse warnings in ", filename)
+	e.path = path
+	e.merr = newParseErrorMultiError("parse errors in ", path)
+	e.mwarn = newParseErrorMultiError("parse warnings in ", path)
 	return &e
 }
 
-func newParseErrorMultiError(prefix, filename string) *multierror.Error {
+func newParseErrorMultiError(prefix, path string) *multierror.Error {
 	return &multierror.Error{
 		Errors: make([]error, 0, 8),
 		ErrorFormat: func(errs []error) string {
 			var buf bytes.Buffer
 			buf.WriteString(prefix)
-			buf.WriteString(filename)
+			buf.WriteString(path)
 			buf.WriteString(":")
 			for _, e := range errs {
 				buf.WriteString("\n* ")
@@ -88,28 +90,32 @@ func newParseErrorMultiError(prefix, filename string) *multierror.Error {
 	}
 }
 
+// HasErrsOrWarns returns true when 1 or more errors or warnings.
 func (e *ParseError) HasErrsOrWarns() bool {
-	return e != nil && (e.Errs.ErrorOrNil() != nil || e.Warns.ErrorOrNil() != nil)
+	return e != nil && (e.merr.ErrorOrNil() != nil || e.mwarn.ErrorOrNil() != nil)
 }
 
+// HasErrs returns true when 1 or more errors.
 func (e *ParseError) HasErrs() bool {
-	return e != nil && e.Errs.ErrorOrNil() != nil
+	return e != nil && e.merr.ErrorOrNil() != nil
 }
 
+// HasWarns returns true when 1 or more warnings.
 func (e *ParseError) HasWarns() bool {
-	return e != nil && e.Warns.ErrorOrNil() != nil
+	return e != nil && e.mwarn.ErrorOrNil() != nil
 }
 
+// ErrorsAndWarns returns multierror.Error which errors and warnings are mixed in.
 func (e *ParseError) ErrorsAndWarns() *multierror.Error {
 	if e == nil {
 		return nil
 	}
 	var result *multierror.Error
-	if e.Errs != nil {
-		result = multierror.Append(result, e.Errs.Errors...)
+	if e.merr.ErrorOrNil() != nil {
+		result = multierror.Append(result, e.merr.Errors...)
 	}
-	if e.Warns != nil {
-		result = multierror.Append(result, e.Warns.Errors...)
+	if e.mwarn.ErrorOrNil() != nil {
+		result = multierror.Append(result, e.mwarn.Errors...)
 	}
 	return result
 }
@@ -118,16 +124,18 @@ func (e *ParseError) merge(e2 *ParseError) {
 	if e == nil || e2 == nil {
 		return
 	}
-	if e2.Errs != nil {
-		e.Errs = multierror.Append(e.Errs, e2.Errs.Errors...)
+	if e2.merr.ErrorOrNil() != nil {
+		e.merr = multierror.Append(e.merr, e2.merr.Errors...)
 	}
-	if e2.Warns != nil {
-		e.Warns = multierror.Append(e.Warns, e2.Warns.Errors...)
+	if e2.mwarn.ErrorOrNil() != nil {
+		e.mwarn = multierror.Append(e.mwarn, e2.mwarn.Errors...)
 	}
 }
 
+// MultiParseError holds multiple ParseError.
 type MultiParseError []ParseError
 
+// HasErrs returns true when any of holding ParseError.HasErrs() returns true.
 func (errs MultiParseError) HasErrs() bool {
 	for _, e := range errs {
 		if e.HasErrs() {
@@ -137,6 +145,7 @@ func (errs MultiParseError) HasErrs() bool {
 	return false
 }
 
+// HasWarns returns true when any of holding ParseError.HasWarns() returns true.
 func (errs MultiParseError) HasWarns() bool {
 	for _, e := range errs {
 		if e.HasWarns() {
@@ -146,10 +155,12 @@ func (errs MultiParseError) HasWarns() bool {
 	return false
 }
 
+// Errors returns all errors in holding ParseError.
 func (errs MultiParseError) Errors() *multierror.Error {
 	return errs.concatErrors(false)
 }
 
+// Warns returns all warnings in holding ParseError.
 func (errs MultiParseError) Warns() *multierror.Error {
 	return errs.concatErrors(true)
 }
@@ -167,11 +178,11 @@ func (errs MultiParseError) concatErrors(showWarns bool) *multierror.Error {
 		},
 	}
 	for _, e := range errs {
-		merr := e.Errs
+		merr := e.merr
 		if showWarns {
-			merr = e.Warns
+			merr = e.mwarn
 		}
-		if merr != nil {
+		if merr.ErrorOrNil() != nil {
 			// Call merr.Error() to apply error format func
 			result = multierror.Append(result, errors.New(merr.Error()))
 		}
@@ -179,34 +190,39 @@ func (errs MultiParseError) concatErrors(showWarns bool) *multierror.Error {
 	return result
 }
 
+// ErrorsAndWarns returns errors and warnings in holding ParseError.
 func (errs MultiParseError) ErrorsAndWarns() *multierror.Error {
 	var result *multierror.Error
 	for _, e := range errs {
 		merr := e.ErrorsAndWarns()
-		if merr != nil {
+		if merr.ErrorOrNil() != nil {
 			result = multierror.Append(result, merr.Errors...)
 		}
 	}
 	return result
 }
 
-func ParsePlugconfFile(plugConf string, reposID int, reposPath pathutil.ReposPath) (result *Plugconf, parseErr *ParseError) {
+// ParsePlugconfFile parses plugconf and returns parsed info and parse error and
+// warnings.
+// path is a filepath of plugconf.
+// reposID is an ID of unsigned integer which identifies one plugconf.
+// reposPath is an pathutil.ReposPath of plugconf.
+func ParsePlugconfFile(path string, reposID int, reposPath pathutil.ReposPath) (result *ParsedInfo, parseErr *ParseError) {
 	// this function always returns non-nil parseErr
 	// (which may have empty errors / warns)
 	parseErr = new(ParseError)
 
-	content, err := ioutil.ReadFile(plugConf)
+	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		err = multierror.Append(nil, err)
 		return
 	}
-	src := string(content)
-	file, err := vimlparser.ParseFile(strings.NewReader(src), plugConf, nil)
+	file, err := vimlparser.ParseFile(bytes.NewReader(content), path, nil)
 	if err != nil {
 		err = multierror.Append(nil, err)
 		return
 	}
-	result, parseErr = ParsePlugconf(file, src, plugConf)
+	result, parseErr = ParsePlugconf(file, content, path)
 	if result != nil {
 		result.reposID = reposID
 		result.reposPath = reposPath
@@ -214,10 +230,10 @@ func ParsePlugconfFile(plugConf string, reposID int, reposPath pathutil.ReposPat
 	return
 }
 
-// this function always returns non-nil parseErr
+// ParsePlugconf always returns non-nil parseErr
 // (which may have empty errors / warns)
-func ParsePlugconf(file *ast.File, src, filename string) (*Plugconf, *ParseError) {
-	var loadOn loadOnType = loadOnStart
+func ParsePlugconf(file *ast.File, src []byte, path string) (*ParsedInfo, *ParseError) {
+	var loadOn = loadOnStart
 	var loadOnArg string
 	var loadOnFunc string
 	var onLoadPreFunc string
@@ -226,93 +242,89 @@ func ParsePlugconf(file *ast.File, src, filename string) (*Plugconf, *ParseError
 	var dependsFunc string
 	var depends pathutil.ReposPathList
 
-	parseErr := newParseError(filename)
+	parseErr := newParseError(path)
 
 	// Inspect nodes and get above values from plugconf script
 	ast.Inspect(file, func(node ast.Node) bool {
 		// Cast to function node (return if it's not a function node)
-		var fn *ast.Function
-		if f, ok := node.(*ast.Function); !ok {
+		fn, ok := node.(*ast.Function)
+		if !ok {
 			return true
-		} else {
-			fn = f
 		}
 
 		// Get function name
-		var name string
-		if ident, ok := fn.Name.(*ast.Ident); !ok {
+		ident, ok := fn.Name.(*ast.Ident)
+		if !ok {
 			return true
-		} else {
-			name = ident.Name
 		}
 
 		switch {
-		case name == "s:loaded_on":
+		case ident.Name == "s:loaded_on":
 			if loadOnFunc != "" {
-				parseErr.Errs = multierror.Append(parseErr.Errs,
+				parseErr.merr = multierror.Append(parseErr.merr,
 					errors.New("duplicate s:loaded_on()"))
 				return true
 			}
 			if !isEmptyFunc(fn) {
-				loadOnFunc = extractBody(fn, src)
+				loadOnFunc = string(extractBody(fn, src))
 				var err error
 				loadOn, loadOnArg, err = inspectReturnValue(fn)
 				if err != nil {
-					parseErr.Errs = multierror.Append(parseErr.Errs, err)
+					parseErr.merr = multierror.Append(parseErr.merr, err)
 				}
 			}
-		case name == "s:config":
+		case ident.Name == "s:config":
 			if onLoadPreFunc != "" {
-				parseErr.Errs = multierror.Append(parseErr.Errs,
+				parseErr.merr = multierror.Append(parseErr.merr,
 					errors.New("duplicate s:on_load_pre() and s:config()"))
 				return true
 			}
-			parseErr.Warns = multierror.Append(parseErr.Warns,
+			parseErr.mwarn = multierror.Append(parseErr.mwarn,
 				errors.New("s:config() is deprecated. please use s:on_load_pre() instead"))
 			if !isEmptyFunc(fn) {
-				onLoadPreFunc = extractBody(fn, src)
+				onLoadPreFunc = string(extractBody(fn, src))
 				onLoadPreFunc = rxFuncName.ReplaceAllString(
 					onLoadPreFunc, "${1}on_load_pre",
 				)
 			}
-		case name == "s:on_load_pre":
+		case ident.Name == "s:on_load_pre":
 			if onLoadPreFunc != "" {
-				parseErr.Errs = multierror.Append(parseErr.Errs,
+				parseErr.merr = multierror.Append(parseErr.merr,
 					errors.New("duplicate s:on_load_pre() and s:config()"))
 				return true
 			}
 			if !isEmptyFunc(fn) {
-				onLoadPreFunc = extractBody(fn, src)
+				onLoadPreFunc = string(extractBody(fn, src))
 			}
-		case name == "s:on_load_post":
+		case ident.Name == "s:on_load_post":
 			if onLoadPostFunc != "" {
-				parseErr.Errs = multierror.Append(parseErr.Errs,
+				parseErr.merr = multierror.Append(parseErr.merr,
 					errors.New("duplicate s:on_load_post()"))
 				return true
 			}
 			if !isEmptyFunc(fn) {
-				onLoadPostFunc = extractBody(fn, src)
+				onLoadPostFunc = string(extractBody(fn, src))
 			}
-		case name == "s:depends":
+		case ident.Name == "s:depends":
 			if dependsFunc != "" {
-				parseErr.Errs = multierror.Append(parseErr.Errs,
+				parseErr.merr = multierror.Append(parseErr.merr,
 					errors.New("duplicate s:depends()"))
 				return true
 			}
 			if !isEmptyFunc(fn) {
-				dependsFunc = extractBody(fn, src)
+				dependsFunc = string(extractBody(fn, src))
 				var err error
-				depends, err = getDependencies(fn, src)
+				depends, err = getDependencies(fn)
 				if err != nil {
-					parseErr.Errs = multierror.Append(parseErr.Errs, err)
+					parseErr.merr = multierror.Append(parseErr.merr, err)
 				}
 			}
-		case isProhibitedFuncName(name):
-			parseErr.Errs = multierror.Append(parseErr.Errs,
+		case isProhibitedFuncName(ident.Name):
+			parseErr.merr = multierror.Append(parseErr.merr,
 				fmt.Errorf(
-					"'%s' is prohibited function name. Please use other function name.", name))
+					"'%s' is prohibited function name. please use other function name", ident.Name))
 		default:
-			functions = append(functions, extractBody(fn, src))
+			functions = append(functions, string(extractBody(fn, src)))
 		}
 
 		return true
@@ -322,7 +334,7 @@ func ParsePlugconf(file *ast.File, src, filename string) (*Plugconf, *ParseError
 		return nil, parseErr
 	}
 
-	return &Plugconf{
+	return &ParsedInfo{
 		functions:      functions,
 		onLoadPreFunc:  onLoadPreFunc,
 		onLoadPostFunc: onLoadPostFunc,
@@ -341,11 +353,9 @@ func inspectReturnValue(fn *ast.Function) (loadOnType, string, error) {
 	var err error
 	ast.Inspect(fn, func(node ast.Node) bool {
 		// Cast to return node (return if it's not a return node)
-		var ret *ast.Return
-		if r, ok := node.(*ast.Return); !ok {
+		ret, ok := node.(*ast.Return)
+		if !ok {
 			return true
-		} else {
-			ret = r
 		}
 
 		// Parse the argument of :return
@@ -391,7 +401,7 @@ func isEmptyFunc(fn *ast.Function) bool {
 	return true
 }
 
-func extractBody(fn *ast.Function, src string) string {
+func extractBody(fn *ast.Function, src []byte) []byte {
 	pos := fn.Pos()
 
 	endpos := fn.EndFunction.Pos()
@@ -402,17 +412,15 @@ func extractBody(fn *ast.Function, src string) string {
 	return src[pos.Offset:endpos.Offset]
 }
 
-func getDependencies(fn *ast.Function, src string) (pathutil.ReposPathList, error) {
+func getDependencies(fn *ast.Function) (pathutil.ReposPathList, error) {
 	var deps pathutil.ReposPathList
 	var parseErr error
 
 	ast.Inspect(fn, func(node ast.Node) bool {
 		// Cast to return node (return if it's not a return node)
-		var ret *ast.Return
-		if r, ok := node.(*ast.Return); !ok {
+		ret, ok := node.(*ast.Return)
+		if !ok {
 			return true
-		} else {
-			ret = r
 		}
 		if list, ok := ret.Result.(*ast.List); ok {
 			for i := range list.Values {
@@ -437,16 +445,62 @@ func getDependencies(fn *ast.Function, src string) (pathutil.ReposPathList, erro
 	return deps, parseErr
 }
 
-// s:loaded_on() function is not included
-func makeBundledPlugconf(reposList []lockjson.Repos, plugconf map[pathutil.ReposPath]*Plugconf, vimrcPath, gvimrcPath string) ([]byte, error) {
-	functions := make([]string, 0, 64)
-	loadCmds := make([]string, 0, len(reposList))
-	lazyExcmd := make(map[string]string, len(reposList))
+var rxFuncName = regexp.MustCompile(`\A(fu\w+!?\s+s:)(\w+)`)
 
-	for _, repos := range reposList {
-		p, hasPlugconf := plugconf[repos.Path]
+func convertToDecodableFunc(funcBody string, reposPath pathutil.ReposPath, reposID int) string {
+	// Change function name (e.g. s:loaded_on() -> s:loaded_on_1())
+	funcBody = rxFuncName.ReplaceAllString(funcBody, fmt.Sprintf("${1}${2}_%d", reposID))
+	// Add repos path as comment
+	funcBody = "\" " + reposPath.String() + "\n" + funcBody
+	return funcBody
+}
+
+type reposDepTree struct {
+	// The nodes' dependTo are nil. These repos's ranks are always 0.
+	leaves []reposDepNode
+}
+
+type reposDepNode struct {
+	repos      *lockjson.Repos
+	dependTo   []reposDepNode
+	dependedBy []reposDepNode
+}
+
+// ParseMultiPlugconf parses plugconfs of given reposList.
+func ParseMultiPlugconf(reposList []lockjson.Repos) (*MultiParsedInfo, MultiParseError) {
+	plugconfMap, parseErr := parsePlugconfAsMap(reposList)
+	if parseErr.HasErrs() {
+		return nil, parseErr
+	}
+	sortByDepends(reposList, plugconfMap)
+	return &MultiParsedInfo{
+		plugconfMap: plugconfMap,
+		reposList:   reposList,
+	}, parseErr
+}
+
+type parsedInfoMap map[pathutil.ReposPath]*ParsedInfo
+
+// MultiParsedInfo holds multiple ParsedInfo.
+// This value is generated by ParseMultiPlugconf.
+type MultiParsedInfo struct {
+	plugconfMap parsedInfoMap
+	reposList   []lockjson.Repos
+}
+
+// GenerateBundlePlugconf generates bundled plugconf content.
+// Generated content does not include s:loaded_on() function.
+// vimrcPath and gvimrcPath are fullpath of vimrc and gvimrc.
+// They become an empty string when each path does not exist.
+func (mp *MultiParsedInfo) GenerateBundlePlugconf(vimrcPath, gvimrcPath string) ([]byte, error) {
+	functions := make([]string, 0, 64)
+	loadCmds := make([]string, 0, len(mp.reposList))
+	lazyExcmd := make(map[string]string, len(mp.reposList))
+
+	for _, repos := range mp.reposList {
+		p, hasPlugconf := mp.plugconfMap[repos.Path]
 		// :packadd <repos>
-		optName := filepath.Base(pathutil.EncodeReposPath(repos.Path))
+		optName := filepath.Base(repos.Path.EncodeToPlugDirName())
 		packadd := fmt.Sprintf("packadd %s", optName)
 
 		// s:on_load_pre(), invoked command, s:on_load_post()
@@ -570,52 +624,8 @@ endfunction
 	return buf.Bytes(), nil
 }
 
-var rxFuncName = regexp.MustCompile(`\A(fu\w+!?\s+s:)(\w+)`)
-
-func convertToDecodableFunc(funcBody string, reposPath pathutil.ReposPath, reposID int) string {
-	// Change function name (e.g. s:loaded_on() -> s:loaded_on_1())
-	funcBody = rxFuncName.ReplaceAllString(funcBody, fmt.Sprintf("${1}${2}_%d", reposID))
-	// Add repos path as comment
-	funcBody = "\" " + reposPath.String() + "\n" + funcBody
-	return funcBody
-}
-
-type reposDepTree struct {
-	// The nodes' dependTo are nil. These repos's ranks are always 0.
-	leaves []reposDepNode
-}
-
-type reposDepNode struct {
-	repos      *lockjson.Repos
-	dependTo   []reposDepNode
-	dependedBy []reposDepNode
-}
-
-func ParseEachPlugconf(reposList []lockjson.Repos) (*MultiPlugconf, MultiParseError) {
-	plugconfMap, parseErr := parsePlugconfAsMap(reposList)
-	if parseErr.HasErrs() {
-		return nil, parseErr
-	}
-	sortByDepends(reposList, plugconfMap)
-	return &MultiPlugconf{
-		plugconfMap: plugconfMap,
-		reposList:   reposList,
-	}, parseErr
-}
-
-type PlugconfMap map[pathutil.ReposPath]*Plugconf
-
-type MultiPlugconf struct {
-	plugconfMap PlugconfMap
-	reposList   []lockjson.Repos
-}
-
-// vimrcPath and gvimrcPath become an empty string when each path does not
-// exist.
-func (mp *MultiPlugconf) GenerateBundlePlugconf(vimrcPath, gvimrcPath string) ([]byte, error) {
-	return makeBundledPlugconf(mp.reposList, mp.plugconfMap, vimrcPath, gvimrcPath)
-}
-
+// RdepsOf returns depended (required) plugins of reposPath.
+// reposList is used to calculate dependency of reposPath.
 func RdepsOf(reposPath pathutil.ReposPath, reposList []lockjson.Repos) (pathutil.ReposPathList, error) {
 	plugconfMap, parseErr := parsePlugconfAsMap(reposList)
 	if parseErr.HasErrs() {
@@ -630,12 +640,12 @@ func RdepsOf(reposPath pathutil.ReposPath, reposList []lockjson.Repos) (pathutil
 }
 
 // Parse plugconf of reposList and return parsed plugconf info as map
-func parsePlugconfAsMap(reposList []lockjson.Repos) (map[pathutil.ReposPath]*Plugconf, MultiParseError) {
+func parsePlugconfAsMap(reposList []lockjson.Repos) (map[pathutil.ReposPath]*ParsedInfo, MultiParseError) {
 	parseErrAll := make(MultiParseError, 0, len(reposList))
-	plugconfMap := make(PlugconfMap, len(reposList))
+	plugconfMap := make(parsedInfoMap, len(reposList))
 	reposID := 1
 	for _, repos := range reposList {
-		path := pathutil.Plugconf(repos.Path)
+		path := repos.Path.Plugconf()
 		if !pathutil.Exists(path) {
 			continue
 		}
@@ -645,7 +655,7 @@ func parsePlugconfAsMap(reposList []lockjson.Repos) (map[pathutil.ReposPath]*Plu
 		}
 		if result != nil {
 			plugconfMap[repos.Path] = result
-			reposID += 1
+			reposID++
 		}
 	}
 	return plugconfMap, parseErrAll
@@ -653,7 +663,7 @@ func parsePlugconfAsMap(reposList []lockjson.Repos) (map[pathutil.ReposPath]*Plu
 
 // Move the plugins which was depended to previous plugin which depends to them.
 // reposList is sorted in-place.
-func sortByDepends(reposList []lockjson.Repos, plugconfMap map[pathutil.ReposPath]*Plugconf) {
+func sortByDepends(reposList []lockjson.Repos, plugconfMap map[pathutil.ReposPath]*ParsedInfo) {
 	reposMap, depsMap, rdepsMap := getDepMaps(reposList, plugconfMap)
 	rank := make(map[pathutil.ReposPath]int, len(reposList))
 	for i := range reposList {
@@ -669,7 +679,7 @@ func sortByDepends(reposList []lockjson.Repos, plugconfMap map[pathutil.ReposPat
 	})
 }
 
-func getDepMaps(reposList []lockjson.Repos, plugconfMap map[pathutil.ReposPath]*Plugconf) (map[pathutil.ReposPath]*lockjson.Repos, map[pathutil.ReposPath]pathutil.ReposPathList, map[pathutil.ReposPath]pathutil.ReposPathList) {
+func getDepMaps(reposList []lockjson.Repos, plugconfMap map[pathutil.ReposPath]*ParsedInfo) (map[pathutil.ReposPath]*lockjson.Repos, map[pathutil.ReposPath]pathutil.ReposPathList, map[pathutil.ReposPath]pathutil.ReposPathList) {
 	reposMap := make(map[pathutil.ReposPath]*lockjson.Repos, len(reposList))
 	depsMap := make(map[pathutil.ReposPath]pathutil.ReposPathList, len(reposList))
 	rdepsMap := make(map[pathutil.ReposPath]pathutil.ReposPathList, len(reposList))
@@ -687,50 +697,46 @@ func getDepMaps(reposList []lockjson.Repos, plugconfMap map[pathutil.ReposPath]*
 }
 
 func makeDepTree(reposPath pathutil.ReposPath, reposMap map[pathutil.ReposPath]*lockjson.Repos, depsMap map[pathutil.ReposPath]pathutil.ReposPathList, rdepsMap map[pathutil.ReposPath]pathutil.ReposPathList) *reposDepTree {
-	visited := make(map[pathutil.ReposPath]*reposDepNode, len(reposMap))
-	node := makeNodes(visited, reposPath, reposMap, depsMap, rdepsMap)
+	visitedNodes := make(map[pathutil.ReposPath]*reposDepNode, len(reposMap))
+	node := makeNodes(reposPath, reposMap, depsMap, rdepsMap, visitedNodes)
 	leaves := make([]reposDepNode, 0, 10)
+	visitedMarks := make(map[pathutil.ReposPath]bool, 10)
 	visitNode(node, func(n *reposDepNode) {
 		if len(n.dependTo) == 0 {
 			leaves = append(leaves, *n)
 		}
-	})
+	}, visitedMarks)
 	return &reposDepTree{leaves: leaves}
 }
 
-func makeNodes(visited map[pathutil.ReposPath]*reposDepNode, reposPath pathutil.ReposPath, reposMap map[pathutil.ReposPath]*lockjson.Repos, depsMap map[pathutil.ReposPath]pathutil.ReposPathList, rdepsMap map[pathutil.ReposPath]pathutil.ReposPathList) *reposDepNode {
+func makeNodes(reposPath pathutil.ReposPath, reposMap map[pathutil.ReposPath]*lockjson.Repos, depsMap map[pathutil.ReposPath]pathutil.ReposPathList, rdepsMap map[pathutil.ReposPath]pathutil.ReposPathList, visited map[pathutil.ReposPath]*reposDepNode) *reposDepNode {
 	if node, exists := visited[reposPath]; exists {
 		return node
 	}
 	node := &reposDepNode{repos: reposMap[reposPath]}
 	visited[reposPath] = node
 	for i := range depsMap[reposPath] {
-		dep := makeNodes(visited, depsMap[reposPath][i], reposMap, depsMap, rdepsMap)
+		dep := makeNodes(depsMap[reposPath][i], reposMap, depsMap, rdepsMap, visited)
 		node.dependTo = append(node.dependTo, *dep)
 	}
 	for i := range rdepsMap[reposPath] {
-		rdep := makeNodes(visited, rdepsMap[reposPath][i], reposMap, depsMap, rdepsMap)
+		rdep := makeNodes(rdepsMap[reposPath][i], reposMap, depsMap, rdepsMap, visited)
 		node.dependedBy = append(node.dependedBy, *rdep)
 	}
 	return node
 }
 
-func visitNode(node *reposDepNode, callback func(*reposDepNode)) {
-	visited := make(map[pathutil.ReposPath]bool, 10)
-	doVisitNode(visited, node, callback)
-}
-
-func doVisitNode(visited map[pathutil.ReposPath]bool, node *reposDepNode, callback func(*reposDepNode)) {
+func visitNode(node *reposDepNode, callback func(*reposDepNode), visited map[pathutil.ReposPath]bool) {
 	if node == nil || node.repos == nil || visited[node.repos.Path] {
 		return
 	}
 	visited[node.repos.Path] = true
 	callback(node)
 	for i := range node.dependTo {
-		doVisitNode(visited, &node.dependTo[i], callback)
+		visitNode(&node.dependTo[i], callback, visited)
 	}
 	for i := range node.dependedBy {
-		doVisitNode(visited, &node.dependedBy[i], callback)
+		visitNode(&node.dependedBy[i], callback, visited)
 	}
 }
 
@@ -741,9 +747,21 @@ func makeRank(rank map[pathutil.ReposPath]int, node *reposDepNode, value int) {
 	}
 }
 
-func FetchPlugconf(reposPath pathutil.ReposPath) (string, error) {
+// Template is a content of plugconf template.
+type Template struct {
+	template []byte
+}
+
+// FetchPlugconfTemplate fetches reposPath's plugconf from vim-volt/plugconf-templates
+// repository.
+// Fetched URL: https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates/{reposPath}.vim
+func FetchPlugconfTemplate(reposPath pathutil.ReposPath) (*Template, error) {
 	url := path.Join("https://raw.githubusercontent.com/vim-volt/plugconf-templates/master/templates", reposPath.String()+".vim")
-	return httputil.GetContentString(url)
+	content, err := httputil.GetContent(url)
+	if err != nil {
+		return nil, err
+	}
+	return &Template{content}, nil
 }
 
 const skeletonPlugconfOnLoadPre = `function! s:on_load_pre()
@@ -782,15 +800,20 @@ const skeletonPlugconfDepends = `function! s:depends()
   return []
 endfunction`
 
-func GenPlugconfByTemplate(tmplPlugconf string, filename string) ([]byte, *multierror.Error) {
-	// Parse fetched plugconf
-	tmpl, err := vimlparser.ParseFile(strings.NewReader(tmplPlugconf), filename, nil)
-	if err != nil {
-		return nil, multierror.Append(nil, err)
-	}
-	result, parseErr := ParsePlugconf(tmpl, tmplPlugconf, filename)
-	if parseErr.HasErrs() {
-		return nil, parseErr.ErrorsAndWarns()
+// Generate generates plugconf content from Template.
+func (pt *Template) Generate(path string) ([]byte, *multierror.Error) {
+	result := &ParsedInfo{}
+	if pt != nil {
+		// Parse fetched plugconf
+		tmpl, err := vimlparser.ParseFile(bytes.NewReader(pt.template), path, nil)
+		if err != nil {
+			return nil, multierror.Append(nil, err)
+		}
+		var parseErr *ParseError
+		result, parseErr = ParsePlugconf(tmpl, pt.template, path)
+		if parseErr.HasErrs() {
+			return nil, parseErr.ErrorsAndWarns()
+		}
 	}
 	content, err := generatePlugconf(result)
 	if err != nil {
@@ -799,7 +822,7 @@ func GenPlugconfByTemplate(tmplPlugconf string, filename string) ([]byte, *multi
 	return content, nil
 }
 
-func generatePlugconf(result *Plugconf) ([]byte, error) {
+func generatePlugconf(result *ParsedInfo) ([]byte, error) {
 	// Merge result and return it
 	var buf bytes.Buffer
 	var err error

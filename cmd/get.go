@@ -167,18 +167,18 @@ func (cmd *getCmd) parseArgs(args []string) ([]string, error) {
 }
 
 func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) ([]pathutil.ReposPath, error) {
+	var reposPathList []pathutil.ReposPath
 	if cmd.lockJSON {
 		reposList, err := lockJSON.GetCurrentReposList()
 		if err != nil {
 			return nil, err
 		}
-		reposPathList := make([]pathutil.ReposPath, 0, len(reposList))
+		reposPathList = make([]pathutil.ReposPath, 0, len(reposList))
 		for i := range reposList {
 			reposPathList = append(reposPathList, reposList[i].Path)
 		}
-		return reposPathList, nil
 	} else {
-		reposPathList := make([]pathutil.ReposPath, 0, len(args))
+		reposPathList = make([]pathutil.ReposPath, 0, len(args))
 		for _, arg := range args {
 			reposPath, err := pathutil.NormalizeRepos(arg)
 			if err != nil {
@@ -186,8 +186,8 @@ func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) 
 			}
 			reposPathList = append(reposPathList, reposPath)
 		}
-		return reposPathList, nil
 	}
+	return reposPathList, nil
 }
 
 func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) error {
@@ -335,7 +335,7 @@ func (cmd *getCmd) getParallel(reposPath pathutil.ReposPath, repos *lockjson.Rep
 
 func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.Repos, cfg *config.Config, done chan<- getParallelResult) {
 	// true:upgrade, false:install
-	fullReposPath := pathutil.FullReposPath(reposPath)
+	fullReposPath := reposPath.FullPath()
 	doUpgrade := cmd.upgrade && pathutil.Exists(fullReposPath)
 	doInstall := !pathutil.Exists(fullReposPath)
 
@@ -456,12 +456,12 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 func (cmd *getCmd) installPlugconf(reposPath pathutil.ReposPath, pluginResult *getParallelResult, done chan<- getParallelResult) {
 	// Install plugconf
 	logger.Debug("Installing plugconf " + reposPath + " ...")
-	err := cmd.fetchPlugconf(reposPath)
+	err := cmd.downloadPlugconf(reposPath)
 	if err != nil {
 		result := errors.New("failed to install plugconf: " + err.Error())
 		// TODO: Call cmd.removeDir() only when the repos *did not* exist previously
 		// and was installed newly.
-		// fullReposPath := pathutil.FullReposPath(reposPath)
+		// fullReposPath := reposPath.FullPath()
 		// logger.Debug("Rollbacking " + fullReposPath + " ...")
 		// err = cmd.removeDir(fullReposPath)
 		// if err != nil {
@@ -500,7 +500,7 @@ func (*getCmd) removeDir(fullReposPath string) error {
 }
 
 func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath, cfg *config.Config) error {
-	fullpath := pathutil.FullReposPath(reposPath)
+	fullpath := reposPath.FullPath()
 
 	repos, err := git.PlainOpen(fullpath)
 	if err != nil {
@@ -519,15 +519,14 @@ func (cmd *getCmd) upgradePlugin(reposPath pathutil.ReposPath, cfg *config.Confi
 
 	if reposCfg.Core.IsBare {
 		return cmd.gitFetch(repos, fullpath, remote, cfg)
-	} else {
-		return cmd.gitPull(repos, fullpath, remote, cfg)
 	}
+	return cmd.gitPull(repos, fullpath, remote, cfg)
 }
 
 var errRepoExists = errors.New("repository exists")
 
 func (cmd *getCmd) clonePlugin(reposPath pathutil.ReposPath, cfg *config.Config) error {
-	fullpath := pathutil.FullReposPath(reposPath)
+	fullpath := reposPath.FullPath()
 	if pathutil.Exists(fullpath) {
 		return errRepoExists
 	}
@@ -538,28 +537,29 @@ func (cmd *getCmd) clonePlugin(reposPath pathutil.ReposPath, cfg *config.Config)
 	}
 
 	// Clone repository to $VOLTPATH/repos/{site}/{user}/{name}
-	return cmd.gitClone(pathutil.CloneURL(reposPath), fullpath, cfg)
+	return cmd.gitClone(reposPath.CloneURL(), fullpath, cfg)
 }
 
-func (cmd *getCmd) fetchPlugconf(reposPath pathutil.ReposPath) error {
-	filename := pathutil.Plugconf(reposPath)
-	if pathutil.Exists(filename) {
-		logger.Debugf("plugconf '%s' exists... skip", filename)
+func (cmd *getCmd) downloadPlugconf(reposPath pathutil.ReposPath) error {
+	path := reposPath.Plugconf()
+	if pathutil.Exists(path) {
+		logger.Debugf("plugconf '%s' exists... skip", path)
 		return nil
 	}
 
-	// If non-nil error returned from FetchPlugconf(),
+	// If non-nil error returned from FetchPlugconfTemplate(),
 	// create skeleton plugconf file
-	tmpl, err := plugconf.FetchPlugconf(reposPath)
+	tmpl, err := plugconf.FetchPlugconfTemplate(reposPath)
 	if err != nil {
 		logger.Debug(err.Error())
+		// empty tmpl is returned when err != nil
 	}
-	content, err := plugconf.GenPlugconfByTemplate(tmpl, filename)
-	if err != nil {
-		return fmt.Errorf("parse error in fetched plugconf %s: %s", reposPath, err.Error())
+	content, merr := tmpl.Generate(path)
+	if merr.ErrorOrNil() != nil {
+		return fmt.Errorf("parse error in fetched plugconf %s: %s", reposPath, merr.Error())
 	}
-	os.MkdirAll(filepath.Dir(filename), 0755)
-	err = ioutil.WriteFile(filename, content, 0644)
+	os.MkdirAll(filepath.Dir(path), 0755)
+	err = ioutil.WriteFile(path, content, 0644)
 	if err != nil {
 		return err
 	}

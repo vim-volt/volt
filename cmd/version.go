@@ -9,7 +9,8 @@ import (
 	"strconv"
 )
 
-var voltVersion string = "v0.3.3-beta"
+// This variable is not constant for testing (to change it temporarily)
+var voltVersion = "v0.3.3-beta"
 
 func init() {
 	cmdMap["version"] = &versionCmd{}

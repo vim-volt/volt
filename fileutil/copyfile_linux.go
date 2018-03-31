@@ -58,16 +58,16 @@ func CopyFile(src, dst string, buf []byte, perm os.FileMode) error {
 	wfd := int(w.Fd())
 	rfd := int(r.Fd())
 	if int64(int(fi.Size())) < fi.Size() {
-		var written int64 = 0
+		written := int64(0)
 		readsize := int(fi.Size())
 		for {
-			if n, err := syscall.Sendfile(wfd, rfd, nil, readsize); err != nil {
+			n, err := syscall.Sendfile(wfd, rfd, nil, readsize)
+			if err != nil {
 				return fmt.Errorf("sendfile(%q, %q) failed: %s", src, dst, err.Error())
-			} else {
-				written += int64(n)
-				if written >= fi.Size() {
-					break
-				}
+			}
+			written += int64(n)
+			if written >= fi.Size() {
+				break
 			}
 		}
 	} else {
