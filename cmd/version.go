@@ -10,7 +10,7 @@ import (
 )
 
 // This variable is not constant for testing (to change it temporarily)
-var voltVersion = "v0.3.3-beta"
+var voltVersion = "v0.3.3"
 
 func init() {
 	cmdMap["version"] = &versionCmd{}
