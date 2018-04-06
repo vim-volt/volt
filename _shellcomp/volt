@@ -1,11 +1,10 @@
 get_plugs() {
 	local all_plugs=$(mktemp)
 	local this_plugs=$(mktemp)
-	# local profile=$(echo $1 | tr -d '"')
 	local profile=$1
 	local set=$2
 	volt list -f "{{ range .Repos }}{{ println .Path }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort > $all_plugs
-	volt list -f "{{ range .Profiles }}{{ if eq $profile .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort > $this_plugs
+	volt list -f "{{ range .Profiles }}{{ if eq \"$profile\" .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort > $this_plugs
 	if [[ $set == "all" ]] ; then
 		cat $all_plugs
 	elif [[ $set == "this" ]] ; then
@@ -36,22 +35,22 @@ _volt() {
 		COMPREPLY=( $(compgen -W "${profiles}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" == "profile" && ${second} == "add" && ${third} ]] ; then
-		plugs=$(get_plugs \"$third\" "not")
+		plugs=$(get_plugs "$third" "not")
 		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" == "profile" && ${second} == "rm" && ${third} ]] ; then
-		plugs=$(get_plugs \"$third\" "this")
+		plugs=$(get_plugs "$third" "this")
 		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" == "profile" && "${third}" == "" ]] ; then
 		COMPREPLY=( $(compgen -W "${profile_opts}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" =~ ^(rm|disable)$ ]] ; then
-		plugs=$(get_plugs \"$profile\" "this")
+		plugs=$(get_plugs "$profile" "this")
 		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" =~ ^(get|enable)$ ]] ; then
-		plugs=$(get_plugs \"$profile\" "not")
+		plugs=$(get_plugs "$profile" "not")
 		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" == "migrate" ]] ; then
