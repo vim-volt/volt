@@ -1,11 +1,11 @@
-get_plugs(){
+get_plugs() {
 	local all_plugs=$(mktemp)
 	local this_plugs=$(mktemp)
-	# local profil=$(echo $1 | tr -d '"')
-	local profil=$1
+	# local profile=$(echo $1 | tr -d '"')
+	local profile=$1
 	local set=$2
 	volt list -f "{{ range .Repos }}{{ println .Path }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort > $all_plugs
-	volt list -f "{{ range .Profiles }}{{ if eq $profil .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort > $this_plugs
+	volt list -f "{{ range .Profiles }}{{ if eq $profile .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort > $this_plugs
 	if [[ $set == "all" ]] ; then
 		cat $all_plugs
 	elif [[ $set == "this" ]] ; then
@@ -13,14 +13,13 @@ get_plugs(){
 	elif [[ $set == "not" ]] ; then
 		comm -23 $all_plugs $this_plugs
 	else
-		echo ""
+		echo
 	fi
 	rm $this_plugs $all_plugs
 	return
 }
 
-_volt() 
-{
+_volt() {
 	local cur first second third opts profile_opts plugs profiles profile
 	COMPREPLY=()
 	cur="${COMP_WORDS[COMP_CWORD]}"
