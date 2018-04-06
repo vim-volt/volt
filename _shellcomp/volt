@@ -1,0 +1,66 @@
+get_plugs(){
+	local all_plugs=$(mktemp)
+	local this_plugs=$(mktemp)
+	# local profil=$(echo $1 | tr -d '"')
+	local profil=$1
+	local set=$2
+	volt list -f "{{ range .Repos }}{{ println .Path }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort > $all_plugs
+	volt list -f "{{ range .Profiles }}{{ if eq $profil .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort > $this_plugs
+	if [[ $set == "all" ]] ; then
+		cat $all_plugs
+	elif [[ $set == "this" ]] ; then
+		cat $this_plugs
+	elif [[ $set == "not" ]] ; then
+		comm -23 $all_plugs $this_plugs
+	else
+		echo ""
+	fi
+	rm $this_plugs $all_plugs
+	return
+}
+
+_volt() 
+{
+	local cur first second third opts profile_opts plugs profiles profile
+	COMPREPLY=()
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	first="${COMP_WORDS[1]}"
+	second="${COMP_WORDS[2]}"
+	third="${COMP_WORDS[3]}"
+	opts="get rm list enable disable profile build migrate self-upgrade version"
+	profile_opts="set show list new destroy rename add rm"
+	migrate_opts="lockjson plugconf/config-func"
+	profiles=$(volt profile list | sed -e 's/\*//' | tr '\n' ' ')
+	profile=$(volt list | head -1 | sed -e 's/name:\s//')
+
+	if [[ "${first}" == "profile" && ${second} =~ ^(set|show|list|new|destroy|rename|add|rm)$ && ${third} == "" ]] ; then
+		COMPREPLY=( $(compgen -W "${profiles}" -- ${cur}) )
+		return 0
+	elif [[ "${first}" == "profile" && ${second} == "add" && ${third} ]] ; then
+		plugs=$(get_plugs \"$third\" "not")
+		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
+		return 0
+	elif [[ "${first}" == "profile" && ${second} == "rm" && ${third} ]] ; then
+		plugs=$(get_plugs \"$third\" "this")
+		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
+		return 0
+	elif [[ "${first}" == "profile" && "${third}" == "" ]] ; then
+		COMPREPLY=( $(compgen -W "${profile_opts}" -- ${cur}) )
+		return 0
+	elif [[ "${first}" =~ ^(rm|disable)$ ]] ; then
+		plugs=$(get_plugs \"$profile\" "this")
+		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
+		return 0
+	elif [[ "${first}" =~ ^(get|enable)$ ]] ; then
+		plugs=$(get_plugs \"$profile\" "not")
+		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
+		return 0
+	elif [[ "${first}" == "migrate" ]] ; then
+		COMPREPLY=( $(compgen -W "${migrate_opts}" -- ${cur}) )
+		return 0
+	elif [[ "${third}" == "" ]] ; then
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		return 0
+	fi
+}
+complete -F _volt volt
