@@ -1,21 +1,19 @@
 get_plugs() {
-	local all_plugs=$(mktemp)
-	local this_plugs=$(mktemp)
 	local profile=$1
-	local set=$2
-	volt list -f "{{ range .Repos }}{{ println .Path }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort > $all_plugs
-	volt list -f "{{ range .Profiles }}{{ if eq \"$profile\" .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort > $this_plugs
-	if [[ $set == "all" ]] ; then
-		cat $all_plugs
-	elif [[ $set == "this" ]] ; then
-		cat $this_plugs
-	elif [[ $set == "not" ]] ; then
-		comm -23 $all_plugs $this_plugs
-	else
-		echo
-	fi
-	rm $this_plugs $all_plugs
-	return
+	case "$2" in
+		all) all_plugs ;;
+		this) this_plug "$profile" ;;
+		not) comm -23 <(all_plugs) <(this_plug "$profile") ;;
+		*) echo ;;
+	esac
+}
+
+all_plugs() {
+	volt list -f "{{ range .Repos }}{{ println .Path }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort
+}
+
+this_plug() {
+	volt list -f "{{ range .Profiles }}{{ if eq \"$1\" .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort
 }
 
 CMDS="get rm list enable disable profile build migrate self-upgrade version"
