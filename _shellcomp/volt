@@ -26,11 +26,10 @@ _volt() {
 	local first="${COMP_WORDS[1]}"
 	local second="${COMP_WORDS[2]}"
 	local third="${COMP_WORDS[3]}"
-	local profiles=$(volt profile list | sed -e 's/\*//' | tr '\n' ' ')
-	local profile=$(volt list | head -1 | sed -e 's/name:\s//')
 
 	if [[ "${first}" == "profile" && ${second} =~ ^(set|show|list|new|destroy|rename|add|rm)$ && ${third} == "" ]] ; then
-		COMPREPLY=( $(compgen -W "${profiles}" -- ${cur}) )
+		local profiles=$(volt profile list | sed 's/[* ] //')
+		COMPREPLY=( $(compgen -W "$(echo $profiles)" -- ${cur}) )
 		return 0
 	elif [[ "${first}" == "profile" && ${second} == "add" && ${third} ]] ; then
 		plugs=$(get_plugs "$third" "not")
@@ -44,10 +43,12 @@ _volt() {
 		COMPREPLY=( $(compgen -W "${PROFILE_CMDS}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" =~ ^(rm|disable)$ ]] ; then
+		local profile=$(volt list -f '{{ .CurrentProfileName }}')
 		plugs=$(get_plugs "$profile" "this")
 		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" =~ ^(get|enable)$ ]] ; then
+		local profile=$(volt list -f '{{ .CurrentProfileName }}')
 		plugs=$(get_plugs "$profile" "not")
 		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
 		return 0
