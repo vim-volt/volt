@@ -18,18 +18,18 @@ get_plugs() {
 	return
 }
 
+CMDS="get rm list enable disable profile build migrate self-upgrade version"
+PROFILE_CMDS="set show list new destroy rename add rm"
+MIGRATE_CMDS="lockjson plugconf/config-func"
+
 _volt() {
-	local cur first second third opts profile_opts plugs profiles profile
 	COMPREPLY=()
-	cur="${COMP_WORDS[COMP_CWORD]}"
-	first="${COMP_WORDS[1]}"
-	second="${COMP_WORDS[2]}"
-	third="${COMP_WORDS[3]}"
-	opts="get rm list enable disable profile build migrate self-upgrade version"
-	profile_opts="set show list new destroy rename add rm"
-	migrate_opts="lockjson plugconf/config-func"
-	profiles=$(volt profile list | sed -e 's/\*//' | tr '\n' ' ')
-	profile=$(volt list | head -1 | sed -e 's/name:\s//')
+	local cur="${COMP_WORDS[COMP_CWORD]}"
+	local first="${COMP_WORDS[1]}"
+	local second="${COMP_WORDS[2]}"
+	local third="${COMP_WORDS[3]}"
+	local profiles=$(volt profile list | sed -e 's/\*//' | tr '\n' ' ')
+	local profile=$(volt list | head -1 | sed -e 's/name:\s//')
 
 	if [[ "${first}" == "profile" && ${second} =~ ^(set|show|list|new|destroy|rename|add|rm)$ && ${third} == "" ]] ; then
 		COMPREPLY=( $(compgen -W "${profiles}" -- ${cur}) )
@@ -43,7 +43,7 @@ _volt() {
 		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" == "profile" && "${third}" == "" ]] ; then
-		COMPREPLY=( $(compgen -W "${profile_opts}" -- ${cur}) )
+		COMPREPLY=( $(compgen -W "${PROFILE_CMDS}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" =~ ^(rm|disable)$ ]] ; then
 		plugs=$(get_plugs "$profile" "this")
@@ -54,10 +54,10 @@ _volt() {
 		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
 		return 0
 	elif [[ "${first}" == "migrate" ]] ; then
-		COMPREPLY=( $(compgen -W "${migrate_opts}" -- ${cur}) )
+		COMPREPLY=( $(compgen -W "${MIGRATE_CMDS}" -- ${cur}) )
 		return 0
 	elif [[ "${third}" == "" ]] ; then
-		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		COMPREPLY=( $(compgen -W "${CMDS}" -- ${cur}) )
 		return 0
 	fi
 }
