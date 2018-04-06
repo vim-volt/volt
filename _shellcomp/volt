@@ -9,11 +9,11 @@ get_plugs() {
 }
 
 all_plugs() {
-	volt list -f "{{ range .Repos }}{{ println .Path }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort
+	volt list -f "{{ range .Repos }}{{ println .Path }}{{ end }}" | sed -E 's@^(www\.)?github\.com/@@' | sort -u
 }
 
 this_plug() {
-	volt list -f "{{ range .Profiles }}{{ if eq \"$1\" .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}" | sed -e 's/github\.com\///' | sed -e '/^www\./d' | sort
+	volt list -f "{{ range .Profiles }}{{ if eq \"$1\" .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}" | sed -E 's@^(www\.)?github\.com/@@' | sort -u
 }
 
 CMDS="get rm list enable disable profile build migrate self-upgrade version"
