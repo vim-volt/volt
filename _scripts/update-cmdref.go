@@ -38,7 +38,7 @@ func getVoltHelpOutput() (string, error) {
 		return "", err
 	}
 	content := strings.TrimRight(string(out), " \t\r\n")
-	return fmt.Sprintf("```\n$ volt\n%s\n```", content), nil
+	return fmt.Sprintf("```\n%s\n```", content), nil
 }
 
 func getCmdRefContent() (string, error) {
