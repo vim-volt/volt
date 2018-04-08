@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -16,30 +15,30 @@ func main() {
 
 // Update CMDREF.md "volt help" output in the first code block (lines surrounded by ```)
 func doMain() int {
-	if len(os.Args) <= 1 {
-		fmt.Fprintln(os.Stderr, "[WARN] Specify CMDREF.md path")
+	header, err := getVoltHelpOutput()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[WARN] %s\n", err.Error())
 		return 1
 	}
-	file, err := os.Create(os.Args[1])
+
+	cmdref, err := getCmdRefContent()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[WARN] %s\n", err.Error())
 		return 2
 	}
-	defer file.Close()
 
-	bw := bufio.NewWriter(file)
-	out, err := getCmdRefContent()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[WARN] %s\n", err.Error())
-		return 3
-	}
-	bw.WriteString(out)
+	fmt.Printf("%s\n\n%s", header, cmdref)
 
-	if err := bw.Flush(); err != nil {
-		fmt.Fprintf(os.Stderr, "[WARN] %s\n", err.Error())
-		return 4
-	}
 	return 0
+}
+
+func getVoltHelpOutput() (string, error) {
+	out, err := testutil.RunVolt("help")
+	if err != nil {
+		return "", err
+	}
+	content := strings.TrimRight(string(out), " \t\r\n")
+	return fmt.Sprintf("```\n$ volt\n%s\n```", content), nil
 }
 
 func getCmdRefContent() (string, error) {
