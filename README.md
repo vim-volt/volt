@@ -103,7 +103,7 @@ See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.
 ## What is Volt
 
 * Multi-platform CLI tool managing Vim plugin life
-* Asynchronous plugin update
+* Parallel vim plugin update
 * Based on Vim 8 [packages feature](http://vimhelp.appspot.com/repeat.txt.html#packages)
     * All plugins are installed under `~/.vim/pack/volt` directory
 * Zero overhead & optimizations
@@ -123,6 +123,8 @@ See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.
   * You need Go 1.9 or higher
   * And if you are using Windows Subsystem Linux, you need to apply **[the patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ! ([#1](https://github.com/vim-volt/go-volt/issues/1))**
   * But it's a hassle, you can just download linux-386/amd64 binaries from [GitHub releases](https://github.com/vim-volt/volt/releases) :)
+
+And there is bash completion script in [\_contrib](https://github.com/vim-volt/volt/blob/master/_contrib/completion/bash) directory (thanks @AvianY).
 
 ## Self upgrade
 
@@ -446,7 +448,7 @@ Because if you run `volt get localhost/{user}/{name}` accidentally you only get 
 So it is guaranteed that you won't install a unwanted plugin :)
 
 In other words, this means you can also manage your `~/.vim/*` files as a vim plugin.
-Off cource you can disable/enable it by `volt disable <repos>` and `volt enable <repos>`. 
+Off cource you can disable/enable it by `volt disable <repos>` and `volt enable <repos>`.
 
 ```
 Move files/directories to vimdir
