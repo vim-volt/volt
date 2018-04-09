@@ -38,17 +38,17 @@ _volt() {
 	local second="${COMP_WORDS[2]}"
 	local third="${COMP_WORDS[3]}"
 
-	if [[ "${first}" == "profile" && "${second}" =~ ^(add|rm)$ && "${third}" ]] ; then
+	if [[ "${first}" == "profile" && "${second}" =~ ^(set|show|destroy|rename|add|rm)$ && "${last}" =~ ^(set|show|destroy|rename|add|rm)$ ]] ; then
+		local profiles=$(get_profiles)
+		COMPREPLY=( $(compgen -W "${profiles}" -- ${cur}) )
+
+	elif [[ "${first}" == "profile" && "${second}" =~ ^(add|rm)$ && "${third}" ]] ; then
 		local profile=$third
 		case "$second" in
 			add) plugs=$(get_plugs "${profile}" "not") ;;
 			rm) plugs=$(get_plugs "${profile}" "this") ;;
 		esac
 		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )
-
-	elif [[ "${first}" == "profile" && "${second}" =~ ^(set|show|new|destroy|rename|add|rm)$ && "${last}" =~ ^(set|show|new|destroy|rename|add|rm)$ ]] ; then
-		local profiles=$(get_profiles)
-		COMPREPLY=( $(compgen -W "${profiles}" -- ${cur}) )
 
 	elif [[ "${first}" == "profile" && "${last}" == "profile" ]] ; then
 		COMPREPLY=( $(compgen -W "${PROFILE_CMDS}" -- ${cur}) )
