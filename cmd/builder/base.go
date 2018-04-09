@@ -78,7 +78,7 @@ func (builder *BaseBuilder) installRCFile(profileName, srcRCFileName, dst string
 			if !pathutil.Exists(src) {
 				return nil
 			}
-			return errors.New("'" + dst + "' does not have magic comment")
+			return fmt.Errorf("'%s' is not an auto-generated file. please move to '%s' and re-run 'volt build'", dst, pathutil.RCDir(profileName))
 		}
 	}
 
