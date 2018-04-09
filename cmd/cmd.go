@@ -6,6 +6,7 @@ import (
 	"os/user"
 	"runtime"
 
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/logger"
 )
 
@@ -21,6 +22,10 @@ type Cmd interface {
 
 // Run is invoked by main(), each argument means 'volt {subcmd} {args}'.
 func Run(subCmd string, args []string) int {
+	subCmd, args, err := expandAlias(subCmd, args)
+	if err != nil {
+		logger.Error(err.Error())
+	}
 	self, exists := cmdMap[subCmd]
 	if !exists {
 		logger.Error("Unknown command '" + subCmd + "'")
@@ -34,6 +39,18 @@ func Run(subCmd string, args []string) int {
 		}
 	}
 	return self.Run(args)
+}
+
+func expandAlias(subCmd string, args []string) (string, []string, error) {
+	cfg, err := config.Read()
+	if err != nil {
+		return "", nil, errors.New("could not read config.toml: " + err.Error())
+	}
+	if newArgs, exists := cfg.Alias[subCmd]; exists && len(newArgs) > 0 {
+		subCmd = newArgs[0]
+		args = append(newArgs[1:], args...)
+	}
+	return subCmd, args, nil
 }
 
 // On Windows, this function always returns nil.

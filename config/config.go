@@ -9,16 +9,17 @@ import (
 
 // Config is marshallable content of config.toml
 type Config struct {
-	Build configBuild `toml:"build"`
-	Get   configGet   `toml:"get"`
+	Alias map[string][]string `toml:"alias"`
+	Build configBuild         `toml:"build"`
+	Get   configGet           `toml:"get"`
 }
 
-// configBuild is a config of 'volt build'.
+// configBuild is a config for 'volt build'.
 type configBuild struct {
 	Strategy string `toml:"strategy"`
 }
 
-// configGet is a config of 'volt get'.
+// configGet is a config for 'volt get'.
 type configGet struct {
 	CreateSkeletonPlugconf *bool `toml:"create_skeleton_plugconf"`
 	FallbackGitCmd         *bool `toml:"fallback_git_cmd"`
