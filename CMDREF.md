@@ -210,7 +210,7 @@ Quick example
 
   Show repositories used by current profile:
 
-  $ volt list -f '{{ range .Profiles }}{{ if eq $.CurrentProfileName .Name }}{{ range .ReposPath }}{{ . }}{{ end }}{{ end }}{{ end }}'
+  $ volt list -f '{{ range .Profiles }}{{ if eq $.CurrentProfileName .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}'
 
   Or (see "Additional property"):
 
