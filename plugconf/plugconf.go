@@ -76,6 +76,9 @@ func (pi *ParsedInfo) GeneratePlugconf() ([]byte, error) {
 	// Merge result and return it
 	var buf bytes.Buffer
 
+	// modeline
+	buf.WriteString("\" vim:et:sw=2:ts=2\n\n")
+
 	// s:on_load_pre()
 	if pi.onLoadPreFunc != "" {
 		buf.WriteString(pi.onLoadPreFunc)
