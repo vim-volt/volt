@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/vim-volt/volt/cmd/buildinfo"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
+	"github.com/vim-volt/volt/subcmd/buildinfo"
 )
 
 // BaseBuilder is a base struct which all builders must implement

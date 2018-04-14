@@ -11,12 +11,12 @@ import (
 
 	"gopkg.in/src-d/go-git.v4"
 
-	"github.com/vim-volt/volt/cmd/buildinfo"
 	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/plugconf"
+	"github.com/vim-volt/volt/subcmd/buildinfo"
 )
 
 type symlinkBuilder struct {

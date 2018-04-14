@@ -1,4 +1,4 @@
-package cmd
+package subcmd
 
 import (
 	"errors"
@@ -14,7 +14,6 @@ import (
 
 	"gopkg.in/src-d/go-git.v4"
 
-	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/gitutil"
@@ -22,6 +21,7 @@ import (
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/plugconf"
+	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 
 	multierror "github.com/hashicorp/go-multierror"

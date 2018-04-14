@@ -1,12 +1,12 @@
-package cmd
+package subcmd
 
 import (
 	"flag"
 	"fmt"
 	"os"
 
-	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/logger"
+	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 )
 

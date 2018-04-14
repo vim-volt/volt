@@ -1,4 +1,4 @@
-package cmd
+package subcmd
 
 import (
 	"errors"
@@ -7,10 +7,10 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
+	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 )
 

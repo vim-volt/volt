@@ -1,4 +1,4 @@
-package cmd
+package subcmd
 
 import (
 	"encoding/json"

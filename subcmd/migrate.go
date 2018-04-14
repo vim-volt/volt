@@ -1,4 +1,4 @@
-package cmd
+package subcmd
 
 import (
 	"errors"
@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/vim-volt/volt/cmd/migrate"
 	"github.com/vim-volt/volt/logger"
+	"github.com/vim-volt/volt/subcmd/migrate"
 )
 
 func init() {
