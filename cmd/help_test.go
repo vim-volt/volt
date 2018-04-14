@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/vim-volt/volt/internal/testutil"
@@ -53,8 +54,8 @@ func TestVoltHelpE478(t *testing.T) {
 	// =============== run =============== //
 
 	out, err := testutil.RunVolt("help", "help")
-	testutil.SuccessExit(t, out, err)
-	if string(out) != "E478: Don't panic!\n" {
+	testutil.FailExit(t, out, err)
+	if !strings.Contains(string(out), "E478: Don't panic!") {
 		t.Error("'volt help help' did not show E478 error: " + string(out))
 	}
 }

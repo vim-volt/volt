@@ -10,15 +10,9 @@ import (
 )
 
 func main() {
-	os.Exit(doMain())
-}
-
-func doMain() int {
-	if os.Getenv("VOLT_DEBUG") != "" {
-		logger.SetLevel(logger.DebugLevel)
+	err := cmd.Run(os.Args, cmd.DefaultRunner)
+	if err != nil {
+		logger.Error(err.Msg)
+		os.Exit(err.Code)
 	}
-	if len(os.Args) <= 1 {
-		os.Args = append(os.Args, "help")
-	}
-	return cmd.Run(os.Args[1], os.Args[2:])
 }

@@ -9,7 +9,6 @@ import (
 	"text/template"
 
 	"github.com/vim-volt/volt/lockjson"
-	"github.com/vim-volt/volt/logger"
 )
 
 func init() {
@@ -126,17 +125,16 @@ repos path:
 `
 }
 
-func (cmd *listCmd) Run(args []string) int {
+func (cmd *listCmd) Run(args []string) *Error {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {
-		return 0
+		return nil
 	}
 	if err := cmd.list(cmd.format); err != nil {
-		logger.Error("Failed to render template:", err.Error())
-		return 10
+		return &Error{Code: 10, Msg: "Failed to render template: " + err.Error()}
 	}
-	return 0
+	return nil
 }
 
 func (cmd *listCmd) list(format string) error {

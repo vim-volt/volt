@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 )
 
@@ -42,14 +41,13 @@ Description
 	return fs
 }
 
-func (cmd *enableCmd) Run(args []string) int {
+func (cmd *enableCmd) Run(args []string) *Error {
 	reposPathList, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
-		return 0
+		return nil
 	}
 	if err != nil {
-		logger.Error("Failed to parse args: " + err.Error())
-		return 10
+		return &Error{Code: 10, Msg: "Failed to parse args: " + err.Error()}
 	}
 
 	profCmd := profileCmd{}
@@ -58,11 +56,10 @@ func (cmd *enableCmd) Run(args []string) int {
 		reposPathList.Strings()...,
 	))
 	if err != nil {
-		logger.Error(err.Error())
-		return 11
+		return &Error{Code: 11, Msg: err.Error()}
 	}
 
-	return 0
+	return nil
 }
 
 func (cmd *enableCmd) parseArgs(args []string) (pathutil.ReposPathList, error) {

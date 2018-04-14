@@ -40,15 +40,15 @@ Description
 	return fs
 }
 
-func (cmd *versionCmd) Run(args []string) int {
+func (cmd *versionCmd) Run(args []string) *Error {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {
-		return 0
+		return nil
 	}
 
 	fmt.Printf("volt version: %s\n", voltVersion)
-	return 0
+	return nil
 }
 
 // [major, minor, patch, alphaBeta]

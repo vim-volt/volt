@@ -53,27 +53,27 @@ Description
 	return fs
 }
 
-func (cmd *buildCmd) Run(args []string) int {
+func (cmd *buildCmd) Run(args []string) *Error {
 	// Parse args
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {
-		return 0
+		return nil
 	}
 
 	// Begin transaction
 	err := transaction.Create()
 	if err != nil {
-		logger.Error("Failed to begin transaction:", err.Error())
-		return 11
+		logger.Error()
+		return &Error{Code: 11, Msg: "Failed to begin transaction: " + err.Error()}
 	}
 	defer transaction.Remove()
 
 	err = builder.Build(cmd.full)
 	if err != nil {
-		logger.Error("Failed to build:", err.Error())
-		return 12
+		logger.Error()
+		return &Error{Code: 12, Msg: "Failed to build: " + err.Error()}
 	}
 
-	return 0
+	return nil
 }

@@ -55,23 +55,21 @@ Available operations`)
 	return fs
 }
 
-func (cmd *migrateCmd) Run(args []string) int {
+func (cmd *migrateCmd) Run(args []string) *Error {
 	op, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
-		return 0
+		return nil
 	}
 	if err != nil {
-		logger.Error("Failed to parse args: " + err.Error())
-		return 10
+		return &Error{Code: 10, Msg: "Failed to parse args: " + err.Error()}
 	}
 
 	if err := op.Migrate(); err != nil {
-		logger.Error("Failed to migrate: " + err.Error())
-		return 11
+		return &Error{Code: 11, Msg: "Failed to migrate: " + err.Error()}
 	}
 
 	logger.Infof("'%s' was successfully migrated!", op.Name())
-	return 0
+	return nil
 }
 
 func (cmd *migrateCmd) parseArgs(args []string) (migrate.Migrater, error) {

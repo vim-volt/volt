@@ -3,7 +3,6 @@ package cmd
 import (
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -29,13 +28,14 @@ func testVoltSelfUpgradeCheckFromOldVer(t *testing.T) {
 
 	// =============== run =============== //
 
-	var code int
+	var err *Error
 	out := captureOutput(t, func() {
-		code = Run("self-upgrade", []string{"-check"})
+		args := []string{"volt", "self-upgrade", "-check"}
+		err = Run(args, DefaultRunner)
 	})
 
-	if code != 0 {
-		t.Error("Expected exitcode=0, but got: " + strconv.Itoa(code))
+	if err != nil {
+		t.Error("Expected nil error, but got: " + err.Error())
 	}
 	if !strings.Contains(out, "---") {
 		t.Error("Expected release notes, but got: " + out)
@@ -44,13 +44,14 @@ func testVoltSelfUpgradeCheckFromOldVer(t *testing.T) {
 
 // 'volt self-upgrade -check' from current version should show the latest release
 func testVoltSelfUpgradeCheckFromCurrentVer(t *testing.T) {
-	var code int
+	var err *Error
 	out := captureOutput(t, func() {
-		code = Run("self-upgrade", []string{"-check"})
+		args := []string{"volt", "self-upgrade", "-check"}
+		err = Run(args, DefaultRunner)
 	})
 
-	if code != 0 {
-		t.Error("Expected exitcode=0, but got: " + strconv.Itoa(code))
+	if err != nil {
+		t.Error("Expected nil error, but got: " + err.Error())
 	}
 	if out != "[INFO] No updates were found.\n" {
 		t.Error("Expected no updates found, but got: " + out)

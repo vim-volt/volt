@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"flag"
+	"os"
 	"os/user"
 	"runtime"
 
@@ -16,29 +17,62 @@ var cmdMap = make(map[string]Cmd)
 // All subcommands must implement this.
 type Cmd interface {
 	ProhibitRootExecution(args []string) bool
-	Run(args []string) int
+	Run(args []string) *Error
 	FlagSet() *flag.FlagSet
 }
 
+// RunnerFunc invokes c with args.
+// On unit testing, a mock function was given.
+type RunnerFunc func(c Cmd, args []string) *Error
+
+// Error is a command error.
+// It also has a exit code.
+type Error struct {
+	Code int
+	Msg  string
+}
+
+func (e *Error) Error() string {
+	return e.Msg
+}
+
+// DefaultRunner simply runs command with args
+func DefaultRunner(c Cmd, args []string) *Error {
+	return c.Run(args)
+}
+
 // Run is invoked by main(), each argument means 'volt {subcmd} {args}'.
-func Run(subCmd string, args []string) int {
+func Run(args []string, cont RunnerFunc) *Error {
+	if os.Getenv("VOLT_DEBUG") != "" {
+		logger.SetLevel(logger.DebugLevel)
+	}
+
+	if len(args) <= 1 {
+		args = append(args, "help")
+	}
+	subCmd := args[1]
+	args = args[2:]
+
+	// Expand subcommand alias
 	subCmd, args, err := expandAlias(subCmd, args)
 	if err != nil {
-		logger.Error(err.Error())
+		return &Error{Code: 1, Msg: err.Error()}
 	}
-	self, exists := cmdMap[subCmd]
+
+	c, exists := cmdMap[subCmd]
 	if !exists {
-		logger.Error("Unknown command '" + subCmd + "'")
-		return 3
+		return &Error{Code: 3, Msg: "Unknown command '" + subCmd + "'"}
 	}
-	if self.ProhibitRootExecution(args) {
+
+	// Disallow executing the commands which may modify files in root priviledge
+	if c.ProhibitRootExecution(args) {
 		err := detectPriviledgedUser()
 		if err != nil {
-			logger.Error(err.Error())
-			return 4
+			return &Error{Code: 4, Msg: err.Error()}
 		}
 	}
-	return self.Run(args)
+
+	return cont(c, args)
 }
 
 func expandAlias(subCmd string, args []string) (string, []string, error) {

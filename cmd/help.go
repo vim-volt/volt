@@ -5,8 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-
-	"github.com/vim-volt/volt/logger"
 )
 
 // ErrShowedHelp is used in parsing argument function of subcommand when the
@@ -101,22 +99,20 @@ Command
 	return fs
 }
 
-func (cmd *helpCmd) Run(args []string) int {
+func (cmd *helpCmd) Run(args []string) *Error {
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
-		return 0
+		return nil
 	}
 	if args[0] == "help" { // "volt help help"
-		fmt.Println("E478: Don't panic!")
-		return 0
+		return &Error{Code: 47, Msg: "E478: Don't panic!"}
 	}
 
 	fs, exists := cmdMap[args[0]]
 	if !exists {
-		logger.Errorf("Unknown command '%s'", args[0])
-		return 1
+		return &Error{Code: 1, Msg: fmt.Sprintf("Unknown command '%s'", args[0])}
 	}
 	args = append([]string{"-help"}, args[1:]...)
 	fs.Run(args)
-	return 0
+	return nil
 }
