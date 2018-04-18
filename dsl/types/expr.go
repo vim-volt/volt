@@ -4,7 +4,7 @@ import "context"
 
 // Expr has an operation and its arguments
 type Expr struct {
-	Op   Op
+	Func Func
 	Args []Value
 	Typ  Type
 }
@@ -16,13 +16,13 @@ type TrxID int64
 
 // Eval evaluates given expression expr with given transaction ID trxID.
 func (expr *Expr) Eval(ctx context.Context) (val Value, rollback func(), err error) {
-	return expr.Op.Execute(ctx, expr.Args)
+	return expr.Func.Execute(ctx, expr.Args)
 }
 
 // Invert inverts this expression.
-// This just calls Op.InvertExpr() with arguments.
+// This just calls Func.InvertExpr() with arguments.
 func (expr *Expr) Invert() (Value, error) {
-	return expr.Op.InvertExpr(expr.Args)
+	return expr.Func.InvertExpr(expr.Args)
 }
 
 // Type returns the type.

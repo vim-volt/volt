@@ -41,8 +41,8 @@ func deparse(value types.Value) (interface{}, error) {
 	case *types.Expr:
 		a := make([]interface{}, 0, len(val.Args)+1)
 		// Do not include "@" in array literal
-		if val.Op.String() != op.ArrayOp.String() {
-			a = append(a, &types.String{Value: val.Op.String()})
+		if val.Func.String() != op.ArrayOp.String() {
+			a = append(a, &types.String{Value: val.Func.String()})
 		}
 		for i := range a {
 			v, err := deparse(val.Args[i])
