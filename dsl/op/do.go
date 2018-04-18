@@ -7,20 +7,21 @@ import (
 )
 
 func init() {
-	opsMap["do"] = &DoOp{}
+	opsMap[string(DoOp)] = &DoOp
 }
 
-// DoOp is "do" operation
-type DoOp struct{}
+type doOp string
 
-// Describe describes its task(s) as zero or more lines of messages.
-func (op *DoOp) Describe(args []types.Value) []string {
-	// TODO
-	return []string{}
+// DoOp is "do" operation
+var DoOp doOp = "do"
+
+// String returns operator name
+func (op *doOp) String() string {
+	return string(*op)
 }
 
 // Bind binds its arguments, and check if the types of values are correct.
-func (op *DoOp) Bind(args ...types.Value) (*types.Expr, error) {
+func (op *doOp) Bind(args ...types.Value) (*types.Expr, error) {
 	sig := make([]types.Type, 0, len(args))
 	for i := 0; i < len(args); i++ {
 		sig = append(sig, types.ArrayType)
@@ -29,26 +30,29 @@ func (op *DoOp) Bind(args ...types.Value) (*types.Expr, error) {
 		return nil, err
 	}
 	retType := args[len(args)-1].Type()
-	return types.NewExpr(op, args, retType), nil
+	return &types.Expr{
+		Op:   &DoOp,
+		Args: args,
+		Typ:  retType,
+	}, nil
 }
 
 // InvertExpr returns inverted expression: Call Value.Invert() for each argument,
 // and reverse arguments order.
-func (op *DoOp) InvertExpr(args []types.Value) (*types.Expr, error) {
+func (op *doOp) InvertExpr(args []types.Value) (*types.Expr, error) {
 	newargs := make([]types.Value, len(args))
-	newargs[0] = args[0] // message
-	for i := 1; i < len(args); i++ {
+	for i := range args {
 		a, err := args[i].Invert()
 		if err != nil {
 			return nil, err
 		}
 		newargs[len(args)-i] = a
 	}
-	return op.Bind(newargs...)
+	return DoOp.Bind(newargs...)
 }
 
 // Execute executes "do" operation
-func (op *DoOp) Execute(ctx context.Context, args []types.Value) (types.Value, func(), error) {
+func (op *doOp) Execute(ctx context.Context, args []types.Value) (types.Value, func(), error) {
 	// TODO
 	return nil, func() {}, nil
 }

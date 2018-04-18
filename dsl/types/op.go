@@ -13,7 +13,6 @@ type Op interface {
 	// Execute executes this operation and returns its result value and error
 	Execute(ctx context.Context, args []Value) (ret Value, rollback func(), err error)
 
-	// Describe returns its type(s) of zero or more arguments and one return value.
-	// The types are used for type-checking.
-	Describe(args []Value) []string
+	// Returns operator name
+	String() string
 }

@@ -9,46 +9,49 @@ import (
 	"github.com/vim-volt/volt/dsl/types"
 )
 
-// ParseOp parses expr JSON.
-// This calls Parse() function. And
-// 1. Does split to operation and its arguments
-// 2. Analyzes semantically its arguments recursively
-// 3. Convert the result value to *Expr
-func ParseOp(expr []byte) (*types.Expr, error) {
-	value, err := Parse(expr)
-	if err != nil {
-		return nil, err
-	}
-	array, ok := value.(*types.Array)
-	if !ok {
-		return nil, errors.New("top-level value is not an array")
-	}
-	if len(array.Value) == 0 {
-		return nil, errors.New("expected operation but got an empty array")
-	}
-	opName, ok := array.Value[0].(*types.String)
-	if !ok {
-		return nil, fmt.Errorf("expected operation name but got '%+v'", array.Value[0])
-	}
-	op, exists := op.Lookup(opName.Value)
-	if !exists {
-		return nil, fmt.Errorf("no such operation '%s'", opName.Value)
-	}
-	args := array.Value[1:]
-	return op.Bind(args...)
-}
-
-// Parse parses expr JSON.
-// This only maps encoding/json's types to Value types.
+// Parse parses expr JSON. And if an array literal value is found:
+// 1. Split to operation and its arguments
+// 2. Do semantic analysis recursively for its arguments
+// 3. Convert to *Expr
 func Parse(expr []byte) (types.Value, error) {
 	var value interface{}
 	if err := json.Unmarshal(expr, value); err != nil {
 		return nil, err
 	}
-	return convert(value)
+	return parseExpr(value)
 }
 
-func convert(value interface{}) (types.Value, error) {
+func parseExpr(value interface{}) (*types.Expr, error) {
+	if array, ok := value.([]interface{}); ok {
+		return parseArray(array)
+	}
+	return nil, errors.New("top-level must be an array")
+}
+
+func parseArray(array []interface{}) (*types.Expr, error) {
+	if len(array) == 0 {
+		return nil, errors.New("expected operation but got an empty array")
+	}
+	opName, ok := array[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("expected operator (string) but got '%+v'", array[0])
+	}
+	a := make([]types.Value, 0, len(array)-1)
+	for i := 1; i < len(array); i++ {
+		v, err := parse(array[i])
+		if err != nil {
+			return nil, err
+		}
+		a = append(a, v)
+	}
+	op, exists := op.Lookup(opName)
+	if !exists {
+		return nil, fmt.Errorf("no such operation '%s'", opName)
+	}
+	return op.Bind(a...)
+}
+
+func parse(value interface{}) (types.Value, error) {
 	switch val := value.(type) {
 	case nil:
 		return types.NullValue, nil
@@ -61,26 +64,18 @@ func convert(value interface{}) (types.Value, error) {
 		return &types.String{val}, nil
 	case float64:
 		return &types.Number{val}, nil
-	case []interface{}:
-		a := make([]types.Value, 0, len(val))
-		for o := range a {
-			v, err := convert(o)
-			if err != nil {
-				return nil, err
-			}
-			a = append(a, v)
-		}
-		return &types.Array{a}, nil
 	case map[string]interface{}:
 		m := make(map[string]types.Value, len(val))
 		for k, o := range m {
-			v, err := convert(o)
+			v, err := parse(o)
 			if err != nil {
 				return nil, err
 			}
 			m[k] = v
 		}
 		return &types.Object{m}, nil
+	case []interface{}:
+		return parseArray(val)
 	default:
 		return nil, fmt.Errorf("unknown value was given '%+v'", val)
 	}

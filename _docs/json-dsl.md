@@ -15,14 +15,14 @@
         ["parallel",
           ["lockjson/add",
             ["repos/get", "github.com/tyru/open-browser.vim"],
-            ["default"]],
+            ["@", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser.vim"]]],
       ["label",
         "  github.com/tyru/open-browser-github.vim ... {{if .Done}}done!{{end}}",
         ["parallel",
           ["lockjson/add",
             ["repos/get", "github.com/tyru/open-browser-github.vim"],
-            ["default"]],
+            ["@", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser-github.vim"]]]]]]
 ```
 
@@ -93,9 +93,16 @@ JSON DSL is a S-expression like DSL represented as JSON format.
 ["op", "arg1", "arg2"]
 ```
 
-This is an application form (called "expression" in this note) when `op` is a
-known operator name.  But if `op` is not a known operator, it is just an array
-literal value.  Each expression has 0 or more parameters.  And evaluation
+This is an application form (called "expression" in this note).
+An array literal value is written using `@` operator.
+
+```json
+["@", 1, 2, 3]
+```
+
+This expression is evaluated to `[1, 2, 3]`.
+
+Each expression has 0 or more parameters.  And evaluation
 strategy is a non-strict evaluation.
 
 Parameter types are
@@ -162,7 +169,7 @@ version for easiness).
   ["do",
     ["lockjson/add",
       ["repos/get", "github.com/tyru/caw.vim"],
-      ["default"]],
+      ["@", "default"]],
     ["plugconf/install", "github.com/tyru/caw.vim"]]]
 ```
 
@@ -177,7 +184,7 @@ At first, to invert the expression, `$invert` macro is used:
     ["do",
       ["lockjson/add",
         ["repos/get", "github.com/tyru/caw.vim"],
-        ["default"]],
+        ["@", "default"]],
       ["plugconf/install", "github.com/tyru/caw.vim"]]]]
 ```
 
@@ -192,7 +199,7 @@ API" section of JSONDSL note (TODO).
     ["do",
       ["lockjson/add",
         ["repos/get", "github.com/tyru/caw.vim"],
-        ["default"]],
+        ["@", "default"]],
       ["plugconf/install", "github.com/tyru/caw.vim"]]]]
 ```
 
@@ -208,7 +215,7 @@ Note that `expr1` and `expr2` becomes reversed order.
     ["$invert",
       ["lockjson/add",
         ["repos/get", "github.com/tyru/caw.vim"],
-        ["default"]]]]]
+        ["@", "default"]]]]]
 ```
 
 And
@@ -223,7 +230,7 @@ And
     ["plugconf/delete", ["$invert", "github.com/tyru/caw.vim"]],
     ["lockjson/remove",
       ["$invert", ["repos/get", "github.com/tyru/caw.vim"]],
-      ["$invert", ["default"]]]]]
+      ["$invert", ["@", "default"]]]]]
 ```
 
 `["$invert", ["repos/get", path]]` becomes
@@ -235,7 +242,7 @@ And
     ["plugconf/delete", ["$invert", "github.com/tyru/caw.vim"]],
     ["lockjson/remove",
       ["repos/delete", ["$invert", "github.com/tyru/caw.vim"]],
-      ["$invert", ["default"]]]]]
+      ["$invert", ["@", "default"]]]]]
 ```
 
 And if `$invert` is applied to literals like string, JSON array, it just remains
@@ -247,7 +254,7 @@ as-is.
     ["plugconf/delete", "github.com/tyru/caw.vim"],
     ["lockjson/remove",
       ["repos/delete", "github.com/tyru/caw.vim"],
-      ["default"]]]]
+      ["@", "default"]]]]
 ```
 
 We can successfully evaluate the inverse expression of the first expression :)
@@ -421,7 +428,7 @@ Macros are not saved in transaction log (expanded before saving).
   * It fails if specified profile name does not exist.
     * Need to create profile before using `lockjson/profile/add`.
   * e.g.
-    * `["lockjson/add", ["repos/get", "github.com/tyru/caw.vim"], ["default"]]`
+    * `["lockjson/add", ["repos/get", "github.com/tyru/caw.vim"], ["@", "default"]]`
     * `["$invert", ["lockjson/add", repos, profiles]]` = `["lockjson/remove", ["$invert", repos], ["$invert", profiles]]`
 
 * `["lockjson/profile/add", name string] Profile`
@@ -484,7 +491,7 @@ directory:
       "path": "github.com/tyru/caw.vim",
       "version": "deadbeefcafebabe"
     },
-    ["default"]
+    ["@", "default"]
   ],
   ["repos/delete", "github.com/tyru/caw.vim"],
   ["plugconf/delete", "github.com/tyru/caw.vim"],
@@ -506,7 +513,7 @@ And below is the inverse expression of above.
       "path": "github.com/tyru/caw.vim",
       "version": "deadbeefcafebabe"
     },
-    ["default"]
+    ["@", "default"]
   ]
 ]
 ```
@@ -534,7 +541,7 @@ This is what we expected.
         "path": "github.com/tyru/caw.vim",
         "version": "deadbeefcafebabe"
       },
-      ["default"]
+      ["@", "default"]
     ],
     ["repos/delete", "github.com/tyru/caw.vim"],
     ["plugconf/delete", "github.com/tyru/caw.vim"]]]
@@ -554,7 +561,7 @@ The inverse expression of the above is:
         "path": "github.com/tyru/caw.vim",
         "version": "deadbeefcafebabe"
       },
-      ["default"]]]]
+      ["@", "default"]]]]
 ```
 
 1. Installs plugconf
@@ -579,7 +586,7 @@ But, of course if we placed `vimdir/with-install` at before `repos/delete` or
       "path": "github.com/tyru/caw.vim",
       "version": "deadbeefcafebabe"
     },
-    ["default"]
+    ["@", "default"]
   ],
   ["repos/delete", "github.com/tyru/caw.vim"],
   ["plugconf/delete", "github.com/tyru/caw.vim"]]
@@ -595,7 +602,7 @@ But, of course if we placed `vimdir/with-install` at before `repos/delete` or
       "path": "github.com/tyru/caw.vim",
       "version": "deadbeefcafebabe"
     },
-    ["default"]],
+    ["@", "default"]],
   ["vimdir/with-install",
     ["github.com/tyru/caw.vim"],
     "dummy"]]
@@ -614,7 +621,7 @@ Here is the simple JSON to install
   ["do",
     ["lockjson/add",
       ["repos/get", "github.com/tyru/caw.vim"],
-      ["default"]],
+      ["@", "default"]],
     ["plugconf/install", "github.com/tyru/caw.vim"]]]
 ```
 
@@ -626,7 +633,7 @@ Here is the inverse expression of above.
     ["plugconf/delete", "github.com/tyru/caw.vim"],
     ["lockjson/remove",
       ["repos/delete", "github.com/tyru/caw.vim"],
-      ["default"]]]]
+      ["@", "default"]]]]
 ```
 
 Here is the JSON to install plugins from local directory (static repository).
@@ -635,7 +642,7 @@ Here is the JSON to install plugins from local directory (static repository).
 ["vimdir/with-install",
   ["lockjson/add",
     { ... (repository information of local directory) ... },
-    ["default"]],
+    ["@", "default"]],
   ["plugconf/install", "localhost/local/myplugin"]]
 ```
 
@@ -646,7 +653,7 @@ Here is the inverse expression of above.
   ["plugconf/delete", "localhost/local/myplugin"],
   ["lockjson/remove",
     { ... (repository information of local directory) ... },
-    ["default"]]]
+    ["@", "default"]]]
 ```
 
 ### Label examples
@@ -662,7 +669,7 @@ Here is the simple example of installing
     ["do",
       ["lockjson/add",
         ["repos/get", "github.com/tyru/caw.vim"],
-        ["default"]],
+        ["@", "default"]],
       ["plugconf/install", "github.com/tyru/caw.vim"]]]]
 ```
 
@@ -682,7 +689,7 @@ Note that:
       ["plugconf/install", "github.com/tyru/caw.vim"],
       ["lockjson/add",
         ["repos/get", "github.com/tyru/caw.vim"],
-        ["default"]]]]]
+        ["@", "default"]]]]]
 ```
 
 Here is more complex example to install two plugins "tyru/open-browser.vim",
@@ -698,14 +705,14 @@ Here is more complex example to install two plugins "tyru/open-browser.vim",
         ["parallel",
           ["lockjson/add",
             ["repos/get", "github.com/tyru/open-browser.vim"],
-            ["default"]],
+            ["@", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser.vim"]]],
       ["label",
         "  github.com/tyru/open-browser-github.vim ... {{if .Done}}done!{{end}}",
         ["parallel",
           ["lockjson/add",
             ["repos/get", "github.com/tyru/open-browser-github.vim"],
-            ["default"]],
+            ["@", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser-github.vim"]]]]]]
 ```
 
@@ -726,8 +733,6 @@ Here is more complex example to install two plugins "tyru/open-browser.vim",
       * Evaluate this value. the value of JSON literal just returns itself as-is.
     * `Invert() (Value, error)`
       * Returns inverse expression.
-    * `Describe() []string`
-      * TODO: remove
   * Null struct
     * implements Value
   * NullType Type = 1
@@ -768,7 +773,5 @@ Here is more complex example to install two plugins "tyru/open-browser.vim",
     * `InvertExpr(args []Value) (*Expr, error)`
       * Returns inverse expression. This normally inverts operator and arguments
         and call Bind() (not all operators do it).
-    * `Describe(args []Value) []string`
-      * TODO: remove
     * `Execute(ctx Context, args []Value) (val Value, rollback func(), err error)`
       * Executes expression (operator + args).
