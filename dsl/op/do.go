@@ -31,9 +31,9 @@ func (*doOp) Bind(args ...types.Value) (*types.Expr, error) {
 	}
 	retType := args[len(args)-1].Type()
 	return &types.Expr{
-		Func: &DoOp,
-		Args: args,
-		Typ:  retType,
+		Func:    &DoOp,
+		Args:    args,
+		RetType: retType,
 	}, nil
 }
 

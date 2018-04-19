@@ -4,9 +4,9 @@ import "context"
 
 // Expr has an operation and its arguments
 type Expr struct {
-	Func Func
-	Args []Value
-	Typ  Type
+	Func    Func
+	Args    []Value
+	RetType Type
 }
 
 // TrxID is a transaction ID, which is a serial number and directory name of
@@ -27,5 +27,5 @@ func (expr *Expr) Invert() (Value, error) {
 
 // Type returns the type.
 func (expr *Expr) Type() Type {
-	return expr.Typ
+	return expr.RetType
 }
