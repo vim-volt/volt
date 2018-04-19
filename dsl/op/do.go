@@ -24,7 +24,7 @@ func (*doOp) String() string {
 func (*doOp) Bind(args ...types.Value) (*types.Expr, error) {
 	sig := make([]types.Type, 0, len(args))
 	for i := 0; i < len(args); i++ {
-		sig = append(sig, types.ArrayType)
+		sig = append(sig, &types.AnyType{})
 	}
 	if err := signature(sig...).check(args); err != nil {
 		return nil, err
@@ -52,7 +52,19 @@ func (*doOp) InvertExpr(args []types.Value) (*types.Expr, error) {
 }
 
 // Execute executes "do" operation
-func (*doOp) Execute(ctx context.Context, args []types.Value) (types.Value, func(), error) {
-	// TODO
-	return nil, func() {}, nil
+func (*doOp) Execute(ctx context.Context, args []types.Value) (val types.Value, rollback func(), err error) {
+	g := funcGuard(string(DoOp))
+	defer func() { err = g.rollback(recover()) }()
+	rollback = g.rollbackForcefully
+
+	for i := range args {
+		v, rbFunc, e := args[i].Eval(ctx)
+		g.add(rbFunc)
+		if e != nil {
+			err = g.rollback(e)
+			return
+		}
+		val = v
+	}
+	return
 }
