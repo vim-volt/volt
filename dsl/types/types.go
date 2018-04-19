@@ -105,7 +105,7 @@ func (t *ArrayType) String() string {
 	return "Array[" + t.Arg.String() + "]"
 }
 
-// InstanceOf returns true if t2 is exactly same type as t
+// InstanceOf returns true if t is instance of t2
 func (t *ArrayType) InstanceOf(t2 Type) bool {
 	if array, ok := t2.(*ArrayType); ok {
 		return t.Arg.InstanceOf(array.Arg)
@@ -124,7 +124,7 @@ func (t *ObjectType) String() string {
 	return "Object[" + t.Arg.String() + "]"
 }
 
-// InstanceOf returns true if t2 is exactly same type as t
+// InstanceOf returns true if t is instance of t2
 func (t *ObjectType) InstanceOf(t2 Type) bool {
 	if array, ok := t2.(*ObjectType); ok {
 		return t.Arg.InstanceOf(array.Arg)
