@@ -4,8 +4,10 @@ package types
 type Type uint
 
 const (
+	// VoidType is void type
+	VoidType Type = iota
 	// NullType is JSON null type
-	NullType Type = iota
+	NullType
 	// BoolType is JSON boolean type
 	BoolType
 	// NumberType is JSON number struct
