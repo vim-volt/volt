@@ -4,7 +4,7 @@ import "context"
 
 // Func is an operation of JSON DSL
 type Func interface {
-	// Returns function name
+	// String returns function name
 	String() string
 
 	// InvertExpr returns inverted expression
@@ -19,9 +19,10 @@ type Func interface {
 
 // Macro is an operation of JSON DSL
 type Macro interface {
-	// Returns macro name
+	// String returns macro name
 	String() string
 
-	// Execute executes this operation and returns its result value and error
-	Expand(args []Value) Value
+	// Expand expands this expression (operator + args).
+	// If argument type or arity is different, this returns non-nil error.
+	Expand(args []Value) (Value, error)
 }
