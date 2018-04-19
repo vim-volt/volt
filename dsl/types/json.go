@@ -18,16 +18,10 @@ type Value interface {
 	Type() Type
 }
 
-// Type is a type of expression
-type Type uint
-
 // ================ Null ================
 
 // Null is JSON null struct
 type Null struct{}
-
-// NullType is JSON null type
-const NullType Type = 1
 
 // NullValue is the JSON null value
 var NullValue = &Null{}
@@ -53,9 +47,6 @@ func (v *Null) Type() Type {
 type Bool struct {
 	Value bool
 }
-
-// BoolType is JSON boolean type
-const BoolType Type = 2
 
 // Invert returns itself as-is. All literal types of JSON values are the same.
 func (v *Bool) Invert() (Value, error) {
@@ -85,9 +76,6 @@ type Number struct {
 	Value float64
 }
 
-// NumberType is JSON number struct
-const NumberType Type = 3
-
 // Invert returns itself as-is. All literal types of JSON values are the same.
 func (v *Number) Invert() (Value, error) {
 	return v, nil
@@ -109,9 +97,6 @@ func (v *Number) Type() Type {
 type String struct {
 	Value string
 }
-
-// StringType is JSON string type
-const StringType Type = 4
 
 // Invert returns itself as-is. All literal types of JSON values are the same.
 func (v *String) Invert() (Value, error) {
@@ -135,9 +120,6 @@ type Array struct {
 	Value []Value
 }
 
-// ArrayType is JSON array type
-const ArrayType Type = 5
-
 // Invert returns itself as-is. All literal types of JSON values are the same.
 func (v *Array) Invert() (Value, error) {
 	return v, nil
@@ -159,9 +141,6 @@ func (v *Array) Type() Type {
 type Object struct {
 	Value map[string]Value
 }
-
-// ObjectType is JSON object type
-const ObjectType Type = 6
 
 // Invert returns itself as-is. All literal types of JSON values are the same.
 func (v *Object) Invert() (Value, error) {
