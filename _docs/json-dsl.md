@@ -7,10 +7,12 @@
 
 ```json
 ["label",
+  1,
   "installing plugins:",
   ["vimdir/with-install",
     ["parallel",
       ["label",
+        2,
         "  github.com/tyru/open-browser.vim ... {{if .Done}}done!{{end}}",
         ["parallel",
           ["lockjson/add",
@@ -18,6 +20,7 @@
             ["@", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser.vim"]]],
       ["label",
+        3,
         "  github.com/tyru/open-browser-github.vim ... {{if .Done}}done!{{end}}",
         ["parallel",
           ["lockjson/add",
@@ -28,11 +31,12 @@
 
 ## Wordings
 
-* operator: "function" of DSL
+* operator: "callable" object of DSL. this is generic name of function and macro
+* function: the name of process
   * e.g. "label"
   * e.g. "parallel"
-* macro: like "function", but is expanded before execution
-  * see JSON DSL note (TODO)
+* macro: like function, but is expanded before execution
+  * e.g. "@"
 * expression: the form of operator application
   * e.g. `["label", ...]`
   * e.g. `["parallel", ...]`
@@ -138,7 +142,7 @@ JSON DSL has the following characteristic:
 All operators have an idempotency: "even if an expression is executed twice, it
 guarantees the existence (not the content) of a requested resource."
 
-One also might think that "why the definition is so ambiguos?" Because, if we
+One also might think that "why the it defines the existence, not content?" Because, if we
 define operator's idempotency as "after an expression was executed twice at
 different times, lock.json, filesystem must be the same." But `volt get A`
 installs the latest plugin of remote repository.  At the first time and second
@@ -191,7 +195,7 @@ At first, to invert the expression, `$invert` macro is used:
 `["$invert", ["vimdir/with-install", expr]]` is expanded to
 `["vimdir/with-install", ["$invert", expr]]`.  Internally, it is implemented as
 calling `Invert()` method of `vimdir/with-install` operator struct.  See "Go
-API" section of JSONDSL note (TODO).
+API" section.
 
 ```json
 ["vimdir/with-install",
@@ -332,12 +336,11 @@ Macros are not saved in transaction log (expanded before saving).
 
 ### Basic operators
 
-* `["label", tmpl string, expr Expr[* => R]] R`
-  * Render `tmpl` by text/template to progress bar using
-    [pgr](https://github.com/tyru/pgr/) library.
+* `["label", linenum: number, tmpl string, expr Expr[* => R]] R`
+  * Render `tmpl` by text/template to `linenum` line (1-origin).
     Returns the evaluated value of `expr`.
   * e.g.
-    * `["$invert", ["label", "msg", expr]]` = `["label", "revert: \"msg\"", ["$invert", expr]]`
+    * `["$invert", ["label", linenum, "msg", expr]]` = `["label", ["$invert", linenum], "revert: \"msg\"", ["$invert", expr]]`
     * See `Label examples` section for more details
 
 * `["do", expr1 Expr[* => R1], ..., expr_last Expr[* => R2]] R2`
@@ -663,7 +666,7 @@ Here is the simple example of installing
 
 ```json
 ["label",
-  0,
+  1,
   "installing github.com/caw.vim...",
   ["vimdir/with-install",
     ["do",
@@ -682,7 +685,7 @@ Note that:
 
 ```json
 ["label",
-  0,
+  1,
   "revert \"installing github.com/caw.vim...\"",
   ["vimdir/with-install",
     ["do",
@@ -697,10 +700,12 @@ Here is more complex example to install two plugins "tyru/open-browser.vim",
 
 ```json
 ["label",
+  1,
   "installing plugins:",
   ["vimdir/with-install",
     ["parallel",
       ["label",
+        2,
         "  github.com/tyru/open-browser.vim ... {{if .Done}}done!{{end}}",
         ["parallel",
           ["lockjson/add",
@@ -708,6 +713,7 @@ Here is more complex example to install two plugins "tyru/open-browser.vim",
             ["@", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser.vim"]]],
       ["label",
+        3,
         "  github.com/tyru/open-browser-github.vim ... {{if .Done}}done!{{end}}",
         ["parallel",
           ["lockjson/add",
