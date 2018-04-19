@@ -322,7 +322,13 @@ TODO: Move to Godoc.
 All macros has `$` prefixed name for readability.
 Macros are not saved in transaction log (expanded before saving).
 
-* `["$invert", expr Expr[* => *]] Expr[* => *]`
+* `["@", v1 Value, ...] Array`
+  * Returns inverse expression of given expression.
+  * Internally, this macro calls `InvertExpr()` method of each operator struct.
+  * What value is returned depends on each operator's `InvertExpr()`
+    implementation.
+
+* `["$invert", expr Value] Value`
   * Returns inverse expression of given expression.
   * Internally, this macro calls `InvertExpr()` method of each operator struct.
   * What value is returned depends on each operator's `InvertExpr()`
@@ -343,14 +349,14 @@ Macros are not saved in transaction log (expanded before saving).
     * `["$invert", ["label", linenum, "msg", expr]]` = `["label", ["$invert", linenum], "revert: \"msg\"", ["$invert", expr]]`
     * See `Label examples` section for more details
 
-* `["do", expr1 Expr[* => R1], ..., expr_last Expr[* => R2]] R2`
+* `["do", expr1 R1, ..., expr_last R2] R2`
   * Executes multiple expressions in series.
   * Returns the evaluated value of the last expression.
   * e.g.
     * `["$invert", ["do", expr1, expr2]]` = `["do", ["$invert", expr1], ["$invert", expr2]]`
       * Note that the arguments are reversed.
 
-* `["parallel", msg string, expr1 Expr[* => R1], ..., expr_last Expr[* => R2]] R2`
+* `["parallel", msg string, expr1 R1, ..., expr_last R2] R2`
   * Executes multiple expressions in parallel.
   * Returns the evaluated value of the last expression.
   * e.g.
