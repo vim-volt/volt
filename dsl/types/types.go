@@ -98,17 +98,22 @@ func (*StringType) InstanceOf(t Type) bool {
 
 // ArrayType is JSON array type
 type ArrayType struct {
-	Arg Type
+	arg Type
+}
+
+// NewArrayType creates ArrayType instance
+func NewArrayType(arg Type) *ArrayType {
+	return &ArrayType{arg: arg}
 }
 
 func (t *ArrayType) String() string {
-	return "Array[" + t.Arg.String() + "]"
+	return "Array[" + t.arg.String() + "]"
 }
 
 // InstanceOf returns true if t is instance of t2
 func (t *ArrayType) InstanceOf(t2 Type) bool {
 	if array, ok := t2.(*ArrayType); ok {
-		return t.Arg.InstanceOf(array.Arg)
+		return t.arg.InstanceOf(array.arg)
 	}
 	return false
 }
@@ -117,31 +122,38 @@ func (t *ArrayType) InstanceOf(t2 Type) bool {
 
 // ObjectType is JSON object type
 type ObjectType struct {
-	Arg Type
+	arg Type
+}
+
+// NewObjectType creates ObjectType instance
+func NewObjectType(arg Type) *ObjectType {
+	return &ObjectType{arg: arg}
 }
 
 func (t *ObjectType) String() string {
-	return "Object[" + t.Arg.String() + "]"
+	return "Object[" + t.arg.String() + "]"
 }
 
 // InstanceOf returns true if t is instance of t2
 func (t *ObjectType) InstanceOf(t2 Type) bool {
 	if array, ok := t2.(*ObjectType); ok {
-		return t.Arg.InstanceOf(array.Arg)
+		return t.arg.InstanceOf(array.arg)
 	}
 	return false
 }
 
 // ===================== AnyType ===================== //
 
-// AnyType allows any type
-type AnyType struct{}
+// AnyValue allows any type
+var AnyValue = &anyType{}
 
-func (*AnyType) String() string {
+type anyType struct{}
+
+func (*anyType) String() string {
 	return "Any"
 }
 
 // InstanceOf always returns true
-func (*AnyType) InstanceOf(_ Type) bool {
+func (*anyType) InstanceOf(_ Type) bool {
 	return true
 }

@@ -45,7 +45,20 @@ func (v *Null) Type() Type {
 
 // Bool is JSON boolean struct
 type Bool struct {
-	Value bool
+	value bool
+}
+
+// NewBool creates Bool instance
+func NewBool(value bool) *Bool {
+	if value {
+		return TrueValue
+	}
+	return FalseValue
+}
+
+// Value returns the holding internal value
+func (v *Bool) Value() bool {
+	return v.value
 }
 
 // Invert returns itself as-is. All literal types of JSON values are the same.
@@ -73,7 +86,17 @@ var FalseValue = &Bool{false}
 
 // Number is JSON number struct
 type Number struct {
-	Value float64
+	value float64
+}
+
+// Value returns the holding internal value
+func (v *Number) Value() float64 {
+	return v.value
+}
+
+// NewNumber creates Number instance
+func NewNumber(value float64) *Number {
+	return &Number{value: value}
 }
 
 // Invert returns itself as-is. All literal types of JSON values are the same.
@@ -95,7 +118,17 @@ func (v *Number) Type() Type {
 
 // String is JSON string struct
 type String struct {
-	Value string
+	value string
+}
+
+// Value returns the holding internal value
+func (v *String) Value() string {
+	return v.value
+}
+
+// NewString creates String instance
+func NewString(value string) *String {
+	return &String{value: value}
 }
 
 // Invert returns itself as-is. All literal types of JSON values are the same.
@@ -117,8 +150,20 @@ func (v *String) Type() Type {
 
 // Array is JSON array struct
 type Array struct {
-	Elems   []Value
-	ArgType Type
+	value   []Value
+	argType Type
+}
+
+// Value returns the holding internal value.
+// DO NOT CHANGE THE RETURN VALUE DIRECTLY!
+// Copy the slice before changing the value.
+func (v *Array) Value() []Value {
+	return v.value
+}
+
+// NewArray creates Array instance
+func NewArray(value []Value, argType Type) *Array {
+	return &Array{value: value, argType: argType}
 }
 
 // Invert returns itself as-is. All literal types of JSON values are the same.
@@ -133,15 +178,27 @@ func (v *Array) Eval(context.Context) (val Value, rollback func(), err error) {
 
 // Type returns the type.
 func (v *Array) Type() Type {
-	return &ArrayType{Arg: v.ArgType}
+	return NewArrayType(v.argType)
 }
 
 // ================ Object ================
 
 // Object is JSON object struct
 type Object struct {
-	Map     map[string]Value
-	ArgType Type
+	value   map[string]Value
+	argType Type
+}
+
+// Value returns the holding internal value.
+// DO NOT CHANGE THE RETURN VALUE DIRECTLY!
+// Copy the map instance before changing the value.
+func (v *Object) Value() map[string]Value {
+	return v.value
+}
+
+// NewObject creates Object instance
+func NewObject(value map[string]Value, argType Type) *Object {
+	return &Object{value: value, argType: argType}
 }
 
 // Invert returns itself as-is. All literal types of JSON values are the same.
@@ -156,5 +213,5 @@ func (v *Object) Eval(context.Context) (val Value, rollback func(), err error) {
 
 // Type returns the type.
 func (v *Object) Type() Type {
-	return &ObjectType{Arg: v.ArgType}
+	return NewObjectType(v.argType)
 }

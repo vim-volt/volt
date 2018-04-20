@@ -64,14 +64,11 @@ func parse(value interface{}) (types.Value, error) {
 	case nil:
 		return types.NullValue, nil
 	case bool:
-		if val {
-			return types.TrueValue, nil
-		}
-		return types.FalseValue, nil
+		return types.NewBool(val), nil
 	case string:
-		return &types.String{val}, nil
+		return types.NewString(val), nil
 	case float64:
-		return &types.Number{val}, nil
+		return types.NewNumber(val), nil
 	case map[string]interface{}:
 		m := make(map[string]types.Value, len(val))
 		for k, o := range m {
@@ -81,7 +78,7 @@ func parse(value interface{}) (types.Value, error) {
 			}
 			m[k] = v
 		}
-		return &types.Object{Map: m, ArgType: &types.AnyType{}}, nil
+		return types.NewObject(m, types.AnyValue), nil
 	case []interface{}:
 		return parseArray(val)
 	default:

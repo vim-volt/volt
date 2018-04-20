@@ -23,14 +23,14 @@ func deparse(value types.Value) (interface{}, error) {
 	case *types.Null:
 		return nil, nil
 	case *types.Bool:
-		return val.Value, nil
+		return val.Value(), nil
 	case *types.String:
-		return val.Value, nil
+		return val.Value(), nil
 	case *types.Number:
-		return val.Value, nil
+		return val.Value(), nil
 	case *types.Object:
-		m := make(map[string]interface{}, len(val.Value))
-		for k, o := range val.Value {
+		m := make(map[string]interface{}, len(val.Value()))
+		for k, o := range val.Value() {
 			v, err := deparse(o)
 			if err != nil {
 				return nil, err
@@ -39,13 +39,13 @@ func deparse(value types.Value) (interface{}, error) {
 		}
 		return m, nil
 	case *types.Expr:
-		a := make([]interface{}, 0, len(val.Args)+1)
+		a := make([]interface{}, 0, len(val.Args())+1)
 		// Do not include "@" in array literal
-		if val.Func.String() != op.ArrayOp.String() {
-			a = append(a, &types.String{Value: val.Func.String()})
+		if val.Func().String() != op.ArrayOp.String() {
+			a = append(a, types.NewString(val.Func().String()))
 		}
 		for i := range a {
-			v, err := deparse(val.Args[i])
+			v, err := deparse(val.Args()[i])
 			if err != nil {
 				return nil, err
 			}

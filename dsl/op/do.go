@@ -24,17 +24,13 @@ func (*doOp) String() string {
 func (*doOp) Bind(args ...types.Value) (*types.Expr, error) {
 	sig := make([]types.Type, 0, len(args))
 	for i := 0; i < len(args); i++ {
-		sig = append(sig, &types.AnyType{})
+		sig = append(sig, types.AnyValue)
 	}
 	if err := signature(sig...).check(args); err != nil {
 		return nil, err
 	}
 	retType := args[len(args)-1].Type()
-	return &types.Expr{
-		Func:    &DoOp,
-		Args:    args,
-		RetType: retType,
-	}, nil
+	return types.NewExpr(&DoOp, args, retType), nil
 }
 
 // InvertExpr returns inverted expression: Call Value.Invert() for each argument,
@@ -53,7 +49,7 @@ func (*doOp) InvertExpr(args []types.Value) (*types.Expr, error) {
 
 // Execute executes "do" operation
 func (*doOp) Execute(ctx context.Context, args []types.Value) (val types.Value, rollback func(), err error) {
-	g := funcGuard(string(DoOp))
+	g := funcGuard(DoOp.String())
 	defer func() { err = g.rollback(recover()) }()
 	rollback = g.rollbackForcefully
 
