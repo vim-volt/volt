@@ -7,17 +7,19 @@ import (
 )
 
 func init() {
-	funcMap[string(DoOp)] = &DoOp
+	opName := doOp("do")
+	DoOp = &opName
+	funcMap["do"] = DoOp
 }
 
 type doOp string
 
 // DoOp is "do" operation
-var DoOp doOp = "do"
+var DoOp *doOp
 
 // String returns operator name
 func (*doOp) String() string {
-	return string(DoOp)
+	return string(*DoOp)
 }
 
 // Bind binds its arguments, and check if the types of values are correct.
@@ -30,7 +32,7 @@ func (*doOp) Bind(args ...types.Value) (*types.Expr, error) {
 		return nil, err
 	}
 	retType := args[len(args)-1].Type()
-	return types.NewExpr(&DoOp, args, retType), nil
+	return types.NewExpr(DoOp, args, retType), nil
 }
 
 // InvertExpr returns inverted expression: Call Value.Invert() for each argument,
