@@ -20,5 +20,8 @@ func (*arrayOp) String() string {
 
 // Execute executes "@" operation
 func (*arrayOp) Expand(args []types.Value) (types.Value, error) {
-	return &types.Array{Value: args}, nil
+	return &types.Array{
+		Elems:   args,
+		ArgType: &types.AnyType{},
+	}, nil
 }

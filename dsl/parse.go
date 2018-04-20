@@ -81,7 +81,7 @@ func parse(value interface{}) (types.Value, error) {
 			}
 			m[k] = v
 		}
-		return &types.Object{m}, nil
+		return &types.Object{Map: m, ArgType: &types.AnyType{}}, nil
 	case []interface{}:
 		return parseArray(val)
 	default:

@@ -38,7 +38,7 @@ func (v *Null) Eval(context.Context) (val Value, rollback func(), err error) {
 
 // Type returns the type.
 func (v *Null) Type() Type {
-	return NullType
+	return &NullType{}
 }
 
 // ================ Bool ================
@@ -60,7 +60,7 @@ func (v *Bool) Eval(context.Context) (val Value, rollback func(), err error) {
 
 // Type returns the type.
 func (v *Bool) Type() Type {
-	return BoolType
+	return &BoolType{}
 }
 
 // TrueValue is the JSON true value
@@ -88,7 +88,7 @@ func (v *Number) Eval(context.Context) (val Value, rollback func(), err error) {
 
 // Type returns the type.
 func (v *Number) Type() Type {
-	return NumberType
+	return &NumberType{}
 }
 
 // ================ String ================
@@ -110,14 +110,15 @@ func (v *String) Eval(context.Context) (val Value, rollback func(), err error) {
 
 // Type returns the type.
 func (v *String) Type() Type {
-	return StringType
+	return &StringType{}
 }
 
 // ================ Array ================
 
 // Array is JSON array struct
 type Array struct {
-	Value []Value
+	Elems   []Value
+	ArgType Type
 }
 
 // Invert returns itself as-is. All literal types of JSON values are the same.
@@ -132,14 +133,15 @@ func (v *Array) Eval(context.Context) (val Value, rollback func(), err error) {
 
 // Type returns the type.
 func (v *Array) Type() Type {
-	return ArrayType
+	return &ArrayType{Arg: v.ArgType}
 }
 
 // ================ Object ================
 
 // Object is JSON object struct
 type Object struct {
-	Value map[string]Value
+	Map     map[string]Value
+	ArgType Type
 }
 
 // Invert returns itself as-is. All literal types of JSON values are the same.
@@ -154,5 +156,5 @@ func (v *Object) Eval(context.Context) (val Value, rollback func(), err error) {
 
 // Type returns the type.
 func (v *Object) Type() Type {
-	return ObjectType
+	return &ObjectType{Arg: v.ArgType}
 }
