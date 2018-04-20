@@ -20,7 +20,7 @@ import (
 )
 
 type symlinkBuilder struct {
-	BaseBuilder
+	*BaseBuilder
 }
 
 // TODO: rollback when return err (!= nil)
@@ -31,11 +31,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	}
 
 	// Get current profile's repos list
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("could not read lock.json: " + err.Error())
-	}
-	reposList, err := lockJSON.GetCurrentReposList()
+	reposList, err := builder.lockJSON.GetCurrentReposList()
 	if err != nil {
 		return err
 	}
@@ -46,7 +42,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	vimrcPath := filepath.Join(vimDir, pathutil.Vimrc)
 	gvimrcPath := filepath.Join(vimDir, pathutil.Gvimrc)
 	err = builder.installVimrcAndGvimrc(
-		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath,
+		builder.lockJSON.CurrentProfileName, vimrcPath, gvimrcPath,
 	)
 	if err != nil {
 		return err
@@ -86,7 +82,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	}
 
 	// Write bundled plugconf file
-	rcDir := pathutil.RCDir(lockJSON.CurrentProfileName)
+	rcDir := pathutil.RCDir(builder.lockJSON.CurrentProfileName)
 	vimrc := ""
 	if path := filepath.Join(rcDir, pathutil.ProfileVimrc); pathutil.Exists(path) {
 		vimrc = path

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -39,13 +40,7 @@ Description
   All plugconf files are replaced with new contents.`
 }
 
-func (*plugconfConfigMigrater) Migrate() error {
-	// Read lock.json
-	lockJSON, err := lockjson.ReadNoMigrationMsg()
-	if err != nil {
-		return errors.New("could not read lock.json: " + err.Error())
-	}
-
+func (*plugconfConfigMigrater) Migrate(lockJSON *lockjson.LockJSON, cfg *config.Config) error {
 	results, parseErr := plugconf.ParseMultiPlugconf(lockJSON.Repos)
 	if parseErr.HasErrs() {
 		logger.Error("Please fix the following errors before migration:")
@@ -82,21 +77,21 @@ func (*plugconfConfigMigrater) Migrate() error {
 	// After checking errors, write the content to files
 	for _, info := range infoList {
 		os.MkdirAll(filepath.Dir(info.path), 0755)
-		err = ioutil.WriteFile(info.path, info.content, 0644)
+		err := ioutil.WriteFile(info.path, info.content, 0644)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	err := transaction.Create()
 	if err != nil {
 		return err
 	}
 	defer transaction.Remove()
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, lockJSON, cfg)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}

@@ -53,10 +53,10 @@ Description
 	return fs
 }
 
-func (cmd *buildCmd) Run(args []string) *Error {
+func (cmd *buildCmd) Run(runctx *RunContext) *Error {
 	// Parse args
 	fs := cmd.FlagSet()
-	fs.Parse(args)
+	fs.Parse(runctx.Args)
 	if cmd.helped {
 		return nil
 	}
@@ -69,7 +69,7 @@ func (cmd *buildCmd) Run(args []string) *Error {
 	}
 	defer transaction.Remove()
 
-	err = builder.Build(cmd.full)
+	err = builder.Build(cmd.full, runctx.LockJSON, runctx.Config)
 	if err != nil {
 		logger.Error()
 		return &Error{Code: 12, Msg: "Failed to build: " + err.Error()}

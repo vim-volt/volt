@@ -22,7 +22,7 @@ import (
 )
 
 type copyBuilder struct {
-	BaseBuilder
+	*BaseBuilder
 }
 
 func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos) error {
@@ -32,14 +32,8 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 		return err
 	}
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("could not read lock.json: " + err.Error())
-	}
-
 	// Get current profile's repos list
-	reposList, err := lockJSON.GetCurrentReposList()
+	reposList, err := builder.lockJSON.GetCurrentReposList()
 	if err != nil {
 		return err
 	}
@@ -50,7 +44,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	vimrcPath := filepath.Join(vimDir, pathutil.Vimrc)
 	gvimrcPath := filepath.Join(vimDir, pathutil.Gvimrc)
 	err = builder.installVimrcAndGvimrc(
-		lockJSON.CurrentProfileName, vimrcPath, gvimrcPath,
+		builder.lockJSON.CurrentProfileName, vimrcPath, gvimrcPath,
 	)
 	if err != nil {
 		return err
@@ -98,7 +92,7 @@ func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap 
 	}
 
 	// Write bundled plugconf file
-	rcDir := pathutil.RCDir(lockJSON.CurrentProfileName)
+	rcDir := pathutil.RCDir(builder.lockJSON.CurrentProfileName)
 	vimrc := ""
 	if path := filepath.Join(rcDir, pathutil.ProfileVimrc); pathutil.Exists(path) {
 		vimrc = path

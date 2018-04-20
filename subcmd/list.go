@@ -2,7 +2,6 @@ package subcmd
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -125,24 +124,19 @@ repos path:
 `
 }
 
-func (cmd *listCmd) Run(args []string) *Error {
+func (cmd *listCmd) Run(runctx *RunContext) *Error {
 	fs := cmd.FlagSet()
-	fs.Parse(args)
+	fs.Parse(runctx.Args)
 	if cmd.helped {
 		return nil
 	}
-	if err := cmd.list(cmd.format); err != nil {
+	if err := cmd.list(cmd.format, runctx.LockJSON); err != nil {
 		return &Error{Code: 10, Msg: "Failed to render template: " + err.Error()}
 	}
 	return nil
 }
 
-func (cmd *listCmd) list(format string) error {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
-	}
+func (cmd *listCmd) list(format string, lockJSON *lockjson.LockJSON) error {
 	// Parse template string
 	t, err := template.New("volt").Funcs(cmd.funcMap(lockJSON)).Parse(format)
 	if err != nil {

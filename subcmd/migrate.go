@@ -55,8 +55,8 @@ Available operations`)
 	return fs
 }
 
-func (cmd *migrateCmd) Run(args []string) *Error {
-	op, err := cmd.parseArgs(args)
+func (cmd *migrateCmd) Run(runctx *RunContext) *Error {
+	op, err := cmd.parseArgs(runctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}
@@ -64,7 +64,7 @@ func (cmd *migrateCmd) Run(args []string) *Error {
 		return &Error{Code: 10, Msg: "Failed to parse args: " + err.Error()}
 	}
 
-	if err := op.Migrate(); err != nil {
+	if err := op.Migrate(runctx.LockJSON, runctx.Config); err != nil {
 		return &Error{Code: 11, Msg: "Failed to migrate: " + err.Error()}
 	}
 

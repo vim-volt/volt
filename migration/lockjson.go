@@ -3,6 +3,7 @@ package migration
 import (
 	"errors"
 
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/transaction"
 )
@@ -31,15 +32,9 @@ Description
   To suppress this, running this command simply reads and writes migrated structure to lock.json.`
 }
 
-func (*lockjsonMigrater) Migrate() error {
-	// Read lock.json
-	lockJSON, err := lockjson.ReadNoMigrationMsg()
-	if err != nil {
-		return errors.New("could not read lock.json: " + err.Error())
-	}
-
+func (*lockjsonMigrater) Migrate(lockJSON *lockjson.LockJSON, cfg *config.Config) error {
 	// Begin transaction
-	err = transaction.Create()
+	err := transaction.Create()
 	if err != nil {
 		return err
 	}

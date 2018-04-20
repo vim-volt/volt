@@ -115,9 +115,9 @@ Options`)
 	return fs
 }
 
-func (cmd *getCmd) Run(args []string) *Error {
+func (cmd *getCmd) Run(runctx *RunContext) *Error {
 	// Parse args
-	args, err := cmd.parseArgs(args)
+	args, err := cmd.parseArgs(runctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}
@@ -125,13 +125,7 @@ func (cmd *getCmd) Run(args []string) *Error {
 		return &Error{Code: 10, Msg: "Failed to parse args: " + err.Error()}
 	}
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return &Error{Code: 11, Msg: "Could not read lock.json: " + err.Error()}
-	}
-
-	reposPathList, err := cmd.getReposPathList(args, lockJSON)
+	reposPathList, err := cmd.getReposPathList(args, runctx.LockJSON)
 	if err != nil {
 		return &Error{Code: 12, Msg: "Could not get repos list: " + err.Error()}
 	}
@@ -139,7 +133,7 @@ func (cmd *getCmd) Run(args []string) *Error {
 		return &Error{Code: 13, Msg: "No repositories are specified"}
 	}
 
-	err = cmd.doGet(reposPathList, lockJSON)
+	err = cmd.doGet(reposPathList, runctx.LockJSON, runctx.Config)
 	if err != nil {
 		return &Error{Code: 20, Msg: err.Error()}
 	}
@@ -186,7 +180,7 @@ func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) 
 	return reposPathList, nil
 }
 
-func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) error {
+func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON, cfg *config.Config) error {
 	// Find matching profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
@@ -201,12 +195,6 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 		return err
 	}
 	defer transaction.Remove()
-
-	// Read config.toml
-	cfg, err := config.Read()
-	if err != nil {
-		return errors.New("could not read config.toml: " + err.Error())
-	}
 
 	done := make(chan getParallelResult, len(reposPathList))
 	getCount := 0
@@ -254,7 +242,7 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, lockJSON, cfg)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}

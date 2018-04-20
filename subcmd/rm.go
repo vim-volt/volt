@@ -62,8 +62,8 @@ Description
 	return fs
 }
 
-func (cmd *rmCmd) Run(args []string) *Error {
-	reposPathList, err := cmd.parseArgs(args)
+func (cmd *rmCmd) Run(runctx *RunContext) *Error {
+	reposPathList, err := cmd.parseArgs(runctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}
@@ -71,13 +71,13 @@ func (cmd *rmCmd) Run(args []string) *Error {
 		return &Error{Code: 10, Msg: err.Error()}
 	}
 
-	err = cmd.doRemove(reposPathList)
+	err = cmd.doRemove(reposPathList, runctx.LockJSON)
 	if err != nil {
 		return &Error{Code: 11, Msg: "Failed to remove repository: " + err.Error()}
 	}
 
 	// Build opt dir
-	err = builder.Build(false)
+	err = builder.Build(false, runctx.LockJSON, runctx.Config)
 	if err != nil {
 		return &Error{Code: 12, Msg: "Could not build " + pathutil.VimVoltDir() + ": " + err.Error()}
 	}
@@ -108,15 +108,9 @@ func (cmd *rmCmd) parseArgs(args []string) ([]pathutil.ReposPath, error) {
 	return reposPathList, nil
 }
 
-func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return err
-	}
-
+func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) error {
 	// Begin transaction
-	err = transaction.Create()
+	err := transaction.Create()
 	if err != nil {
 		return err
 	}

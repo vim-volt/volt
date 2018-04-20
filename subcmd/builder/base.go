@@ -18,7 +18,9 @@ import (
 )
 
 // BaseBuilder is a base struct which all builders must implement
-type BaseBuilder struct{}
+type BaseBuilder struct {
+	lockJSON *lockjson.LockJSON
+}
 
 func (builder *BaseBuilder) installVimrcAndGvimrc(profileName, vimrcPath, gvimrcPath string) error {
 	// Save old vimrc file as {vimrc}.bak
