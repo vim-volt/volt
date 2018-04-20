@@ -9,14 +9,18 @@ import (
 	"github.com/vim-volt/volt/pathutil"
 )
 
+// BuildInfo is a struct for build-info.json, which saves the cache information
+// of 'volt build'.
 type BuildInfo struct {
 	Repos    ReposList `json:"repos"`
 	Version  int64     `json:"version"`
 	Strategy string    `json:"strategy"`
 }
 
+// ReposList = []Repos
 type ReposList []Repos
 
+// Repos is a struct for repository information of build-info.json
 type Repos struct {
 	Type          lockjson.ReposType `json:"type"`
 	Path          pathutil.ReposPath `json:"path"`
@@ -25,9 +29,10 @@ type Repos struct {
 	DirtyWorktree bool               `json:"dirty_worktree,omitempty"`
 }
 
-// key: filepath, value: version
+// FileMap is a map[string]string (key: filepath, value: version)
 type FileMap map[string]string
 
+// Read reads build-info.json
 func Read() (*BuildInfo, error) {
 	// Return initial build-info.json struct
 	// if the file does not exist
@@ -84,6 +89,7 @@ func (buildInfo *BuildInfo) validate() error {
 	return nil
 }
 
+// FindByReposPath finds reposPath from reposList
 func (reposList *ReposList) FindByReposPath(reposPath pathutil.ReposPath) *Repos {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
@@ -94,6 +100,7 @@ func (reposList *ReposList) FindByReposPath(reposPath pathutil.ReposPath) *Repos
 	return nil
 }
 
+// RemoveByReposPath removes reposPath from reposList
 func (reposList *ReposList) RemoveByReposPath(reposPath pathutil.ReposPath) {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
