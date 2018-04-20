@@ -4,10 +4,10 @@ import (
 	"errors"
 	"os"
 
+	"github.com/vim-volt/volt/buildinfo"
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
-	"github.com/vim-volt/volt/subcmd/buildinfo"
 )
 
 // Builder creates/updates ~/.vim/pack/volt directory
