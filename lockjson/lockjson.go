@@ -101,7 +101,7 @@ func read(doLog bool) (*LockJSON, error) {
 	if lockJSON.Version < lockJSONVersion {
 		if doLog {
 			logger.Warnf("Performing auto-migration of lock.json: v%d -> v%d", lockJSON.Version, lockJSONVersion)
-			logger.Warn("Please run 'volt migrate' to migrate explicitly if it's not updated by after operations")
+			logger.Warn("If this warning persists, please run 'volt migrate lockjson'")
 		}
 		err = migrate(bytes, &lockJSON)
 		if err != nil {
