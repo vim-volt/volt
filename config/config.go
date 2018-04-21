@@ -34,13 +34,14 @@ const (
 
 func initialConfigTOML() *Config {
 	trueValue := true
+	falseValue := false
 	return &Config{
 		Build: configBuild{
 			Strategy: SymlinkBuilder,
 		},
 		Get: configGet{
 			CreateSkeletonPlugconf: &trueValue,
-			FallbackGitCmd:         &trueValue,
+			FallbackGitCmd:         &falseValue,
 		},
 	}
 }

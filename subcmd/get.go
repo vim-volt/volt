@@ -633,8 +633,11 @@ func (cmd *getCmd) gitPull(r *git.Repository, workDir string, remote string, cfg
 		return err
 	}
 	err = wt.Pull(&git.PullOptions{
-		RemoteName:        remote,
-		RecurseSubmodules: 10,
+		RemoteName: remote,
+		// TODO: Temporarily recursive clone is disabled, because go-git does
+		// not support relative submodule url in .gitmodules and it causes an
+		// error
+		RecurseSubmodules: 0,
 	})
 	if err == nil || err == git.NoErrAlreadyUpToDate {
 		return err
