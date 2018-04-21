@@ -13,7 +13,7 @@ import (
 // 1. Split to operation and its arguments
 // 2. Do semantic analysis recursively for its arguments
 // 3. Convert to *Expr
-func Parse(content []byte) (types.Value, error) {
+func Parse(content []byte) (*types.Expr, error) {
 	var value interface{}
 	if err := json.Unmarshal(content, value); err != nil {
 		return nil, err
@@ -22,13 +22,14 @@ func Parse(content []byte) (types.Value, error) {
 	if !ok {
 		return nil, errors.New("top-level must be an array")
 	}
-	expr, err := parseArray(array)
+	arrayValue, err := parseArray(array)
 	if err != nil {
 		return nil, err
 	}
 	// If expression's operator is a macro, return value may not be an array
 	// (e.g. ["macro", 1, 2])
-	if _, ok := expr.(*types.Expr); !ok {
+	expr, ok := arrayValue.(*types.Expr)
+	if !ok {
 		return nil, errors.New("the result must be an expression")
 	}
 	return expr, nil
