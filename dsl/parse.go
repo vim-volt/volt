@@ -52,7 +52,8 @@ func parseArray(array []interface{}) (types.Value, error) {
 		args = append(args, v)
 	}
 	if macro, exists := op.LookupMacro(opName); exists {
-		return macro.Expand(args)
+		val, _, err := macro.Expand(args)
+		return val, err
 	}
 	if fn, exists := op.LookupFunc(opName); exists {
 		return fn.Bind(args...)

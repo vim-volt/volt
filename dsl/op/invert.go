@@ -21,9 +21,10 @@ func (*invertOp) String() string {
 }
 
 // Execute executes "$invert" operation
-func (*invertOp) Expand(args []types.Value) (types.Value, error) {
+func (*invertOp) Expand(args []types.Value) (types.Value, func(), error) {
 	if err := signature(types.AnyValue).check(args); err != nil {
-		return nil, err
+		return nil, noRollback, err
 	}
-	return args[0].Invert()
+	val, err := args[0].Invert()
+	return val, noRollback, err
 }

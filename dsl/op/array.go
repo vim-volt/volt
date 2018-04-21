@@ -21,6 +21,6 @@ func (*arrayOp) String() string {
 }
 
 // Execute executes "$array" operation
-func (*arrayOp) Expand(args []types.Value) (types.Value, error) {
-	return types.NewArray(args, types.AnyValue), nil
+func (*arrayOp) Expand(args []types.Value) (types.Value, func(), error) {
+	return types.NewArray(args, types.AnyValue), noRollback, nil
 }

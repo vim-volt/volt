@@ -24,5 +24,5 @@ type Macro interface {
 
 	// Expand expands this expression (operator + args).
 	// If argument type or arity is different, this returns non-nil error.
-	Expand(args []Value) (Value, error)
+	Expand(args []Value) (val Value, rollback func(), err error)
 }
