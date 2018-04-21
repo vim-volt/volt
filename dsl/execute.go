@@ -4,8 +4,11 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/dsl/op"
 	"github.com/vim-volt/volt/dsl/types"
+	"github.com/vim-volt/volt/lockjson"
+	"github.com/vim-volt/volt/transaction"
 )
 
 // CtxKeyType is the type of the key of context specified for Execute()
@@ -22,17 +25,47 @@ const (
 
 // Execute executes given expr with given ctx.
 func Execute(ctx context.Context, expr *types.Expr) (val types.Value, rollback func(), err error) {
-	for _, st := range []struct {
-		key  CtxKeyType
-		name string
+	for _, required := range []struct {
+		key      CtxKeyType
+		validate func(interface{}) error
 	}{
-		{CtxLockJSONKey, "lock.json"},
-		{CtxConfigKey, "config.toml"},
-		{CtxTrxIDKey, "transaction ID"},
+		{CtxLockJSONKey, validateLockJSON},
+		{CtxConfigKey, validateConfig},
+		{CtxTrxIDKey, validateTrxID},
 	} {
-		if ctx.Value(st.key) == nil {
-			return nil, op.NoRollback, errors.Errorf("no %s key in context", st.name)
+		if err := required.validate(ctx.Value(required.key)); err != nil {
+			return nil, op.NoRollback, err
 		}
 	}
 	return expr.Eval(ctx)
+}
+
+func validateLockJSON(v interface{}) error {
+	if v == nil {
+		return errors.New("no lock.json key in context")
+	}
+	if _, ok := v.(*lockjson.LockJSON); !ok {
+		return errors.New("invalid lock.json data in context")
+	}
+	return nil
+}
+
+func validateConfig(v interface{}) error {
+	if v == nil {
+		return errors.New("no config.toml key in context")
+	}
+	if _, ok := v.(*config.Config); !ok {
+		return errors.New("invalid config.toml data in context")
+	}
+	return nil
+}
+
+func validateTrxID(v interface{}) error {
+	if v == nil {
+		return errors.New("no transaction ID key in context")
+	}
+	if _, ok := v.(transaction.TrxID); !ok {
+		return errors.New("invalid transaction ID data in context")
+	}
+	return nil
 }
