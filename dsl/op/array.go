@@ -5,20 +5,22 @@ import (
 )
 
 func init() {
-	macroMap[string(ArrayOp)] = &ArrayOp
+	s := arrayOp("$array")
+	ArrayOp = &s
+	macroMap[string(*ArrayOp)] = ArrayOp
 }
 
 type arrayOp string
 
-// ArrayOp is "@" operation
-var ArrayOp arrayOp = "@"
+// ArrayOp is "$array" operation
+var ArrayOp *arrayOp
 
-// String returns "@"
+// String returns "$array"
 func (*arrayOp) String() string {
-	return string(ArrayOp)
+	return string(*ArrayOp)
 }
 
-// Execute executes "@" operation
+// Execute executes "$array" operation
 func (*arrayOp) Expand(args []types.Value) (types.Value, error) {
 	return types.NewArray(args, types.AnyValue), nil
 }

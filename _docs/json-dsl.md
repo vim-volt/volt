@@ -17,7 +17,7 @@
         ["parallel",
           ["lockjson/add",
             ["repos/get", "github.com/tyru/open-browser.vim"],
-            ["@", "default"]],
+            ["$array", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser.vim"]]],
       ["label",
         3,
@@ -25,7 +25,7 @@
         ["parallel",
           ["lockjson/add",
             ["repos/get", "github.com/tyru/open-browser-github.vim"],
-            ["@", "default"]],
+            ["$array", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser-github.vim"]]]]]]
 ```
 
@@ -36,7 +36,7 @@
   * e.g. "label"
   * e.g. "parallel"
 * macro: like function, but is expanded before execution
-  * e.g. "@"
+  * e.g. "$array"
 * expression: the form of operator application
   * e.g. `["label", ...]`
   * e.g. `["parallel", ...]`
@@ -98,10 +98,10 @@ JSON DSL is a S-expression like DSL represented as JSON format.
 ```
 
 This is an application form (called "expression" in this note).
-An array literal value is written using `@` operator.
+An array literal value is written using `$array` operator.
 
 ```json
-["@", 1, 2, 3]
+["$array", 1, 2, 3]
 ```
 
 This expression is evaluated to `[1, 2, 3]`.
@@ -173,7 +173,7 @@ version for easiness).
   ["do",
     ["lockjson/add",
       ["repos/get", "github.com/tyru/caw.vim"],
-      ["@", "default"]],
+      ["$array", "default"]],
     ["plugconf/install", "github.com/tyru/caw.vim"]]]
 ```
 
@@ -188,7 +188,7 @@ At first, to invert the expression, `$invert` macro is used:
     ["do",
       ["lockjson/add",
         ["repos/get", "github.com/tyru/caw.vim"],
-        ["@", "default"]],
+        ["$array", "default"]],
       ["plugconf/install", "github.com/tyru/caw.vim"]]]]
 ```
 
@@ -203,7 +203,7 @@ API" section.
     ["do",
       ["lockjson/add",
         ["repos/get", "github.com/tyru/caw.vim"],
-        ["@", "default"]],
+        ["$array", "default"]],
       ["plugconf/install", "github.com/tyru/caw.vim"]]]]
 ```
 
@@ -219,7 +219,7 @@ Note that `expr1` and `expr2` becomes reversed order.
     ["$invert",
       ["lockjson/add",
         ["repos/get", "github.com/tyru/caw.vim"],
-        ["@", "default"]]]]]
+        ["$array", "default"]]]]]
 ```
 
 And
@@ -234,7 +234,7 @@ And
     ["plugconf/delete", ["$invert", "github.com/tyru/caw.vim"]],
     ["lockjson/remove",
       ["$invert", ["repos/get", "github.com/tyru/caw.vim"]],
-      ["$invert", ["@", "default"]]]]]
+      ["$invert", ["$array", "default"]]]]]
 ```
 
 `["$invert", ["repos/get", path]]` becomes
@@ -246,7 +246,7 @@ And
     ["plugconf/delete", ["$invert", "github.com/tyru/caw.vim"]],
     ["lockjson/remove",
       ["repos/delete", ["$invert", "github.com/tyru/caw.vim"]],
-      ["$invert", ["@", "default"]]]]]
+      ["$invert", ["$array", "default"]]]]]
 ```
 
 And if `$invert` is applied to literals like string, JSON array, it just remains
@@ -258,7 +258,7 @@ as-is.
     ["plugconf/delete", "github.com/tyru/caw.vim"],
     ["lockjson/remove",
       ["repos/delete", "github.com/tyru/caw.vim"],
-      ["@", "default"]]]]
+      ["$array", "default"]]]]
 ```
 
 We can successfully evaluate the inverse expression of the first expression :)
@@ -322,7 +322,7 @@ TODO: Move to Godoc.
 All macros has `$` prefixed name for readability.
 Macros are not saved in transaction log (expanded before saving).
 
-* `["@", v1 Value, ...] Array`
+* `["$array", v1 Value, ...] Array`
   * Returns inverse expression of given expression.
   * Internally, this macro calls `InvertExpr()` method of each operator struct.
   * What value is returned depends on each operator's `InvertExpr()`
@@ -334,7 +334,7 @@ Macros are not saved in transaction log (expanded before saving).
   * What value is returned depends on each operator's `InvertExpr()`
     implementation.
 
-* `["$eval", expr Expr[* => *]] Expr[* => *]`
+* `["$expand-macro", expr Value] Value`
   * Evaluate `expr` at parsing time.
     This is useful to save evaluated value to transaction log,
     instead of its expression.
@@ -416,9 +416,9 @@ Macros are not saved in transaction log (expanded before saving).
     {target_hash}`
   * It does nothing for bare git repository.
   * e.g.
-    * `["repos/git/update", "github.com/tyru/caw.vim", ["$eval", ["repos/git/rev-parse", "HEAD", "github.com/tyru/caw.vim"]], ["$eval", ["repos/git/fetch", "github.com/tyru/caw.vim"]]]`
+    * `["repos/git/update", "github.com/tyru/caw.vim", ["$expand-macro", ["repos/git/rev-parse", "HEAD", "github.com/tyru/caw.vim"]], ["$expand-macro", ["repos/git/fetch", "github.com/tyru/caw.vim"]]]`
       * To save evaluated hash string in transaction log instead of its
-        expression, apply `$eval` to `repos/git/fetch` expression.
+        expression, apply `$expand-macro` to `repos/git/fetch` expression.
     * `["$invert", ["repos/git/update", path, target_hash, prev_hash]]` = `["repos/git/update", ["$invert", path], ["$invert", prev_hash], ["$invert", target_hash]]`
 
 * `["repos/git/rev-parse", str string, path ReposPath] hash string`
@@ -437,7 +437,7 @@ Macros are not saved in transaction log (expanded before saving).
   * It fails if specified profile name does not exist.
     * Need to create profile before using `lockjson/profile/add`.
   * e.g.
-    * `["lockjson/add", ["repos/get", "github.com/tyru/caw.vim"], ["@", "default"]]`
+    * `["lockjson/add", ["repos/get", "github.com/tyru/caw.vim"], ["$array", "default"]]`
     * `["$invert", ["lockjson/add", repos, profiles]]` = `["lockjson/remove", ["$invert", repos], ["$invert", profiles]]`
 
 * `["lockjson/profile/add", name string] Profile`
@@ -500,7 +500,7 @@ directory:
       "path": "github.com/tyru/caw.vim",
       "version": "deadbeefcafebabe"
     },
-    ["@", "default"]
+    ["$array", "default"]
   ],
   ["repos/delete", "github.com/tyru/caw.vim"],
   ["plugconf/delete", "github.com/tyru/caw.vim"],
@@ -522,7 +522,7 @@ And below is the inverse expression of above.
       "path": "github.com/tyru/caw.vim",
       "version": "deadbeefcafebabe"
     },
-    ["@", "default"]
+    ["$array", "default"]
   ]
 ]
 ```
@@ -550,7 +550,7 @@ This is what we expected.
         "path": "github.com/tyru/caw.vim",
         "version": "deadbeefcafebabe"
       },
-      ["@", "default"]
+      ["$array", "default"]
     ],
     ["repos/delete", "github.com/tyru/caw.vim"],
     ["plugconf/delete", "github.com/tyru/caw.vim"]]]
@@ -570,7 +570,7 @@ The inverse expression of the above is:
         "path": "github.com/tyru/caw.vim",
         "version": "deadbeefcafebabe"
       },
-      ["@", "default"]]]]
+      ["$array", "default"]]]]
 ```
 
 1. Installs plugconf
@@ -595,7 +595,7 @@ But, of course if we placed `vimdir/with-install` at before `repos/delete` or
       "path": "github.com/tyru/caw.vim",
       "version": "deadbeefcafebabe"
     },
-    ["@", "default"]
+    ["$array", "default"]
   ],
   ["repos/delete", "github.com/tyru/caw.vim"],
   ["plugconf/delete", "github.com/tyru/caw.vim"]]
@@ -611,7 +611,7 @@ But, of course if we placed `vimdir/with-install` at before `repos/delete` or
       "path": "github.com/tyru/caw.vim",
       "version": "deadbeefcafebabe"
     },
-    ["@", "default"]],
+    ["$array", "default"]],
   ["vimdir/with-install",
     ["github.com/tyru/caw.vim"],
     "dummy"]]
@@ -630,7 +630,7 @@ Here is the simple JSON to install
   ["do",
     ["lockjson/add",
       ["repos/get", "github.com/tyru/caw.vim"],
-      ["@", "default"]],
+      ["$array", "default"]],
     ["plugconf/install", "github.com/tyru/caw.vim"]]]
 ```
 
@@ -642,7 +642,7 @@ Here is the inverse expression of above.
     ["plugconf/delete", "github.com/tyru/caw.vim"],
     ["lockjson/remove",
       ["repos/delete", "github.com/tyru/caw.vim"],
-      ["@", "default"]]]]
+      ["$array", "default"]]]]
 ```
 
 Here is the JSON to install plugins from local directory (static repository).
@@ -651,7 +651,7 @@ Here is the JSON to install plugins from local directory (static repository).
 ["vimdir/with-install",
   ["lockjson/add",
     { ... (repository information of local directory) ... },
-    ["@", "default"]],
+    ["$array", "default"]],
   ["plugconf/install", "localhost/local/myplugin"]]
 ```
 
@@ -662,7 +662,7 @@ Here is the inverse expression of above.
   ["plugconf/delete", "localhost/local/myplugin"],
   ["lockjson/remove",
     { ... (repository information of local directory) ... },
-    ["@", "default"]]]
+    ["$array", "default"]]]
 ```
 
 ### Label examples
@@ -678,7 +678,7 @@ Here is the simple example of installing
     ["do",
       ["lockjson/add",
         ["repos/get", "github.com/tyru/caw.vim"],
-        ["@", "default"]],
+        ["$array", "default"]],
       ["plugconf/install", "github.com/tyru/caw.vim"]]]]
 ```
 
@@ -698,7 +698,7 @@ Note that:
       ["plugconf/install", "github.com/tyru/caw.vim"],
       ["lockjson/add",
         ["repos/get", "github.com/tyru/caw.vim"],
-        ["@", "default"]]]]]
+        ["$array", "default"]]]]]
 ```
 
 Here is more complex example to install two plugins "tyru/open-browser.vim",
@@ -716,7 +716,7 @@ Here is more complex example to install two plugins "tyru/open-browser.vim",
         ["parallel",
           ["lockjson/add",
             ["repos/get", "github.com/tyru/open-browser.vim"],
-            ["@", "default"]],
+            ["$array", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser.vim"]]],
       ["label",
         3,
@@ -724,7 +724,7 @@ Here is more complex example to install two plugins "tyru/open-browser.vim",
         ["parallel",
           ["lockjson/add",
             ["repos/get", "github.com/tyru/open-browser-github.vim"],
-            ["@", "default"]],
+            ["$array", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser-github.vim"]]]]]]
 ```
 
