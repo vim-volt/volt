@@ -5,17 +5,19 @@ import (
 )
 
 func init() {
-	macroMap[string(InvertOp)] = &InvertOp
+	s := invertOp("$invert")
+	InvertOp = &s
+	macroMap[string(*InvertOp)] = InvertOp
 }
 
 type invertOp string
 
 // InvertOp is "$invert" operation
-var InvertOp invertOp = "$invert"
+var InvertOp *invertOp
 
 // String returns "$invert"
 func (*invertOp) String() string {
-	return string(InvertOp)
+	return string(*InvertOp)
 }
 
 // Execute executes "$invert" operation
