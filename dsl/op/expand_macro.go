@@ -25,7 +25,7 @@ func (*expandMacroOp) String() string {
 // Execute executes "$expand-macro" operation
 func (*expandMacroOp) Expand(args []types.Value) (types.Value, func(), error) {
 	if err := signature(types.AnyValue).check(args); err != nil {
-		return nil, noRollback, err
+		return nil, NoRollback, err
 	}
 	return args[0].Eval(context.Background())
 }
