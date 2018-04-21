@@ -180,7 +180,7 @@ func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) 
 	return reposPathList, nil
 }
 
-func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON, cfg *config.Config) error {
+func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON, cfg *config.Config) (result error) {
 	// Find matching profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
@@ -190,11 +190,15 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	done := make(chan getParallelResult, len(reposPathList))
 	getCount := 0

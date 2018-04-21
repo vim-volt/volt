@@ -53,7 +53,7 @@ Description
 	return fs
 }
 
-func (cmd *buildCmd) Run(runctx *RunContext) *Error {
+func (cmd *buildCmd) Run(runctx *RunContext) (cmdErr *Error) {
 	// Parse args
 	fs := cmd.FlagSet()
 	fs.Parse(runctx.Args)
@@ -62,12 +62,16 @@ func (cmd *buildCmd) Run(runctx *RunContext) *Error {
 	}
 
 	// Begin transaction
-	err := transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		logger.Error()
 		return &Error{Code: 11, Msg: "Failed to begin transaction: " + err.Error()}
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			cmdErr = &Error{Code: 13, Msg: "Failed to end transaction: " + err.Error()}
+		}
+	}()
 
 	err = builder.Build(cmd.full, runctx.LockJSON, runctx.Config)
 	if err != nil {

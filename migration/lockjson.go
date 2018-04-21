@@ -32,13 +32,17 @@ Description
   To suppress this, running this command simply reads and writes migrated structure to lock.json.`
 }
 
-func (*lockjsonMigrater) Migrate(lockJSON *lockjson.LockJSON, cfg *config.Config) error {
+func (*lockjsonMigrater) Migrate(lockJSON *lockjson.LockJSON, cfg *config.Config) (result error) {
 	// Begin transaction
-	err := transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	// Write to lock.json
 	err = lockJSON.Write()

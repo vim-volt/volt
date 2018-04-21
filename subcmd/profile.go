@@ -153,7 +153,7 @@ func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
 	return fs.Args(), nil
 }
 
-func (cmd *profileCmd) doSet(runctx *RunContext) error {
+func (cmd *profileCmd) doSet(runctx *RunContext) (result error) {
 	args := runctx.Args
 	lockJSON := runctx.LockJSON
 
@@ -190,11 +190,15 @@ func (cmd *profileCmd) doSet(runctx *RunContext) error {
 	}
 
 	// Begin transaction
-	err := transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	// Set profile name
 	lockJSON.CurrentProfileName = profileName
@@ -254,7 +258,7 @@ func (cmd *profileCmd) doList(runctx *RunContext) error {
 `, runctx.LockJSON)
 }
 
-func (cmd *profileCmd) doNew(runctx *RunContext) error {
+func (cmd *profileCmd) doNew(runctx *RunContext) (result error) {
 	args := runctx.Args
 	lockJSON := runctx.LockJSON
 
@@ -272,11 +276,15 @@ func (cmd *profileCmd) doNew(runctx *RunContext) error {
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	// Add profile
 	lockJSON.Profiles = append(lockJSON.Profiles, lockjson.Profile{
@@ -295,7 +303,7 @@ func (cmd *profileCmd) doNew(runctx *RunContext) error {
 	return nil
 }
 
-func (cmd *profileCmd) doDestroy(runctx *RunContext) error {
+func (cmd *profileCmd) doDestroy(runctx *RunContext) (result error) {
 	args := runctx.Args
 	lockJSON := runctx.LockJSON
 
@@ -306,11 +314,15 @@ func (cmd *profileCmd) doDestroy(runctx *RunContext) error {
 	}
 
 	// Begin transaction
-	err := transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	var merr *multierror.Error
 	for i := range args {
@@ -350,7 +362,7 @@ func (cmd *profileCmd) doDestroy(runctx *RunContext) error {
 	return merr.ErrorOrNil()
 }
 
-func (cmd *profileCmd) doRename(runctx *RunContext) error {
+func (cmd *profileCmd) doRename(runctx *RunContext) (result error) {
 	args := runctx.Args
 	lockJSON := runctx.LockJSON
 
@@ -374,11 +386,15 @@ func (cmd *profileCmd) doRename(runctx *RunContext) error {
 	}
 
 	// Begin transaction
-	err := transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	// Rename profile names
 	lockJSON.Profiles[index].Name = newName
@@ -515,7 +531,7 @@ func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, 
 }
 
 // Run modifyProfile and write modified structure to lock.json
-func (*profileCmd) transactProfile(lockJSON *lockjson.LockJSON, profileName string, modifyProfile func(*lockjson.Profile)) (*lockjson.LockJSON, error) {
+func (*profileCmd) transactProfile(lockJSON *lockjson.LockJSON, profileName string, modifyProfile func(*lockjson.Profile)) (resultLockJSON *lockjson.LockJSON, result error) {
 	// Return error if profiles[]/name does not match profileName
 	profile, err := lockJSON.Profiles.FindByName(profileName)
 	if err != nil {
@@ -523,11 +539,15 @@ func (*profileCmd) transactProfile(lockJSON *lockjson.LockJSON, profileName stri
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return nil, err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	modifyProfile(profile)
 

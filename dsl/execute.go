@@ -2,8 +2,9 @@ package dsl
 
 import (
 	"context"
-	"errors"
 
+	"github.com/pkg/errors"
+	"github.com/vim-volt/volt/dsl/op"
 	"github.com/vim-volt/volt/dsl/types"
 )
 
@@ -21,17 +22,17 @@ const (
 
 // Execute executes given expr with given ctx.
 func Execute(ctx context.Context, expr *types.Expr) (val types.Value, rollback func(), err error) {
-	ctx = context.WithValue(ctx, CtxTrxIDKey, genNewTrxID())
-	if ctx.Value(CtxLockJSONKey) == nil {
-		return nil, func() {}, errors.New("no lock.json key in context")
-	}
-	if ctx.Value(CtxConfigKey) == nil {
-		return nil, func() {}, errors.New("no config.toml key in context")
+	for _, st := range []struct {
+		key  CtxKeyType
+		name string
+	}{
+		{CtxLockJSONKey, "lock.json"},
+		{CtxConfigKey, "config.toml"},
+		{CtxTrxIDKey, "transaction ID"},
+	} {
+		if ctx.Value(st.key) == nil {
+			return nil, op.NoRollback, errors.Errorf("no %s key in context", st.name)
+		}
 	}
 	return expr.Eval(ctx)
-}
-
-func genNewTrxID() types.TrxID {
-	// TODO: Get unallocated transaction ID looking $VOLTPATH/trx/ directory
-	return types.TrxID(0)
 }

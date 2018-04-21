@@ -1,68 +1,104 @@
 package transaction
 
 import (
-	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"unicode"
 
-	"github.com/vim-volt/volt/logger"
+	"github.com/pkg/errors"
 	"github.com/vim-volt/volt/pathutil"
 )
 
-// Create creates $VOLTPATH/trx.lock file
-func Create() error {
-	ownPid := []byte(strconv.Itoa(os.Getpid()))
-	trxLockFile := pathutil.TrxLock()
-
-	// Create trx.lock parent directories
-	err := os.MkdirAll(filepath.Dir(trxLockFile), 0755)
+// Start creates $VOLTPATH/trx/lock directory
+func Start() (*Transaction, error) {
+	os.MkdirAll(pathutil.TrxDir(), 0755)
+	lockDir := filepath.Join(pathutil.TrxDir(), "lock")
+	if err := os.Mkdir(lockDir, 0755); err != nil {
+		return nil, errors.Wrap(err, "failed to begin transaction: "+lockDir+" exists: if no other volt process is currently running, this probably means a volt process crashed earlier. Make sure no other volt process is running and remove the file manually to continue")
+	}
+	trxID, err := genNewTrxID()
 	if err != nil {
-		return errors.New("failed to begin transaction: " + err.Error())
+		return nil, errors.Wrap(err, "could not allocate a new transaction ID")
 	}
-
-	// Return error if the file exists
-	if pathutil.Exists(trxLockFile) {
-		return errors.New("failed to begin transaction: " + pathutil.TrxLock() + " exists: if no other volt process is currently running, this probably means a volt process crashed earlier. Make sure no other volt process is running and remove the file manually to continue")
-	}
-
-	// Write pid to trx.lock file
-	err = ioutil.WriteFile(trxLockFile, ownPid, 0644)
-	if err != nil {
-		return errors.New("failed to begin transaction: " + err.Error())
-	}
-
-	// Read pid from trx.lock file
-	pid, err := ioutil.ReadFile(trxLockFile)
-	if err != nil {
-		return errors.New("failed to begin transaction: " + err.Error())
-	}
-
-	if string(pid) != string(ownPid) {
-		return errors.New("transaction lock was taken by PID " + string(pid))
-	}
-	return nil
+	return &Transaction{trxID: trxID}, nil
 }
 
-// Remove removes $VOLTPATH/trx.lock file
-func Remove() {
-	// Read pid from trx.lock file
-	trxLockFile := pathutil.TrxLock()
-	pid, err := ioutil.ReadFile(trxLockFile)
+// genNewTrxID gets unallocated transaction ID looking $VOLTPATH/trx/ directory
+func genNewTrxID() (_ TrxID, result error) {
+	trxDir, err := os.Open(pathutil.TrxDir())
 	if err != nil {
-		logger.Error("trx.lock was already removed")
-		return
+		return nil, errors.Wrap(err, "could not open $VOLTPATH/trx directory")
 	}
+	defer func() { result = trxDir.Close() }()
+	names, err := trxDir.Readdirnames(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not readdir of $VOLTPATH/trx directory")
+	}
+	var maxID TrxID
+	for i := range names {
+		if !isTrxDirName(names[i]) {
+			continue
+		}
+		if maxID == nil {
+			maxID = TrxID(names[i])
+			continue
+		}
+		if greaterThan(names[i], string(maxID)) {
+			maxID = TrxID(names[i])
+		}
+	}
+	if maxID == nil {
+		return TrxID("1"), nil // no transaction ID directory
+	}
+	return maxID.Add(1)
+}
 
-	// Remove trx.lock if pid is same
-	if string(pid) != strconv.Itoa(os.Getpid()) {
-		logger.Error("Cannot remove another process's trx.lock")
-		return
+func greaterThan(a, b string) bool {
+	d := len(a) - len(b)
+	if d > 0 {
+		b = strings.Repeat("0", d) + b
+	} else if d < 0 {
+		a = strings.Repeat("0", -d) + a
 	}
-	err = os.Remove(trxLockFile)
+	return strings.Compare(a, b) > 0
+}
+
+func isTrxDirName(name string) bool {
+	for _, r := range name {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// TrxID is a transaction ID, which is a serial number and directory name of
+// transaction log file.
+type TrxID []byte
+
+// Add adds n to transaction ID
+func (tid *TrxID) Add(n int) (TrxID, error) {
+	newID, err := strconv.ParseUint(string(*tid), 10, 32)
 	if err != nil {
-		logger.Error("Cannot remove trx.lock: " + err.Error())
-		return
+		return nil, err
 	}
+	if newID+uint64(n) < newID {
+		// TODO: compute in string?
+		return nil, errors.Errorf("%d + %d causes overflow", newID, n)
+	}
+	return TrxID(strconv.FormatUint(newID+uint64(n), 10)), nil
+}
+
+// Transaction provides transaction methods
+type Transaction struct {
+	trxID TrxID
+}
+
+// Done rename "lock" directory to "{trxid}" directory
+func (trx *Transaction) Done() error {
+	lockDir := filepath.Join(pathutil.TrxDir(), "lock")
+	trxIDDir := filepath.Join(pathutil.TrxDir(), string(trx.trxID))
+	return os.Rename(lockDir, trxIDDir)
 }

@@ -169,9 +169,9 @@ func ConfigTOML() string {
 	return filepath.Join(VoltPath(), "config.toml")
 }
 
-// TrxLock returns fullpath of "$HOME/volt/trx.lock".
-func TrxLock() string {
-	return filepath.Join(VoltPath(), "trx.lock")
+// TrxDir returns fullpath of "$HOME/volt/trx".
+func TrxDir() string {
+	return filepath.Join(VoltPath(), "trx")
 }
 
 // TempDir returns fullpath of "$HOME/tmp".

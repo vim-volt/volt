@@ -108,13 +108,17 @@ func (cmd *rmCmd) parseArgs(args []string) ([]pathutil.ReposPath, error) {
 	return reposPathList, nil
 }
 
-func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) error {
+func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) (result error) {
 	// Begin transaction
-	err := transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	// Check if specified plugins are depended by some plugins
 	for _, reposPath := range reposPathList {
