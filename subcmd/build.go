@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 )
@@ -64,7 +63,6 @@ func (cmd *buildCmd) Run(runctx *RunContext) (cmdErr *Error) {
 	// Begin transaction
 	trx, err := transaction.Start()
 	if err != nil {
-		logger.Error()
 		return &Error{Code: 11, Msg: "Failed to begin transaction: " + err.Error()}
 	}
 	defer func() {
@@ -75,7 +73,6 @@ func (cmd *buildCmd) Run(runctx *RunContext) (cmdErr *Error) {
 
 	err = builder.Build(cmd.full, runctx.LockJSON, runctx.Config)
 	if err != nil {
-		logger.Error()
 		return &Error{Code: 12, Msg: "Failed to build: " + err.Error()}
 	}
 
