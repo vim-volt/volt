@@ -10,7 +10,7 @@ import (
 
 // Deparse deparses types.Expr.
 // ["@", 1, 2, 3] becomes [1, 2, 3]
-func Deparse(expr types.Expr) (interface{}, error) {
+func Deparse(expr types.Expr) ([]byte, error) {
 	value, err := deparse(expr)
 	if err != nil {
 		return nil, err
