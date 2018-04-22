@@ -3,6 +3,7 @@ package ops
 import (
 	"context"
 
+	"github.com/vim-volt/volt/dsl/ops/util"
 	"github.com/vim-volt/volt/dsl/types"
 )
 
@@ -27,7 +28,7 @@ func (*invertOp) Bind(args ...types.Value) (*types.Expr, error) {
 }
 
 func (*invertOp) Execute(ctx context.Context, args []types.Value) (types.Value, func(), error) {
-	if err := signature(types.AnyValue).check(args); err != nil {
+	if err := util.Signature(types.AnyValue).Check(args); err != nil {
 		return nil, NoRollback, err
 	}
 	val, err := args[0].Invert()

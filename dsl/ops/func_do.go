@@ -3,6 +3,7 @@ package ops
 import (
 	"context"
 
+	"github.com/vim-volt/volt/dsl/ops/util"
 	"github.com/vim-volt/volt/dsl/types"
 )
 
@@ -30,7 +31,7 @@ func (*doOp) Bind(args ...types.Value) (*types.Expr, error) {
 	for i := 0; i < len(args); i++ {
 		sig = append(sig, types.AnyValue)
 	}
-	if err := signature(sig...).check(args); err != nil {
+	if err := util.Signature(sig...).Check(args); err != nil {
 		return nil, err
 	}
 	retType := args[len(args)-1].Type()
@@ -50,15 +51,15 @@ func (*doOp) InvertExpr(args []types.Value) (types.Value, error) {
 }
 
 func (*doOp) Execute(ctx context.Context, args []types.Value) (val types.Value, rollback func(), err error) {
-	g := funcGuard(DoOp.String())
-	defer func() { err = g.rollback(recover()) }()
-	rollback = g.rollbackForcefully
+	g := util.FuncGuard(DoOp.String())
+	defer func() { err = g.Rollback(recover()) }()
+	rollback = g.RollbackForcefully
 
 	for i := range args {
 		v, rbFunc, e := args[i].Eval(ctx)
-		g.add(rbFunc)
+		g.Add(rbFunc)
 		if e != nil {
-			err = g.rollback(e)
+			err = g.Rollback(e)
 			return
 		}
 		val = v
