@@ -1,8 +1,6 @@
 package dsl
 
 import (
-	"encoding/json"
-
 	"github.com/pkg/errors"
 	"github.com/vim-volt/volt/dsl/ops"
 	"github.com/vim-volt/volt/dsl/types"
@@ -10,15 +8,7 @@ import (
 
 // Deparse deparses types.Expr.
 // ["@", 1, 2, 3] becomes [1, 2, 3]
-func Deparse(expr types.Expr) ([]byte, error) {
-	value, err := deparse(expr)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(value)
-}
-
-func deparse(value types.Value) (interface{}, error) {
+func Deparse(value types.Value) (interface{}, error) {
 	if value.Type() == types.NullType {
 		return nil, nil
 	}
@@ -32,7 +22,7 @@ func deparse(value types.Value) (interface{}, error) {
 	case types.Object:
 		result := make(map[string]interface{}, len(val.Value()))
 		for k, o := range val.Value() {
-			v, err := deparse(o)
+			v, err := Deparse(o)
 			if err != nil {
 				return nil, err
 			}
@@ -47,7 +37,7 @@ func deparse(value types.Value) (interface{}, error) {
 			result = append(result, val.Op().String())
 		}
 		for i := range args {
-			v, err := deparse(args[i])
+			v, err := Deparse(args[i])
 			if err != nil {
 				return nil, err
 			}

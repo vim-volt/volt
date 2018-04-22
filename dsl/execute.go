@@ -3,13 +3,16 @@ package dsl
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/dsl/dslctx"
 	"github.com/vim-volt/volt/dsl/types"
+	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/transaction"
 )
@@ -38,7 +41,7 @@ func Execute(ctx context.Context, expr types.Expr) (_ types.Value, result error)
 	}
 
 	// Write given expression to $VOLTPATH/trx/lock/log.json
-	err = writeExpr(expr)
+	err = writeTrxLog(ctx, expr)
 	if err != nil {
 		return nil, err
 	}
@@ -63,10 +66,24 @@ func expandMacro(expr types.Expr) (types.Expr, error) {
 	return result, nil
 }
 
-func writeExpr(expr types.Expr) error {
+func writeTrxLog(ctx context.Context, expr types.Expr) error {
 	deparsed, err := Deparse(expr)
 	if err != nil {
 		return errors.Wrap(err, "failed to deparse expression")
+	}
+
+	type contentT struct {
+		Expr     interface{}        `json:"expr"`
+		Config   *config.Config     `json:"config"`
+		LockJSON *lockjson.LockJSON `json:"lockjson"`
+	}
+	content, err := json.Marshal(&contentT{
+		Expr:     deparsed,
+		Config:   ctx.Value(dslctx.ConfigKey).(*config.Config),
+		LockJSON: ctx.Value(dslctx.LockJSONKey).(*lockjson.LockJSON),
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal as JSON")
 	}
 
 	filename := filepath.Join(pathutil.TrxDir(), "lock", "log.json")
@@ -74,7 +91,7 @@ func writeExpr(expr types.Expr) error {
 	if err != nil {
 		return errors.Wrapf(err, "could not create %s", filename)
 	}
-	_, err = io.Copy(logFile, bytes.NewReader(deparsed))
+	_, err = io.Copy(logFile, bytes.NewReader(content))
 	if err != nil {
 		return errors.Wrapf(err, "failed to write transaction log %s", filename)
 	}
