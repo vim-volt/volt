@@ -9,140 +9,141 @@ type Type interface {
 	InstanceOf(Type) bool
 }
 
-// ===================== VoidType ===================== //
+// ===================== Void type ===================== //
 
-// VoidType is void type
-type VoidType struct{}
+// VoidType is a void type
+var VoidType = &voidType{}
 
-func (*VoidType) String() string {
+type voidType struct{}
+
+func (*voidType) String() string {
 	return "Void"
 }
 
-// InstanceOf returns true if t is VoidType
-func (*VoidType) InstanceOf(t Type) bool {
-	if _, ok := t.(*VoidType); ok {
+func (*voidType) InstanceOf(t Type) bool {
+	if _, ok := t.(*voidType); ok {
 		return true
 	}
 	return false
 }
 
-// ===================== NullType ===================== //
+// ===================== Null type ===================== //
 
-// NullType is JSON null type
-type NullType struct{}
+// NullType is a null type
+var NullType = &nullType{}
 
-func (*NullType) String() string {
+type nullType struct{}
+
+func (*nullType) String() string {
 	return "Null"
 }
 
-// InstanceOf returns true if t is NullType
-func (*NullType) InstanceOf(t Type) bool {
-	if _, ok := t.(*NullType); ok {
+func (*nullType) InstanceOf(t Type) bool {
+	if _, ok := t.(*nullType); ok {
 		return true
 	}
 	return false
 }
 
-// ===================== BoolType ===================== //
+// ===================== Bool type ===================== //
 
-// BoolType is JSON boolean type
-type BoolType struct{}
+// BoolType is a null type
+var BoolType = &boolType{}
 
-func (*BoolType) String() string {
+type boolType struct{}
+
+func (*boolType) String() string {
 	return "Bool"
 }
 
-// InstanceOf returns true if t is BoolType
-func (*BoolType) InstanceOf(t Type) bool {
-	if _, ok := t.(*BoolType); ok {
+func (*boolType) InstanceOf(t Type) bool {
+	if _, ok := t.(*boolType); ok {
 		return true
 	}
 	return false
 }
 
-// ===================== NumberType ===================== //
+// ===================== Number type ===================== //
 
-// NumberType is JSON number type
-type NumberType struct{}
+// NumberType is a null type
+var NumberType = &numberType{}
 
-func (*NumberType) String() string {
+type numberType struct{}
+
+func (*numberType) String() string {
 	return "Number"
 }
 
-// InstanceOf returns true if t is NumberType
-func (*NumberType) InstanceOf(t Type) bool {
-	if _, ok := t.(*NumberType); ok {
+func (*numberType) InstanceOf(t Type) bool {
+	if _, ok := t.(*numberType); ok {
 		return true
 	}
 	return false
 }
 
-// ===================== StringType ===================== //
+// ===================== String type ===================== //
 
-// StringType is JSON string type
-type StringType struct{}
+// StringType is a null type
+var StringType = &stringType{}
 
-func (*StringType) String() string {
+type stringType struct{}
+
+func (*stringType) String() string {
 	return "String"
 }
 
-// InstanceOf returns true if t is StringType
-func (*StringType) InstanceOf(t Type) bool {
-	if _, ok := t.(*StringType); ok {
+func (*stringType) InstanceOf(t Type) bool {
+	if _, ok := t.(*stringType); ok {
 		return true
 	}
 	return false
 }
 
-// ===================== ArrayType ===================== //
+// ===================== Array type ===================== //
 
-// ArrayType is JSON array type
-type ArrayType struct {
+// NewArrayType creates array type instance
+func NewArrayType(arg Type) Type {
+	return &arrayType{arg: arg}
+}
+
+type arrayType struct {
 	arg Type
 }
 
-// NewArrayType creates ArrayType instance
-func NewArrayType(arg Type) *ArrayType {
-	return &ArrayType{arg: arg}
-}
-
-func (t *ArrayType) String() string {
+func (t *arrayType) String() string {
 	return "Array[" + t.arg.String() + "]"
 }
 
-// InstanceOf returns true if t is instance of t2
-func (t *ArrayType) InstanceOf(t2 Type) bool {
-	if array, ok := t2.(*ArrayType); ok {
+func (t *arrayType) InstanceOf(t2 Type) bool {
+	if array, ok := t2.(*arrayType); ok {
 		return t.arg.InstanceOf(array.arg)
 	}
 	return false
 }
 
-// ===================== ObjectType ===================== //
+// ===================== Object type ===================== //
 
-// ObjectType is JSON object type
-type ObjectType struct {
+// NewObjectType creates object type instance
+func NewObjectType(arg Type) Type {
+	return &objectType{arg: arg}
+}
+
+type objectType struct {
 	arg Type
 }
 
-// NewObjectType creates ObjectType instance
-func NewObjectType(arg Type) *ObjectType {
-	return &ObjectType{arg: arg}
-}
-
-func (t *ObjectType) String() string {
+func (t *objectType) String() string {
 	return "Object[" + t.arg.String() + "]"
 }
 
-// InstanceOf returns true if t is instance of t2
-func (t *ObjectType) InstanceOf(t2 Type) bool {
-	if array, ok := t2.(*ObjectType); ok {
+func (t *objectType) InstanceOf(t2 Type) bool {
+	if array, ok := t2.(*objectType); ok {
 		return t.arg.InstanceOf(array.arg)
 	}
 	return false
 }
 
-// ===================== AnyType ===================== //
+// ===================== Any type ===================== //
 
 // AnyValue allows any type
 var AnyValue = &anyType{}
@@ -153,7 +154,6 @@ func (*anyType) String() string {
 	return "Any"
 }
 
-// InstanceOf always returns true
 func (*anyType) InstanceOf(_ Type) bool {
 	return true
 }

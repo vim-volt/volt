@@ -18,7 +18,7 @@ func (v *nullT) Eval(context.Context) (val Value, rollback func(), err error) {
 }
 
 func (*nullT) Type() Type {
-	return &NullType{}
+	return NullType
 }
 
 // ================ Bool ================
@@ -62,7 +62,7 @@ func (v *boolT) Eval(context.Context) (val Value, rollback func(), err error) {
 }
 
 func (*boolT) Type() Type {
-	return &BoolType{}
+	return BoolType
 }
 
 // ================ Number ================
@@ -97,7 +97,7 @@ func (v *numberT) Eval(context.Context) (val Value, rollback func(), err error) 
 }
 
 func (*numberT) Type() Type {
-	return &NumberType{}
+	return NumberType
 }
 
 // ================ String ================
@@ -132,7 +132,7 @@ func (v *stringT) Eval(context.Context) (val Value, rollback func(), err error) 
 }
 
 func (*stringT) Type() Type {
-	return &StringType{}
+	return StringType
 }
 
 // ================ Array ================

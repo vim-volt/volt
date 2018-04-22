@@ -19,7 +19,7 @@ func Deparse(expr types.Expr) (interface{}, error) {
 }
 
 func deparse(value types.Value) (interface{}, error) {
-	if _, ok := value.Type().(*types.NullType); ok {
+	if value.Type() == types.NullType {
 		return nil, nil
 	}
 	switch val := value.(type) {
