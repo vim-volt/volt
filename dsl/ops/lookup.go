@@ -1,4 +1,4 @@
-package op
+package ops
 
 import "github.com/vim-volt/volt/dsl/types"
 

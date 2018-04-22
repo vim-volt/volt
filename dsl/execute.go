@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/vim-volt/volt/config"
-	"github.com/vim-volt/volt/dsl/op"
+	"github.com/vim-volt/volt/dsl/ops"
 	"github.com/vim-volt/volt/dsl/types"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/transaction"
@@ -34,7 +34,7 @@ func Execute(ctx context.Context, expr *types.Expr) (val types.Value, rollback f
 		{CtxTrxIDKey, validateTrxID},
 	} {
 		if err := required.validate(ctx.Value(required.key)); err != nil {
-			return nil, op.NoRollback, err
+			return nil, ops.NoRollback, err
 		}
 	}
 	return expr.Eval(ctx)

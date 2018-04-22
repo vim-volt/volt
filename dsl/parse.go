@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/vim-volt/volt/dsl/op"
+	"github.com/vim-volt/volt/dsl/ops"
 	"github.com/vim-volt/volt/dsl/types"
 )
 
@@ -52,7 +52,7 @@ func parseArray(array []interface{}) (types.Value, error) {
 		}
 		args = append(args, v)
 	}
-	op, exists := op.Lookup(opName)
+	op, exists := ops.Lookup(opName)
 	if !exists {
 		return nil, fmt.Errorf("no such operation '%s'", opName)
 	}
