@@ -430,6 +430,11 @@ Macros are not saved in transaction log (expanded before saving).
 
 ### lock.json operators
 
+* `["lockjson/write"] void`
+  * Writes lock.json to a file
+  * e.g.
+    * `["$invert", ["lockjson/write"]]` = `["lockjson/write"]`
+
 * `["lockjson/add", repos Repos, profiles []string]`
   * Add `repos` information to `repos[]` array in lock.json.
     If `profiles` is not empty, the repository name is added to
@@ -472,6 +477,14 @@ Macros are not saved in transaction log (expanded before saving).
     * `["plugconf/delete", "github.com/tyru/caw.vim"]`
     * `["$invert", ["plugconf/delete", path]]` = `["plugconf/install", ["$invert", path]]`
 
+### Migration operators
+
+* `["migrate/plugconf/config-func"] void`
+  * Converts `s:config()` function name to `s:on_load_pre()` in all plugconf files.
+  * See `volt migrate -help plugconf/config-func` for the details.
+  * e.g.
+    * `["$invert", ["migrate/plugconf/config-func"]]` = `["migrate/plugconf/config-func"]`
+
 ### Vim directory operators
 
 * `["vimdir/with-install", paths "all" | []ReposPath, expr Expr[* => R]] R`
@@ -482,7 +495,7 @@ Macros are not saved in transaction log (expanded before saving).
     * See "Why `vimdir/install` and `vimdir/uninstall` operators do not exist?"
       section
 
-### Why `vimdir/install` and `vimdir/uninstall` operators do not exist?
+#### Why `vimdir/install` and `vimdir/uninstall` operators do not exist?
 
 We'll describe why `vimdir/install` and `vimdir/uninstall` operators do not
 exist, and `vimdir/with-install` exists instead.
