@@ -24,7 +24,7 @@ const (
 )
 
 // Execute executes given expr with given ctx.
-func Execute(ctx context.Context, expr *types.Expr) (val types.Value, rollback func(), err error) {
+func Execute(ctx context.Context, expr types.Expr) (val types.Value, rollback func(), err error) {
 	for _, required := range []struct {
 		key      CtxKeyType
 		validate func(interface{}) error

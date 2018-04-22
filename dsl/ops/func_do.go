@@ -26,7 +26,7 @@ func (*doOp) IsMacro() bool {
 	return false
 }
 
-func (*doOp) Bind(args ...types.Value) (*types.Expr, error) {
+func (*doOp) Bind(args ...types.Value) (types.Expr, error) {
 	sig := make([]types.Type, 0, len(args))
 	for i := 0; i < len(args); i++ {
 		sig = append(sig, types.AnyValue)

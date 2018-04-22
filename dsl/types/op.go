@@ -11,7 +11,7 @@ type Op interface {
 	InvertExpr(args []Value) (Value, error)
 
 	// Bind binds its arguments, and check if the types of values are correct
-	Bind(args ...Value) (*Expr, error)
+	Bind(args ...Value) (Expr, error)
 
 	// EvalExpr evaluates expression (this operator + given arguments).
 	// If this operator is a function, it executes the operation and returns its

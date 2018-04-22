@@ -22,7 +22,7 @@ func (op *evalOp) InvertExpr(args []types.Value) (types.Value, error) {
 	return op.macroInvertExpr(op.EvalExpr(context.Background(), args))
 }
 
-func (*evalOp) Bind(args ...types.Value) (*types.Expr, error) {
+func (*evalOp) Bind(args ...types.Value) (types.Expr, error) {
 	expr := types.NewExpr(ArrayOp, args, types.NewArrayType(types.AnyValue))
 	return expr, nil
 }

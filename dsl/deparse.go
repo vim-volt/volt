@@ -8,9 +8,9 @@ import (
 	"github.com/vim-volt/volt/dsl/types"
 )
 
-// Deparse deparses *types.Expr.
+// Deparse deparses types.Expr.
 // ["@", 1, 2, 3] becomes [1, 2, 3]
-func Deparse(expr *types.Expr) (interface{}, error) {
+func Deparse(expr types.Expr) (interface{}, error) {
 	value, err := deparse(expr)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func deparse(value types.Value) (interface{}, error) {
 			m[k] = v
 		}
 		return m, nil
-	case *types.Expr:
+	case types.Expr:
 		a := make([]interface{}, 0, len(val.Args())+1)
 		// Do not include "@" in array literal
 		if val.Op().String() != ops.ArrayOp.String() {

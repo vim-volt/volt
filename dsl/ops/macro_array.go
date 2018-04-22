@@ -21,7 +21,7 @@ func (op *arrayOp) InvertExpr(args []types.Value) (types.Value, error) {
 	return op.macroInvertExpr(op.EvalExpr(context.Background(), args))
 }
 
-func (*arrayOp) Bind(args ...types.Value) (*types.Expr, error) {
+func (*arrayOp) Bind(args ...types.Value) (types.Expr, error) {
 	expr := types.NewExpr(ArrayOp, args, types.NewArrayType(types.AnyValue))
 	return expr, nil
 }
