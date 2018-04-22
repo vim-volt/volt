@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	opsMap["lockjson/write"] = LockJSONWriteOp
+	opsMap[LockJSONWriteOp.String()] = LockJSONWriteOp
 }
 
 type lockJSONWriteOp struct {

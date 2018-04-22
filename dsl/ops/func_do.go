@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	opsMap["do"] = DoOp
+	opsMap[DoOp.String()] = DoOp
 }
 
 type doOp struct {
