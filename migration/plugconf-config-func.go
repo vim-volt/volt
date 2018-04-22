@@ -1,19 +1,14 @@
 package migration
 
 import (
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
+	"context"
 
 	"github.com/pkg/errors"
 	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/dsl"
+	"github.com/vim-volt/volt/dsl/dslctx"
+	"github.com/vim-volt/volt/dsl/ops"
 	"github.com/vim-volt/volt/lockjson"
-	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/pathutil"
-	"github.com/vim-volt/volt/plugconf"
-	"github.com/vim-volt/volt/subcmd/builder"
-	"github.com/vim-volt/volt/transaction"
 )
 
 func init() {
@@ -41,63 +36,11 @@ Description
 }
 
 func (*plugconfConfigMigrater) Migrate(lockJSON *lockjson.LockJSON, cfg *config.Config) (result error) {
-	results, parseErr := plugconf.ParseMultiPlugconf(lockJSON.Repos)
-	if parseErr.HasErrs() {
-		logger.Error("Please fix the following errors before migration:")
-		for _, err := range parseErr.Errors().Errors {
-			for _, line := range strings.Split(err.Error(), "\n") {
-				logger.Errorf("  %s", line)
-			}
-		}
-		return nil
-	}
-
-	type plugInfo struct {
-		path    string
-		content []byte
-	}
-	infoList := make([]plugInfo, 0, len(lockJSON.Repos))
-
-	// Collects plugconf infomations and check errors
-	results.Each(func(reposPath pathutil.ReposPath, info *plugconf.ParsedInfo) {
-		if !info.ConvertConfigToOnLoadPreFunc() {
-			return // no s:config() function
-		}
-		content, err := info.GeneratePlugconf()
-		if err != nil {
-			logger.Errorf("Could not generate converted plugconf: %s", err)
-			return
-		}
-		infoList = append(infoList, plugInfo{
-			path:    reposPath.Plugconf(),
-			content: content,
-		})
-	})
-
-	// After checking errors, write the content to files
-	for _, info := range infoList {
-		os.MkdirAll(filepath.Dir(info.path), 0755)
-		err := ioutil.WriteFile(info.path, info.content, 0644)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Begin transaction
-	trx, err := transaction.Start()
+	ctx := dslctx.WithDSLValues(context.Background(), lockJSON, cfg)
+	expr, err := ops.MigratePlugconfConfigFuncOp.Bind()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "cannot bind %s operator", ops.LockJSONWriteOp.String())
 	}
-	defer func() {
-		if err := trx.Done(); err != nil {
-			result = err
-		}
-	}()
-
-	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false, lockJSON, cfg)
-	if err != nil {
-		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
-	}
-	return nil
+	_, err = dsl.Execute(ctx, expr)
+	return err
 }
