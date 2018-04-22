@@ -66,6 +66,27 @@ func expandMacro(expr types.Expr) (types.Expr, error) {
 	return result, nil
 }
 
+// doExpandMacro expands macro's expression recursively
+func doExpandMacro(expr types.Expr) (types.Value, error) {
+	op := expr.Op()
+	if !op.IsMacro() {
+		return expr, nil
+	}
+	args := expr.Args()
+	for i := range args {
+		if inner, ok := args[i].(types.Expr); ok {
+			v, err := doExpandMacro(inner)
+			if err != nil {
+				return nil, err
+			}
+			args[i] = v
+		}
+	}
+	// XXX: should we care rollback function?
+	val, _, err := op.EvalExpr(context.Background(), args)
+	return val, err
+}
+
 func writeTrxLog(ctx context.Context, expr types.Expr) error {
 	deparsed, err := Deparse(expr)
 	if err != nil {
@@ -100,25 +121,4 @@ func writeTrxLog(ctx context.Context, expr types.Expr) error {
 		return errors.Wrapf(err, "failed to close transaction log %s", filename)
 	}
 	return nil
-}
-
-// doExpandMacro expands macro's expression recursively
-func doExpandMacro(expr types.Expr) (types.Value, error) {
-	op := expr.Op()
-	if !op.IsMacro() {
-		return expr, nil
-	}
-	args := expr.Args()
-	for i := range args {
-		if inner, ok := args[i].(types.Expr); ok {
-			v, err := doExpandMacro(inner)
-			if err != nil {
-				return nil, err
-			}
-			args[i] = v
-		}
-	}
-	// XXX: should we care rollback function?
-	val, _, err := op.EvalExpr(context.Background(), args)
-	return val, err
 }
