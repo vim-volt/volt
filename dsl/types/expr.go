@@ -31,7 +31,7 @@ func NewExpr(op Op, args []Value, retType Type) *Expr {
 
 // Eval evaluates given expression expr with given transaction ID trxID.
 func (expr *Expr) Eval(ctx context.Context) (val Value, rollback func(), err error) {
-	return expr.op.Execute(ctx, expr.args)
+	return expr.op.EvalExpr(ctx, expr.args)
 }
 
 // Invert inverts this expression.

@@ -58,7 +58,7 @@ func parseArray(array []interface{}) (types.Value, error) {
 	}
 	// Expand macro's expression at parsing time
 	if op.IsMacro() {
-		val, _, err := op.Execute(context.Background(), args)
+		val, _, err := op.EvalExpr(context.Background(), args)
 		return val, err
 	}
 	return op.Bind(args...)

@@ -50,7 +50,7 @@ func (*doOp) InvertExpr(args []types.Value) (types.Value, error) {
 	return DoOp.Bind(newargs...)
 }
 
-func (*doOp) Execute(ctx context.Context, args []types.Value) (val types.Value, rollback func(), err error) {
+func (*doOp) EvalExpr(ctx context.Context, args []types.Value) (val types.Value, rollback func(), err error) {
 	g := util.FuncGuard(DoOp.String())
 	defer func() { err = g.Rollback(recover()) }()
 	rollback = g.RollbackForcefully

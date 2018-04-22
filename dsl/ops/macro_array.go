@@ -18,7 +18,7 @@ type arrayOp struct {
 var ArrayOp = &arrayOp{macroBase("$array")}
 
 func (op *arrayOp) InvertExpr(args []types.Value) (types.Value, error) {
-	return op.macroInvertExpr(op.Execute(context.Background(), args))
+	return op.macroInvertExpr(op.EvalExpr(context.Background(), args))
 }
 
 func (*arrayOp) Bind(args ...types.Value) (*types.Expr, error) {
@@ -26,6 +26,6 @@ func (*arrayOp) Bind(args ...types.Value) (*types.Expr, error) {
 	return expr, nil
 }
 
-func (*arrayOp) Execute(ctx context.Context, args []types.Value) (types.Value, func(), error) {
+func (*arrayOp) EvalExpr(ctx context.Context, args []types.Value) (types.Value, func(), error) {
 	return types.NewArray(args, types.AnyValue), NoRollback, nil
 }

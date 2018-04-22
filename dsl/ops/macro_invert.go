@@ -19,7 +19,7 @@ type invertOp struct {
 var InvertOp = &invertOp{macroBase("$invert")}
 
 func (op *invertOp) InvertExpr(args []types.Value) (types.Value, error) {
-	return op.macroInvertExpr(op.Execute(context.Background(), args))
+	return op.macroInvertExpr(op.EvalExpr(context.Background(), args))
 }
 
 func (*invertOp) Bind(args ...types.Value) (*types.Expr, error) {
@@ -27,7 +27,7 @@ func (*invertOp) Bind(args ...types.Value) (*types.Expr, error) {
 	return expr, nil
 }
 
-func (*invertOp) Execute(ctx context.Context, args []types.Value) (types.Value, func(), error) {
+func (*invertOp) EvalExpr(ctx context.Context, args []types.Value) (types.Value, func(), error) {
 	if err := util.Signature(types.AnyValue).Check(args); err != nil {
 		return nil, NoRollback, err
 	}

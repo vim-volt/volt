@@ -13,8 +13,11 @@ type Op interface {
 	// Bind binds its arguments, and check if the types of values are correct
 	Bind(args ...Value) (*Expr, error)
 
-	// Execute executes this operation and returns its result value and error
-	Execute(ctx context.Context, args []Value) (ret Value, rollback func(), err error)
+	// EvalExpr evaluates expression (this operator + given arguments).
+	// If this operator is a function, it executes the operation and returns its
+	// result and error.
+	// If this operator is a macro, this expands expression.
+	EvalExpr(ctx context.Context, args []Value) (ret Value, rollback func(), err error)
 
 	// IsMacro returns true if this operator is a macro
 	IsMacro() bool
