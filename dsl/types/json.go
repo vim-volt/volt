@@ -9,7 +9,7 @@ var NullValue = &nullT{}
 
 type nullT struct{}
 
-func (*nullT) Invert() (Value, error) {
+func (*nullT) Invert(context.Context) (Value, error) {
 	return NullValue, nil
 }
 
@@ -53,7 +53,7 @@ func (v *boolT) Value() bool {
 	return v.value
 }
 
-func (v *boolT) Invert() (Value, error) {
+func (v *boolT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 
@@ -88,7 +88,7 @@ func (v *numberT) Value() float64 {
 	return v.value
 }
 
-func (v *numberT) Invert() (Value, error) {
+func (v *numberT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 
@@ -123,7 +123,7 @@ func (v *stringT) Value() string {
 	return v.value
 }
 
-func (v *stringT) Invert() (Value, error) {
+func (v *stringT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 
@@ -161,7 +161,7 @@ func (v *arrayT) Value() []Value {
 	return v.value
 }
 
-func (v *arrayT) Invert() (Value, error) {
+func (v *arrayT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 
@@ -199,7 +199,7 @@ func (v *objectT) Value() map[string]Value {
 	return v.value
 }
 
-func (v *objectT) Invert() (Value, error) {
+func (v *objectT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 

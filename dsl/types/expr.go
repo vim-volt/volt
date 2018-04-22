@@ -4,6 +4,8 @@ import "context"
 
 // Expr has an operation and its arguments
 type Expr interface {
+	Value
+
 	// Op returns operator of Expr
 	Op() Op
 
@@ -12,16 +14,6 @@ type Expr interface {
 
 	// RetType returns return type of Expr
 	RetType() Type
-
-	// Eval evaluates given expression expr with given transaction ID trxID.
-	Eval(ctx context.Context) (val Value, rollback func(), err error)
-
-	// Invert inverts this expression.
-	// This just calls Op().InvertExpr() with saved arguments.
-	Invert() (Value, error)
-
-	// Type returns the type.
-	Type() Type
 }
 
 // NewExpr creates Expr instance
@@ -51,8 +43,8 @@ func (expr *expr) Eval(ctx context.Context) (val Value, rollback func(), err err
 	return expr.op.EvalExpr(ctx, expr.args)
 }
 
-func (expr *expr) Invert() (Value, error) {
-	return expr.op.InvertExpr(expr.args)
+func (expr *expr) Invert(ctx context.Context) (Value, error) {
+	return expr.op.InvertExpr(ctx, expr.args)
 }
 
 func (expr *expr) Type() Type {

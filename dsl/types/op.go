@@ -8,7 +8,7 @@ type Op interface {
 	String() string
 
 	// InvertExpr returns inverted expression
-	InvertExpr(args []Value) (Value, error)
+	InvertExpr(ctx context.Context, args []Value) (Value, error)
 
 	// Bind binds its arguments, and check if the types of values are correct
 	Bind(args ...Value) (Expr, error)

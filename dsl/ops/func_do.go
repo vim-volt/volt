@@ -30,10 +30,10 @@ func (*doOp) Bind(args ...types.Value) (types.Expr, error) {
 	return types.NewExpr(DoOp, args, retType), nil
 }
 
-func (*doOp) InvertExpr(args []types.Value) (types.Value, error) {
+func (*doOp) InvertExpr(ctx context.Context, args []types.Value) (types.Value, error) {
 	newargs := make([]types.Value, len(args))
 	for i := range args {
-		a, err := args[i].Invert()
+		a, err := args[i].Invert(ctx)
 		if err != nil {
 			return nil, err
 		}

@@ -29,7 +29,7 @@ func (*lockJSONWriteOp) Bind(args ...types.Value) (types.Expr, error) {
 	return types.NewExpr(LockJSONWriteOp, args, retType), nil
 }
 
-func (*lockJSONWriteOp) InvertExpr(args []types.Value) (types.Value, error) {
+func (*lockJSONWriteOp) InvertExpr(_ context.Context, args []types.Value) (types.Value, error) {
 	return LockJSONWriteOp.Bind(args...)
 }
 

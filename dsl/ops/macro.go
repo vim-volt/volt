@@ -1,6 +1,8 @@
 package ops
 
 import (
+	"context"
+
 	"github.com/vim-volt/volt/dsl/types"
 )
 
@@ -15,9 +17,9 @@ func (*macroBase) IsMacro() bool {
 }
 
 // macroInvertExpr inverts the result of op.Execute() which expands an expression
-func (*macroBase) macroInvertExpr(val types.Value, _ func(), err error) (types.Value, error) {
+func (*macroBase) macroInvertExpr(ctx context.Context, val types.Value, _ func(), err error) (types.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return val.Invert()
+	return val.Invert(ctx)
 }

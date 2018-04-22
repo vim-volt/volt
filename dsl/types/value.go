@@ -8,7 +8,7 @@ type Value interface {
 	// All type values are invertible.
 	// Literals like string,number,... return itself as-is.
 	// If argument type or arity is different, this returns non-nil error.
-	Invert() (Value, error)
+	Invert(ctx context.Context) (Value, error)
 
 	// Eval returns a evaluated value.
 	// Literals like string,number,... return itself as-is.

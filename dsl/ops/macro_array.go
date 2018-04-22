@@ -17,8 +17,9 @@ type arrayOp struct {
 // ArrayOp is "$array" operator
 var ArrayOp = &arrayOp{macroBase("$array")}
 
-func (op *arrayOp) InvertExpr(args []types.Value) (types.Value, error) {
-	return op.macroInvertExpr(op.EvalExpr(context.Background(), args))
+func (op *arrayOp) InvertExpr(ctx context.Context, args []types.Value) (types.Value, error) {
+	val, rollback, err := op.EvalExpr(ctx, args)
+	return op.macroInvertExpr(ctx, val, rollback, err)
 }
 
 func (*arrayOp) Bind(args ...types.Value) (types.Expr, error) {
