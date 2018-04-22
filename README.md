@@ -306,14 +306,7 @@ See [plugconf directory](https://github.com/tyru/dotfiles/tree/75a37b4a640a5cffe
 You can think this is similar feature of **branch** of `git`.
 The default profile name is "default".
 
-You can see profile list by `volt profile list`.
-
-```
-$ volt profile list
-* default
-```
-
-You can create a new profile by `volt profile new`.
+You can create an *empty* profile by `volt profile new`.
 
 ```
 $ volt profile new foo   # will create profile "foo"
@@ -322,7 +315,8 @@ $ volt profile list
   foo
 ```
 
-You can switch current profile by `volt profile set`.
+Then you can switch current profile by `volt profile set`.
+This removes all plugins from `~/.vim/pack/volt/opt/*`, because the new created profile is empty; no plugins are included.
 
 ```
 $ volt profile set foo   # will switch profile to "foo"
@@ -331,38 +325,40 @@ $ volt profile list
 * foo
 ```
 
+You can install new plugins or enable installed plugins **only in the current profile.**
+`volt enable` is a shortcut of `volt profile add -current`.
+
+```
+$ volt enable foo/bar bar/baz  # enable installed plugins (foo/bar, bar/baz) also in new profile
+$ volt profile add -current foo/bar bar/baz  # same as above
+$ volt get foo/bar bar/baz # or you can just use 'volt get', this installs missing plugins (it just includes plugins if already installed)
+```
+
+You can disable plugins by `volt disable`.
+This is a shortcut of `volt profile rm -current`.
+
+```
+$ volt disable foo/bar              # disable loading foo/bar on current profile
+$ volt profile rm -current foo/bar  # same as above
+$ volt profile rm foo foo/bar       # or disable plugins outside current profile (of course 'volt profile add' can do it too)
+```
+
 You can delete profile by `volt profile destroy` (but you cannot delete current profile which you are switching on).
 
 ```
 $ volt profile destroy foo   # will delete profile "foo"
 ```
 
-You can enable/disable plugin by `volt enable` (`volt profile add`), `volt disable` (`volt profile rm`).
+---
 
-```
-$ volt enable tyru/caw.vim    # enable loading tyru/caw.vim on current profile
-$ volt profile add foo tyru/caw.vim    # enable loading tyru/caw.vim on "foo" profile
-```
-
-```
-$ volt disable tyru/caw.vim   # disable loading tyru/caw.vim on current profile
-$ volt profile rm foo tyru/caw.vim    # disable loading tyru/caw.vim on "foo" profile
-```
-
-You can create a vimrc & gvimrc file for each profile:
+And you can create local vimrc & gvimrc files for each profile:
 * vimrc: `$VOLTPATH/rc/<profile name>/vimrc.vim`
 * gvimrc: `$VOLTPATH/rc/<profile name>/gvimrc.vim`
 
-NOTE: If the path(s) exists, `$MYVIMRC` and `$MYGVIMRC` are set. So `:edit $MYVIMRC` does not open generated vimrc (`~/.vim/vimrc`), but above vimrc/gvimrc.
+NOTE: If the path(s) exists, `$MYVIMRC` and `$MYGVIMRC` are set. So `:edit $MYVIMRC` opens above vimrc/gvimrc, not generated vimrc (`~/.vim/vimrc`).
 
-This file is copied to `~/.vim/vimrc` and `~/.vim/gvimrc` with magic comment (shows error if existing vimrc/gvimrc files exist with no magic comment).
-
-And you can enable/disable vimrc by `volt profile use` (or you can simply remove `$VOLTPATH/rc/<profile name>/vimrc.vim` file if you don't want vimrc for the profile).
-
-```
-$ volt profile use -current vimrc false   # Disable installing vimrc on current profile
-$ volt profile use default gvimrc true   # Enable installing gvimrc on profile default
-```
+The files are copied to `~/.vim/vimrc` and `~/.vim/gvimrc` with magic comment.
+Because volt shows an error if existing vimrc/gvimrc files exist with no magic comment which is not created by volt.
 
 See `volt help profile` for more detailed information.
 
