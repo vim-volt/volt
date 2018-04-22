@@ -19,16 +19,17 @@ func Deparse(expr types.Expr) (interface{}, error) {
 }
 
 func deparse(value types.Value) (interface{}, error) {
-	switch val := value.(type) {
-	case *types.Null:
+	if _, ok := value.Type().(*types.NullType); ok {
 		return nil, nil
-	case *types.Bool:
+	}
+	switch val := value.(type) {
+	case types.Bool:
 		return val.Value(), nil
-	case *types.String:
+	case types.String:
 		return val.Value(), nil
-	case *types.Number:
+	case types.Number:
 		return val.Value(), nil
-	case *types.Object:
+	case types.Object:
 		m := make(map[string]interface{}, len(val.Value()))
 		for k, o := range val.Value() {
 			v, err := deparse(o)
