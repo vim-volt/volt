@@ -29,7 +29,7 @@ var TrueValue = &boolT{true}
 // FalseValue is the JSON false value
 var FalseValue = &boolT{false}
 
-// Bool is JSON boolean struct
+// Bool is JSON boolean value
 type Bool interface {
 	Value
 
@@ -67,7 +67,7 @@ func (*boolT) Type() Type {
 
 // ================ Number ================
 
-// Number is JSON number struct
+// Number is JSON number value
 type Number interface {
 	Value
 
@@ -102,7 +102,7 @@ func (*numberT) Type() Type {
 
 // ================ String ================
 
-// String is JSON string struct
+// String is JSON string value
 type String interface {
 	Value
 
@@ -137,7 +137,7 @@ func (*stringT) Type() Type {
 
 // ================ Array ================
 
-// Array is JSON array struct
+// Array is JSON array value
 type Array interface {
 	Value
 
@@ -175,7 +175,7 @@ func (v *arrayT) Type() Type {
 
 // ================ Object ================
 
-// Object is JSON object struct
+// Object is JSON object value
 type Object interface {
 	Value
 
