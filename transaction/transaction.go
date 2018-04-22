@@ -12,7 +12,7 @@ import (
 )
 
 // Start creates $VOLTPATH/trx/lock directory
-func Start() (*Transaction, error) {
+func Start() (Transaction, error) {
 	os.MkdirAll(pathutil.TrxDir(), 0755)
 	lockDir := filepath.Join(pathutil.TrxDir(), "lock")
 	if err := os.Mkdir(lockDir, 0755); err != nil {
@@ -22,7 +22,30 @@ func Start() (*Transaction, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not allocate a new transaction ID")
 	}
-	return &Transaction{trxID: trxID}, nil
+	return &transaction{id: trxID}, nil
+}
+
+// Transaction provides transaction methods
+type Transaction interface {
+	// Done renames "lock" directory to "{trxid}" directory
+	Done() error
+
+	// ID returns transaction ID
+	ID() TrxID
+}
+
+type transaction struct {
+	id TrxID
+}
+
+func (trx *transaction) ID() TrxID {
+	return trx.id
+}
+
+func (trx *transaction) Done() error {
+	lockDir := filepath.Join(pathutil.TrxDir(), "lock")
+	trxIDDir := filepath.Join(pathutil.TrxDir(), string(trx.id))
+	return os.Rename(lockDir, trxIDDir)
 }
 
 // genNewTrxID gets unallocated transaction ID looking $VOLTPATH/trx/ directory
@@ -52,7 +75,7 @@ func genNewTrxID() (_ TrxID, result error) {
 	if maxID == nil {
 		return TrxID("1"), nil // no transaction ID directory
 	}
-	return maxID.Add(1)
+	return maxID.Inc()
 }
 
 func greaterThan(a, b string) bool {
@@ -78,27 +101,15 @@ func isTrxDirName(name string) bool {
 // transaction log file.
 type TrxID []byte
 
-// Add adds n to transaction ID
-func (tid *TrxID) Add(n int) (TrxID, error) {
+// Inc increments transaction ID
+func (tid *TrxID) Inc() (TrxID, error) {
 	newID, err := strconv.ParseUint(string(*tid), 10, 32)
 	if err != nil {
 		return nil, err
 	}
-	if newID+uint64(n) < newID {
+	if newID+uint64(1) < newID {
 		// TODO: compute in string?
-		return nil, errors.Errorf("%d + %d causes overflow", newID, n)
+		return nil, errors.Errorf("%d + %d causes overflow", newID, 1)
 	}
-	return TrxID(strconv.FormatUint(newID+uint64(n), 10)), nil
-}
-
-// Transaction provides transaction methods
-type Transaction struct {
-	trxID TrxID
-}
-
-// Done rename "lock" directory to "{trxid}" directory
-func (trx *Transaction) Done() error {
-	lockDir := filepath.Join(pathutil.TrxDir(), "lock")
-	trxIDDir := filepath.Join(pathutil.TrxDir(), string(trx.trxID))
-	return os.Rename(lockDir, trxIDDir)
+	return TrxID(strconv.FormatUint(newID+uint64(1), 10)), nil
 }
