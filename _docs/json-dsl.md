@@ -126,7 +126,7 @@ or `volt history undo` command is executed.  The transaction log file does not
 have ID but the saved directory `{id}` does:
 
 ```
-$VOLTPATH/trx/{id}/{logfile}
+$VOLTPATH/trx/{id}/log.json
 ```
 
 `{id}` is called transaction ID, a simple serial number assigned `max + 1` like
@@ -727,63 +727,3 @@ Here is more complex example to install two plugins "tyru/open-browser.vim",
             ["$array", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser-github.vim"]]]]]]
 ```
-
-### Go API
-
-* dsl package
-  * `Execute(Context, Expr) (val Value, rollback func(), err error)`
-    * Executes in new transacton.
-    * In the given context, if the following keys are missing, returns an error.
-      * lock.json information `*lockjson.LockJSON`
-      * config.toml information `*config.Config`
-    * And this function sets the below key before execution.
-      * Transaction ID: assigns `max + 1`
-
-* dsl/types package
-  * Value interface
-    * `Eval(Context) (val Value, rollback func(), err error)`
-      * Evaluate this value. the value of JSON literal just returns itself as-is.
-    * `Invert() (Value, error)`
-      * Returns inverse expression.
-  * Null struct
-    * implements Value
-  * NullType Type = 1
-  * var NullValue Null
-  * Bool struct
-    * implements Value
-  * BoolType Type = 2
-  * var TrueValue Bool
-  * var FalseValue Bool
-  * Number struct
-    * implements Value
-  * NumberType Type = 3
-  * String struct
-    * implements Value
-  * StringType Type = 4
-  * Array struct
-    * implements Value
-  * ArrayType Type = 5
-  * Object struct
-    * implements Value
-  * ObjectType Type = 6
-  * Expr struct
-    * implements Value
-    * Op Op
-    * Args []Value
-    * Type Type
-
-* dsl/op package
-  * `signature(types Type...) *sigChecker`
-  * `sigChecker.check(args []Value) error`
-    * Returns nil if the types of args match.
-    * Returns non-nil error otherwise.
-  * Op interface
-    * `Bind(args []Value...) (*Expr, error)`
-      * Binds arguments to this operator, and returns an expression.
-      * Checks semantics (type) of each argument.
-      * Sets the result type of Expr.
-    * `InvertExpr(args []Value) (*Expr, error)`
-      * Returns inverse expression. This normally inverts operator and arguments
-        and call Bind() (not all operators do it).
-    * `Execute(ctx Context, args []Value) (val Value, rollback func(), err error)`
-      * Executes expression (operator + args).
