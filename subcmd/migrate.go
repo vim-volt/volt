@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/migration"
+	"github.com/vim-volt/volt/subcmd/migration"
 )
 
 func init() {
