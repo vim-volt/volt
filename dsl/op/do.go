@@ -9,7 +9,7 @@ import (
 func init() {
 	opName := doOp("do")
 	DoOp = &opName
-	funcMap["do"] = DoOp
+	opsMap["do"] = DoOp
 }
 
 type doOp string
@@ -17,12 +17,14 @@ type doOp string
 // DoOp is "do" operation
 var DoOp *doOp
 
-// String returns operator name
 func (*doOp) String() string {
 	return string(*DoOp)
 }
 
-// Bind binds its arguments, and check if the types of values are correct.
+func (*doOp) IsMacro() bool {
+	return false
+}
+
 func (*doOp) Bind(args ...types.Value) (*types.Expr, error) {
 	sig := make([]types.Type, 0, len(args))
 	for i := 0; i < len(args); i++ {
@@ -35,9 +37,7 @@ func (*doOp) Bind(args ...types.Value) (*types.Expr, error) {
 	return types.NewExpr(DoOp, args, retType), nil
 }
 
-// InvertExpr returns inverted expression: Call Value.Invert() for each argument,
-// and reverse arguments order.
-func (*doOp) InvertExpr(args []types.Value) (*types.Expr, error) {
+func (*doOp) InvertExpr(args []types.Value) (types.Value, error) {
 	newargs := make([]types.Value, len(args))
 	for i := range args {
 		a, err := args[i].Invert()
@@ -49,7 +49,6 @@ func (*doOp) InvertExpr(args []types.Value) (*types.Expr, error) {
 	return DoOp.Bind(newargs...)
 }
 
-// Execute executes "do" operation
 func (*doOp) Execute(ctx context.Context, args []types.Value) (val types.Value, rollback func(), err error) {
 	g := funcGuard(DoOp.String())
 	defer func() { err = g.rollback(recover()) }()

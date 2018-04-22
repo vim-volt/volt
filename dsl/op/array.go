@@ -1,26 +1,31 @@
 package op
 
 import (
+	"context"
+
 	"github.com/vim-volt/volt/dsl/types"
 )
 
 func init() {
-	s := arrayOp("$array")
-	ArrayOp = &s
-	macroMap[string(*ArrayOp)] = ArrayOp
+	opsMap[ArrayOp.String()] = ArrayOp
 }
 
-type arrayOp string
-
-// ArrayOp is "$array" operation
-var ArrayOp *arrayOp
-
-// String returns "$array"
-func (*arrayOp) String() string {
-	return string(*ArrayOp)
+type arrayOp struct {
+	macroBase
 }
 
-// Execute executes "$array" operation
-func (*arrayOp) Expand(args []types.Value) (types.Value, func(), error) {
+// ArrayOp is "$array" operator
+var ArrayOp = &arrayOp{macroBase("$array")}
+
+func (op *arrayOp) InvertExpr(args []types.Value) (types.Value, error) {
+	return op.macroInvertExpr(op.Execute(context.Background(), args))
+}
+
+func (*arrayOp) Bind(args ...types.Value) (*types.Expr, error) {
+	expr := types.NewExpr(ArrayOp, args, types.NewArrayType(types.AnyValue))
+	return expr, nil
+}
+
+func (*arrayOp) Execute(ctx context.Context, args []types.Value) (types.Value, func(), error) {
 	return types.NewArray(args, types.AnyValue), NoRollback, nil
 }

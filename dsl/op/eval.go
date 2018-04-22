@@ -7,23 +7,26 @@ import (
 )
 
 func init() {
-	s := evalOp("$eval")
-	EvalOp = &s
-	macroMap[string(*EvalOp)] = EvalOp
+	opsMap[EvalOp.String()] = EvalOp
 }
 
-type evalOp string
-
-// EvalOp is "$eval" operation
-var EvalOp *evalOp
-
-// String returns "$eval"
-func (*evalOp) String() string {
-	return string(*EvalOp)
+type evalOp struct {
+	macroBase
 }
 
-// Execute executes "$eval" operation
-func (*evalOp) Expand(args []types.Value) (types.Value, func(), error) {
+// EvalOp is "$eval" operator
+var EvalOp = &evalOp{macroBase("$eval")}
+
+func (op *evalOp) InvertExpr(args []types.Value) (types.Value, error) {
+	return op.macroInvertExpr(op.Execute(context.Background(), args))
+}
+
+func (*evalOp) Bind(args ...types.Value) (*types.Expr, error) {
+	expr := types.NewExpr(ArrayOp, args, types.NewArrayType(types.AnyValue))
+	return expr, nil
+}
+
+func (*evalOp) Execute(ctx context.Context, args []types.Value) (types.Value, func(), error) {
 	if err := signature(types.AnyValue).check(args); err != nil {
 		return nil, NoRollback, err
 	}

@@ -1,6 +1,7 @@
 package dsl
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,14 +52,16 @@ func parseArray(array []interface{}) (types.Value, error) {
 		}
 		args = append(args, v)
 	}
-	if macro, exists := op.LookupMacro(opName); exists {
-		val, _, err := macro.Expand(args)
+	op, exists := op.Lookup(opName)
+	if !exists {
+		return nil, fmt.Errorf("no such operation '%s'", opName)
+	}
+	// Expand macro's expression at parsing time
+	if op.IsMacro() {
+		val, _, err := op.Execute(context.Background(), args)
 		return val, err
 	}
-	if fn, exists := op.LookupFunc(opName); exists {
-		return fn.Bind(args...)
-	}
-	return nil, fmt.Errorf("no such operation '%s'", opName)
+	return op.Bind(args...)
 }
 
 func parse(value interface{}) (types.Value, error) {

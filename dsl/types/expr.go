@@ -4,14 +4,14 @@ import "context"
 
 // Expr has an operation and its arguments
 type Expr struct {
-	fun     Func
+	op      Op
 	args    []Value
 	retType Type
 }
 
-// Func returns function of Expr
-func (expr *Expr) Func() Func {
-	return expr.fun
+// Op returns operator of Expr
+func (expr *Expr) Op() Op {
+	return expr.op
 }
 
 // Args returns arguments of Expr
@@ -25,19 +25,19 @@ func (expr *Expr) RetType() Type {
 }
 
 // NewExpr creates Expr instance
-func NewExpr(fun Func, args []Value, retType Type) *Expr {
-	return &Expr{fun: fun, args: args, retType: retType}
+func NewExpr(op Op, args []Value, retType Type) *Expr {
+	return &Expr{op: op, args: args, retType: retType}
 }
 
 // Eval evaluates given expression expr with given transaction ID trxID.
 func (expr *Expr) Eval(ctx context.Context) (val Value, rollback func(), err error) {
-	return expr.fun.Execute(ctx, expr.args)
+	return expr.op.Execute(ctx, expr.args)
 }
 
 // Invert inverts this expression.
-// This just calls Func.InvertExpr() with arguments.
+// This just calls Op().InvertExpr() with saved arguments.
 func (expr *Expr) Invert() (Value, error) {
-	return expr.fun.InvertExpr(expr.args)
+	return expr.op.InvertExpr(expr.args)
 }
 
 // Type returns the type.

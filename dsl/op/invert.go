@@ -1,27 +1,32 @@
 package op
 
 import (
+	"context"
+
 	"github.com/vim-volt/volt/dsl/types"
 )
 
 func init() {
-	s := invertOp("$invert")
-	InvertOp = &s
-	macroMap[string(*InvertOp)] = InvertOp
+	opsMap[InvertOp.String()] = InvertOp
 }
 
-type invertOp string
-
-// InvertOp is "$invert" operation
-var InvertOp *invertOp
-
-// String returns "$invert"
-func (*invertOp) String() string {
-	return string(*InvertOp)
+type invertOp struct {
+	macroBase
 }
 
-// Execute executes "$invert" operation
-func (*invertOp) Expand(args []types.Value) (types.Value, func(), error) {
+// InvertOp is "$invert" operator
+var InvertOp = &invertOp{macroBase("$invert")}
+
+func (op *invertOp) InvertExpr(args []types.Value) (types.Value, error) {
+	return op.macroInvertExpr(op.Execute(context.Background(), args))
+}
+
+func (*invertOp) Bind(args ...types.Value) (*types.Expr, error) {
+	expr := types.NewExpr(ArrayOp, args, types.NewArrayType(types.AnyValue))
+	return expr, nil
+}
+
+func (*invertOp) Execute(ctx context.Context, args []types.Value) (types.Value, func(), error) {
 	if err := signature(types.AnyValue).check(args); err != nil {
 		return nil, NoRollback, err
 	}
