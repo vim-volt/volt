@@ -334,7 +334,7 @@ Macros are not saved in transaction log (expanded before saving).
   * What value is returned depends on each operator's `InvertExpr()`
     implementation.
 
-* `["$expand-macro", expr Value] Value`
+* `["$eval", expr Value] Value`
   * Evaluate `expr` at parsing time.
     This is useful to save evaluated value to transaction log,
     instead of its expression.
@@ -416,9 +416,9 @@ Macros are not saved in transaction log (expanded before saving).
     {target_hash}`
   * It does nothing for bare git repository.
   * e.g.
-    * `["repos/git/update", "github.com/tyru/caw.vim", ["$expand-macro", ["repos/git/rev-parse", "HEAD", "github.com/tyru/caw.vim"]], ["$expand-macro", ["repos/git/fetch", "github.com/tyru/caw.vim"]]]`
+    * `["repos/git/update", "github.com/tyru/caw.vim", ["$eval", ["repos/git/rev-parse", "HEAD", "github.com/tyru/caw.vim"]], ["$eval", ["repos/git/fetch", "github.com/tyru/caw.vim"]]]`
       * To save evaluated hash string in transaction log instead of its
-        expression, apply `$expand-macro` to `repos/git/fetch` expression.
+        expression, apply `$eval` to `repos/git/fetch` expression.
     * `["$invert", ["repos/git/update", path, target_hash, prev_hash]]` = `["repos/git/update", ["$invert", path], ["$invert", prev_hash], ["$invert", target_hash]]`
 
 * `["repos/git/rev-parse", str string, path ReposPath] hash string`
