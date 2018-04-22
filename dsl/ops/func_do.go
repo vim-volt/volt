@@ -8,23 +8,15 @@ import (
 )
 
 func init() {
-	opName := doOp("do")
-	DoOp = &opName
 	opsMap["do"] = DoOp
 }
 
-type doOp string
+type doOp struct {
+	funcBase
+}
 
 // DoOp is "do" operation
-var DoOp *doOp
-
-func (*doOp) String() string {
-	return string(*DoOp)
-}
-
-func (*doOp) IsMacro() bool {
-	return false
-}
+var DoOp = &doOp{funcBase("do")}
 
 func (*doOp) Bind(args ...types.Value) (types.Expr, error) {
 	sig := make([]types.Type, 0, len(args))
