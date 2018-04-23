@@ -1,5 +1,9 @@
 package types
 
+import (
+	"bytes"
+)
+
 // Type is a type of a value
 type Type interface {
 	// String returns a string like "<type %s>"
@@ -157,5 +161,45 @@ func (*anyType) String() string {
 }
 
 func (*anyType) InstanceOf(_ Type) bool {
+	return true
+}
+
+// ===================== Lambda type ===================== //
+
+// NewLambdaType creates lambda type instance.
+// Signature must have 1 type at least for a return type.
+func NewLambdaType(t Type, rest ...Type) Type {
+	signature := append([]Type{t}, rest...)
+	return &lambdaType{signature: signature}
+}
+
+type lambdaType struct {
+	signature []Type
+}
+
+func (t *lambdaType) String() string {
+	var arg bytes.Buffer
+	for i := range t.signature {
+		if i > 0 {
+			arg.WriteString(",")
+		}
+		arg.WriteString(t.signature[i].String())
+	}
+	return "Lambda[" + arg.String() + "]"
+}
+
+func (t *lambdaType) InstanceOf(t2 Type) bool {
+	lambda, ok := t2.(*lambdaType)
+	if !ok {
+		return false
+	}
+	if len(t.signature) != len(lambda.signature) {
+		return false
+	}
+	for i := range t.signature {
+		if !t.signature[i].InstanceOf(lambda.signature[i]) {
+			return false
+		}
+	}
 	return true
 }
