@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/dsl/dslctx"
+	"github.com/vim-volt/volt/dsl/ops/util"
 	"github.com/vim-volt/volt/dsl/types"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
@@ -46,7 +47,7 @@ func Execute(ctx context.Context, expr types.Expr) (_ types.Value, result error)
 		return nil, err
 	}
 
-	val, rollback, err := expr.Eval(ctx)
+	val, rollback, err := evalDepthFirst(ctx, expr)
 	if err != nil {
 		if rollback != nil {
 			rollback()
@@ -54,6 +55,35 @@ func Execute(ctx context.Context, expr types.Expr) (_ types.Value, result error)
 		return nil, errors.Wrap(err, "expression returned an error")
 	}
 	return val, nil
+}
+
+func evalDepthFirst(ctx context.Context, expr types.Expr) (_ types.Value, _ func(), result error) {
+	op := expr.Op()
+	g := util.FuncGuard(op.String())
+	defer func() {
+		result = g.Error(recover())
+	}()
+
+	// Evaluate arguments first
+	args := expr.Args()
+	newArgs := make([]types.Value, 0, len(args))
+	for i := range args {
+		innerExpr, ok := args[i].(types.Expr)
+		if !ok {
+			newArgs = append(newArgs, args[i])
+			continue
+		}
+		ret, rbFunc, err := evalDepthFirst(ctx, innerExpr)
+		g.Add(rbFunc)
+		if err != nil {
+			return nil, g.Rollback, g.Error(err)
+		}
+		newArgs = append(newArgs, ret)
+	}
+
+	ret, rbFunc, err := op.EvalExpr(ctx, newArgs)
+	g.Add(rbFunc)
+	return ret, g.Rollback, g.Error(err)
 }
 
 func expandMacro(expr types.Expr) (types.Expr, error) {
