@@ -2,7 +2,7 @@ package types
 
 import "context"
 
-// Op is an operation of JSON DSL
+// Op is an operator of JSON DSL
 type Op interface {
 	// String returns function name
 	String() string

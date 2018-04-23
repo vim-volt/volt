@@ -6,13 +6,13 @@ import "context"
 type Expr interface {
 	Value
 
-	// Op returns operator of Expr
+	// Op returns operator
 	Op() Op
 
-	// Args returns arguments of Expr
+	// Args returns arguments
 	Args() []Value
 
-	// RetType returns return type of Expr
+	// RetType returns return type
 	RetType() Type
 }
 
