@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/dsl/deparse"
 	"github.com/vim-volt/volt/dsl/dslctx"
 	"github.com/vim-volt/volt/dsl/ops/util"
 	"github.com/vim-volt/volt/dsl/types"
@@ -120,7 +121,7 @@ func doExpandMacro(expr types.Expr) (types.Value, error) {
 }
 
 func writeTrxLog(ctx context.Context, expr types.Expr) (result error) {
-	deparsed, err := Deparse(expr)
+	deparsed, err := deparse.Deparse(expr)
 	if err != nil {
 		return errors.Wrap(err, "failed to deparse expression")
 	}

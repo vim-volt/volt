@@ -1,4 +1,4 @@
-package dsl
+package deparse
 
 import (
 	"github.com/pkg/errors"
