@@ -8,23 +8,25 @@ import (
 // Guard invokes "rollback functions" if Rollback method received non-nil value
 // (e.g. recover(), non-nil error).
 type Guard interface {
-	// Rollback rolls back if v is non-nil.
+	// Error sets v as an error if v is non-nil.
+	// This returns the error.
 	//
-	//   defer func() { err = g.Rollback(recover()) }()
+	//   defer func() {
+	//     result = g.Error(recover())
+	//   }()
 	//
 	//   // or
 	//
-	//   if e != nil {
-	//     err = g.Rollback(e)
-	//     err = g.Rollback(e) // this won't call rollback functions twice!
-	//     return
+	//   if err != nil {
+	//     return g.Error(err)
 	//   }
-	Rollback(v interface{}) error
+	//
+	Error(v interface{}) error
 
-	// RollbackForcefully calls rollback functions in reversed order
-	RollbackForcefully()
+	// Rollback calls rollback functions in reversed order
+	Rollback()
 
-	// Add adds given rollback functions
+	// Add adds given rollback functions, but skips if f == nil
 	Add(f func())
 }
 
@@ -35,23 +37,20 @@ func FuncGuard(name string) Guard {
 
 type guard struct {
 	errMsg  string
+	err     error
 	rbFuncs []func()
 }
 
-func (g *guard) Rollback(v interface{}) error {
-	var err error
-	if e, ok := v.(error); ok {
-		err = e
+func (g *guard) Error(v interface{}) error {
+	if err, ok := v.(error); ok {
+		g.err = errors.Wrap(err, g.errMsg)
 	} else if v != nil {
-		err = fmt.Errorf("%s", v)
+		g.err = errors.Wrap(fmt.Errorf("%s", v), g.errMsg)
 	}
-	if err != nil {
-		g.RollbackForcefully()
-	}
-	return errors.Wrap(err, g.errMsg)
+	return g.err
 }
 
-func (g *guard) RollbackForcefully() {
+func (g *guard) Rollback() {
 	for i := len(g.rbFuncs) - 1; i >= 0; i-- {
 		g.rbFuncs[i]()
 	}
@@ -59,5 +58,7 @@ func (g *guard) RollbackForcefully() {
 }
 
 func (g *guard) Add(f func()) {
-	g.rbFuncs = append(g.rbFuncs, f)
+	if f != nil {
+		g.rbFuncs = append(g.rbFuncs, f)
+	}
 }

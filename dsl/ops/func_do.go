@@ -42,19 +42,21 @@ func (*doOp) InvertExpr(ctx context.Context, args []types.Value) (types.Value, e
 	return DoOp.Bind(newargs...)
 }
 
-func (*doOp) EvalExpr(ctx context.Context, args []types.Value) (val types.Value, rollback func(), result error) {
+func (*doOp) EvalExpr(ctx context.Context, args []types.Value) (_ types.Value, _ func(), result error) {
 	g := util.FuncGuard(DoOp.String())
-	defer func() { result = g.Rollback(recover()) }()
-	rollback = g.RollbackForcefully
+	defer func() {
+		result = g.Error(recover())
+	}()
 
+	var lastVal types.Value
 	for i := range args {
-		v, rbFunc, e := args[i].Eval(ctx)
+		v, rbFunc, err := args[i].Eval(ctx)
 		g.Add(rbFunc)
-		if e != nil {
-			result = g.Rollback(e)
+		if err != nil {
+			result = g.Error(err)
 			return
 		}
-		val = v
+		lastVal = v
 	}
-	return
+	return lastVal, g.Rollback, nil
 }
