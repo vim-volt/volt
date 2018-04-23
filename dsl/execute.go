@@ -48,7 +48,9 @@ func Execute(ctx context.Context, expr types.Expr) (_ types.Value, result error)
 
 	val, rollback, err := expr.Eval(ctx)
 	if err != nil {
-		rollback()
+		if rollback != nil {
+			rollback()
+		}
 		return nil, errors.Wrap(err, "expression returned an error")
 	}
 	return val, nil

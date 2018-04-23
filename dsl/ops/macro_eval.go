@@ -30,7 +30,7 @@ func (*evalOp) Bind(args ...types.Value) (types.Expr, error) {
 
 func (*evalOp) EvalExpr(ctx context.Context, args []types.Value) (types.Value, func(), error) {
 	if err := util.Signature(types.AnyValue).Check(args); err != nil {
-		return nil, NoRollback, err
+		return nil, nil, err
 	}
 	return args[0].Eval(ctx)
 }

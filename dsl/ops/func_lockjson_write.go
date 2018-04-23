@@ -33,9 +33,7 @@ func (*lockJSONWriteOp) InvertExpr(_ context.Context, args []types.Value) (types
 	return LockJSONWriteOp.Bind(args...)
 }
 
-func (*lockJSONWriteOp) EvalExpr(ctx context.Context, args []types.Value) (_ types.Value, rollback func(), result error) {
-	rollback = NoRollback
-
+func (*lockJSONWriteOp) EvalExpr(ctx context.Context, args []types.Value) (_ types.Value, _ func(), result error) {
 	lockJSON := ctx.Value(dslctx.LockJSONKey).(*lockjson.LockJSON)
 	result = lockJSON.Write()
 	if result != nil {

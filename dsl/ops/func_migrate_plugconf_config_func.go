@@ -44,8 +44,7 @@ func (*migratePlugconfConfigFuncOp) InvertExpr(_ context.Context, args []types.V
 	return MigratePlugconfConfigFuncOp.Bind(args...)
 }
 
-func (*migratePlugconfConfigFuncOp) EvalExpr(ctx context.Context, args []types.Value) (_ types.Value, rollback func(), result error) {
-	rollback = NoRollback
+func (*migratePlugconfConfigFuncOp) EvalExpr(ctx context.Context, args []types.Value) (_ types.Value, _ func(), result error) {
 	lockJSON := ctx.Value(dslctx.LockJSONKey).(*lockjson.LockJSON)
 	cfg := ctx.Value(dslctx.ConfigKey).(*config.Config)
 

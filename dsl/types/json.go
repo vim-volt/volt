@@ -14,7 +14,7 @@ func (*nullT) Invert(context.Context) (Value, error) {
 }
 
 func (v *nullT) Eval(context.Context) (val Value, rollback func(), err error) {
-	return v, func() {}, nil
+	return v, nil, nil
 }
 
 func (*nullT) Type() Type {
@@ -58,7 +58,7 @@ func (v *boolT) Invert(context.Context) (Value, error) {
 }
 
 func (v *boolT) Eval(context.Context) (val Value, rollback func(), err error) {
-	return v, func() {}, nil
+	return v, nil, nil
 }
 
 func (*boolT) Type() Type {
@@ -93,7 +93,7 @@ func (v *numberT) Invert(context.Context) (Value, error) {
 }
 
 func (v *numberT) Eval(context.Context) (val Value, rollback func(), err error) {
-	return v, func() {}, nil
+	return v, nil, nil
 }
 
 func (*numberT) Type() Type {
@@ -128,7 +128,7 @@ func (v *stringT) Invert(context.Context) (Value, error) {
 }
 
 func (v *stringT) Eval(context.Context) (val Value, rollback func(), err error) {
-	return v, func() {}, nil
+	return v, nil, nil
 }
 
 func (*stringT) Type() Type {
@@ -166,7 +166,7 @@ func (v *arrayT) Invert(context.Context) (Value, error) {
 }
 
 func (v *arrayT) Eval(context.Context) (val Value, rollback func(), err error) {
-	return v, func() {}, nil
+	return v, nil, nil
 }
 
 func (v *arrayT) Type() Type {
@@ -204,7 +204,7 @@ func (v *objectT) Invert(context.Context) (Value, error) {
 }
 
 func (v *objectT) Eval(context.Context) (val Value, rollback func(), err error) {
-	return v, func() {}, nil
+	return v, nil, nil
 }
 
 func (v *objectT) Type() Type {
