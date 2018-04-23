@@ -87,7 +87,7 @@ func doExpandMacro(expr types.Expr) (types.Value, error) {
 	return val, err
 }
 
-func writeTrxLog(ctx context.Context, expr types.Expr) error {
+func writeTrxLog(ctx context.Context, expr types.Expr) (result error) {
 	deparsed, err := Deparse(expr)
 	if err != nil {
 		return errors.Wrap(err, "failed to deparse expression")
@@ -112,13 +112,14 @@ func writeTrxLog(ctx context.Context, expr types.Expr) error {
 	if err != nil {
 		return errors.Wrapf(err, "could not create %s", filename)
 	}
+	defer func() {
+		if err := logFile.Close(); err != nil {
+			result = errors.Wrapf(err, "failed to close transaction log %s", filename)
+		}
+	}()
 	_, err = io.Copy(logFile, bytes.NewReader(content))
 	if err != nil {
 		return errors.Wrapf(err, "failed to write transaction log %s", filename)
-	}
-	err = logFile.Close()
-	if err != nil {
-		return errors.Wrapf(err, "failed to close transaction log %s", filename)
 	}
 	return nil
 }
