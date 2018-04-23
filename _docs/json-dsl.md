@@ -6,27 +6,28 @@
 ## Example of JSON DSL
 
 ```json
-["label",
+["$label",
   1,
   "installing plugins:",
-  ["vimdir/with-install",
-    ["parallel",
-      ["label",
+  ["$vimdir/with-install",
+    ["$parallel",
+      ["$label",
         2,
         "  github.com/tyru/open-browser.vim ... {{if .Done}}done!{{end}}",
-        ["parallel",
+        ["$parallel",
           ["lockjson/add",
             ["repos/get", "github.com/tyru/open-browser.vim"],
             ["$array", "default"]],
           ["plugconf/install", "github.com/tyru/open-browser.vim"]]],
-      ["label",
+      ["$label",
         3,
         "  github.com/tyru/open-browser-github.vim ... {{if .Done}}done!{{end}}",
-        ["parallel",
+        ["$parallel",
           ["lockjson/add",
             ["repos/get", "github.com/tyru/open-browser-github.vim"],
             ["$array", "default"]],
-          ["plugconf/install", "github.com/tyru/open-browser-github.vim"]]]]]]
+          ["plugconf/install",
+            "github.com/tyru/open-browser-github.vim"]]]]]]
 ```
 
 ## Wordings
@@ -107,7 +108,7 @@ An array literal value is written using `$array` operator.
 This expression is evaluated to `[1, 2, 3]`.
 
 Each expression has 0 or more parameters.  And evaluation
-strategy is a non-strict evaluation.
+strategy is an eager evaluation.
 
 Parameter types are
 
@@ -117,7 +118,8 @@ Parameter types are
   * number
   * array
   * object
-* expression
+* lambda
+* expression (only macro can treat this)
 
 But all values must be able to be serialized to JSON.  Because AST of whole
 process is serialized and saved as a "transaction log file".  The process can be
@@ -169,12 +171,27 @@ different with latest volt's JSON DSL when installing. this is a simplified
 version for easiness).
 
 ```json
-["vimdir/with-install",
-  ["do",
+["$vimdir/with-install",
+  ["$do",
     ["lockjson/add",
       ["repos/get", "github.com/tyru/caw.vim"],
       ["$array", "default"]],
     ["plugconf/install", "github.com/tyru/caw.vim"]]]
+```
+
+At first, expands all macros (`["$array", "default"]` cannot be written in JSON
+notation, it is expanded to array but array literal is `["$array", "default"]`).
+
+```json
+["vimdir/with-install",
+  ["fn", [],
+    ["do",
+      ["fn", [],
+        ["lockjson/add",
+          ["repos/get", "github.com/tyru/caw.vim"],
+          ["$array", "default"]]],
+      ["fn", [],
+        ["plugconf/install", "github.com/tyru/caw.vim"]]]]]
 ```
 
 I show you what happens in several steps when you "invert" the expression like
@@ -185,41 +202,65 @@ At first, to invert the expression, `$invert` macro is used:
 ```json
 ["$invert",
   ["vimdir/with-install",
-    ["do",
-      ["lockjson/add",
-        ["repos/get", "github.com/tyru/caw.vim"],
-        ["$array", "default"]],
-      ["plugconf/install", "github.com/tyru/caw.vim"]]]]
+    ["fn", [],
+      ["do",
+        ["fn", [],
+          ["lockjson/add",
+            ["repos/get", "github.com/tyru/caw.vim"],
+            ["$array", "default"]]],
+        ["fn", [],
+          ["plugconf/install", "github.com/tyru/caw.vim"]]]]]]
 ```
 
-`["$invert", ["vimdir/with-install", expr]]` is expanded to
-`["vimdir/with-install", ["$invert", expr]]`.  Internally, it is implemented as
-calling `Invert()` method of `vimdir/with-install` operator struct.  See "Go
-API" section.
+`["$invert", ["vimdir/with-install", thunk]]` is expanded to
+`["vimdir/with-install", ["$invert", thunk]]`.  Internally, it is implemented as
+calling `InvertExpr()` method of `vimdir/with-install` operator struct.
 
 ```json
 ["vimdir/with-install",
   ["$invert",
-    ["do",
-      ["lockjson/add",
-        ["repos/get", "github.com/tyru/caw.vim"],
-        ["$array", "default"]],
-      ["plugconf/install", "github.com/tyru/caw.vim"]]]]
+    ["fn", [],
+      ["do",
+        ["fn", [],
+          ["lockjson/add",
+            ["repos/get", "github.com/tyru/caw.vim"],
+            ["$array", "default"]]],
+        ["fn", [],
+          ["plugconf/install", "github.com/tyru/caw.vim"]]]]]]
 ```
 
-And `["$invert", ["do", expr1, expr2]]` becomes
-`["do", ["$invert", expr2], ["$invert", expr1]]`.
-Note that `expr1` and `expr2` becomes reversed order.
+And `["$invert", ["fn", args, body]]` becomes
+`["fn", args, ["$invert", body]]`.
 
 ```json
 ["vimdir/with-install",
-  ["do",
+  ["fn", [],
     ["$invert",
-      ["plugconf/install", "github.com/tyru/caw.vim"]],
-    ["$invert",
-      ["lockjson/add",
-        ["repos/get", "github.com/tyru/caw.vim"],
-        ["$array", "default"]]]]]
+      ["do",
+        ["fn", [],
+          ["lockjson/add",
+            ["repos/get", "github.com/tyru/caw.vim"],
+            ["$array", "default"]]],
+        ["fn", [],
+          ["plugconf/install", "github.com/tyru/caw.vim"]]]]]]
+```
+
+And `["$invert", ["do", thunk1, thunk2]]` becomes
+`["do", ["$invert", thunk2], ["$invert", thunk1]]`.
+Note that `thunk1` and `thunk2` become reversed order.
+
+```json
+["vimdir/with-install",
+  ["fn", [],
+    ["do",
+      ["fn", [],
+        ["$invert",
+          ["lockjson/add",
+            ["repos/get", "github.com/tyru/caw.vim"],
+            ["$array", "default"]]]],
+      ["fn", [],
+        ["$invert",
+          ["plugconf/install", "github.com/tyru/caw.vim"]]]]]]
 ```
 
 And
@@ -230,11 +271,14 @@ And
 
 ```json
 ["vimdir/with-install",
-  ["do",
-    ["plugconf/delete", ["$invert", "github.com/tyru/caw.vim"]],
-    ["lockjson/remove",
-      ["$invert", ["repos/get", "github.com/tyru/caw.vim"]],
-      ["$invert", ["$array", "default"]]]]]
+  ["fn", [],
+    ["do",
+      ["fn", [],
+        ["lockjson/add",
+          ["$invert", ["repos/get", "github.com/tyru/caw.vim"]],
+          ["$invert", ["$array", "default"]]]],
+      ["fn", [],
+        ["plugconf/install", ["$invert", "github.com/tyru/caw.vim"]]]]]]
 ```
 
 `["$invert", ["repos/get", path]]` becomes
@@ -242,11 +286,14 @@ And
 
 ```json
 ["vimdir/with-install",
-  ["do",
-    ["plugconf/delete", ["$invert", "github.com/tyru/caw.vim"]],
-    ["lockjson/remove",
-      ["repos/delete", ["$invert", "github.com/tyru/caw.vim"]],
-      ["$invert", ["$array", "default"]]]]]
+  ["fn", [],
+    ["do",
+      ["fn", [],
+        ["lockjson/add",
+          ["repos/delete", ["$invert", "github.com/tyru/caw.vim"]],
+          ["$invert", ["$array", "default"]]]],
+      ["fn", [],
+        ["plugconf/install", ["$invert", "github.com/tyru/caw.vim"]]]]]]
 ```
 
 And if `$invert` is applied to literals like string, JSON array, it just remains
@@ -254,14 +301,17 @@ as-is.
 
 ```json
 ["vimdir/with-install",
-  ["do",
-    ["plugconf/delete", "github.com/tyru/caw.vim"],
-    ["lockjson/remove",
-      ["repos/delete", "github.com/tyru/caw.vim"],
-      ["$array", "default"]]]]
+  ["fn", [],
+    ["do",
+      ["fn", [],
+        ["lockjson/add",
+          ["repos/delete", "github.com/tyru/caw.vim"],
+          ["$array", "default"]]],
+      ["fn", [],
+        ["plugconf/install", "github.com/tyru/caw.vim"]]]]]
 ```
 
-We can successfully evaluate the inverse expression of the first expression :)
+We can successfully evaluate the inverse expression of the first expression! :)
 
 ### Uninstall operation should be "Recovable"?
 
@@ -317,7 +367,7 @@ As the above signature shows, operators must take care the following points:
 
 TODO: Move to Godoc.
 
-### Macro
+### Basic macros
 
 All macros has `$` prefixed name for readability.
 Macros are not saved in transaction log (expanded before saving).
@@ -342,27 +392,39 @@ Macros are not saved in transaction log (expanded before saving).
 
 ### Basic operators
 
-* `["label", linenum: number, tmpl string, expr Expr[* => R]] R`
+* `["$label", linenum: number, tmpl string, expr Expr[* => R]] R`
+  * `["$label", linenum, tmpl, expr]` expands to
+    `["label", linenum, tmpl, ["fn", [] expr]]`
+
+* `["label", linenum: number, tmpl string, thunk Func[* => R]] R`
   * Render `tmpl` by text/template to `linenum` line (1-origin).
-    Returns the evaluated value of `expr`.
+    Returns the evaluated value of `thunk`.
   * e.g.
-    * `["$invert", ["label", linenum, "msg", expr]]` = `["label", ["$invert", linenum], "revert: \"msg\"", ["$invert", expr]]`
+    * `["$invert", ["label", linenum, "msg", thunk]]` = `["label", ["$invert", linenum], "revert: \"msg\"", ["$invert", thunk]]`
     * See `Label examples` section for more details
 
-* `["do", expr1 R1, ..., expr_last R2] R2`
-  * Executes multiple expressions in series.
-  * Returns the evaluated value of the last expression.
+* `["$do", expr1 Expr[* => R1], ..., expr_last Expr[* => R2]] R2`
+  * `["$do", expr1, expr2]` expands to
+    `["do", ["fn", [], expr1], ["fn", [], expr2]]`
+
+* `["do", thunk1 R1, ..., thunk_last R2] R2`
+  * Executes multiple lambdas in series.
+  * Returns the evaluated value of the last lambda.
   * e.g.
-    * `["$invert", ["do", expr1, expr2]]` = `["do", ["$invert", expr1], ["$invert", expr2]]`
+    * `["$invert", ["do", thunk1, thunk2]]` = `["do", ["$invert", thunk1], ["$invert", thunk2]]`
       * Note that the arguments are reversed.
 
-* `["parallel", msg string, expr1 R1, ..., expr_last R2] R2`
-  * Executes multiple expressions in parallel.
-  * Returns the evaluated value of the last expression.
+* `["$parallel", expr1 Expr[* => R1], ..., expr_last Expr[* => R2]] R2`
+  * `["$parallel", expr1, expr2]` expands to
+    `["parallel", ["fn", [], expr1], ["fn", [], expr2]]`
+
+* `["parallel", thunk1 Func[* => R1], ..., thunk_last Func[* => R2]] R2`
+  * Executes multiple lambdas in parallel.
+  * Returns the evaluated value of the last lambda.
   * e.g.
-    * `["$invert", ["parallel", expr1, expr2]]` = `["parallel", ["$invert", expr2], ["$invert", expr1]]`
+    * `["$invert", ["parallel", thunk1, thunk2]]` = `["parallel", ["$invert", thunk2], ["$invert", thunk1]]`
       * The arguments are **not** reversed because parallel does not care of
-        execution order of given expressions.
+        execution order of given value.
 
 ### Repository operators
 
