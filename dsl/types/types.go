@@ -115,10 +115,11 @@ func (t *arrayType) String() string {
 }
 
 func (t *arrayType) InstanceOf(t2 Type) bool {
-	if array, ok := t2.(*arrayType); ok {
-		return t.arg.InstanceOf(array.arg)
+	array, ok := t2.(*arrayType)
+	if !ok {
+		return false
 	}
-	return false
+	return t.arg.InstanceOf(array.arg)
 }
 
 // ===================== Object type ===================== //
@@ -137,10 +138,11 @@ func (t *objectType) String() string {
 }
 
 func (t *objectType) InstanceOf(t2 Type) bool {
-	if array, ok := t2.(*objectType); ok {
-		return t.arg.InstanceOf(array.arg)
+	object, ok := t2.(*objectType)
+	if !ok {
+		return false
 	}
-	return false
+	return t.arg.InstanceOf(object.arg)
 }
 
 // ===================== Any type ===================== //
