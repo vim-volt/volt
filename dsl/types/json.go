@@ -149,12 +149,12 @@ type Array interface {
 
 // NewArray creates Array instance
 func NewArray(value []Value, argType Type) Array {
-	return &arrayT{value: value, argType: argType}
+	return &arrayT{value: value, typ: NewArrayType(argType)}
 }
 
 type arrayT struct {
-	value   []Value
-	argType Type
+	value []Value
+	typ   Type
 }
 
 func (v *arrayT) Value() []Value {
@@ -170,7 +170,7 @@ func (v *arrayT) Eval(context.Context) (val Value, rollback func(), err error) {
 }
 
 func (v *arrayT) Type() Type {
-	return NewArrayType(v.argType)
+	return v.typ
 }
 
 // ================ Object ================
@@ -187,12 +187,12 @@ type Object interface {
 
 // NewObject creates Object instance
 func NewObject(value map[string]Value, argType Type) Object {
-	return &objectT{value: value, argType: argType}
+	return &objectT{value: value, typ: NewObjectType(argType)}
 }
 
 type objectT struct {
-	value   map[string]Value
-	argType Type
+	value map[string]Value
+	typ   Type
 }
 
 func (v *objectT) Value() map[string]Value {
@@ -208,5 +208,5 @@ func (v *objectT) Eval(context.Context) (val Value, rollback func(), err error) 
 }
 
 func (v *objectT) Type() Type {
-	return NewObjectType(v.argType)
+	return v.typ
 }
