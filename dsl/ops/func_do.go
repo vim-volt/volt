@@ -19,9 +19,10 @@ type doOp struct {
 var DoOp = &doOp{funcBase("do")}
 
 func (*doOp) Bind(args ...types.Value) (types.Expr, error) {
+	thunkType := types.NewLambdaType(types.AnyValue)
 	sig := make([]types.Type, 0, len(args))
 	for i := 0; i < len(args); i++ {
-		sig = append(sig, types.AnyValue)
+		sig = append(sig, thunkType)
 	}
 	if err := util.Signature(sig...).Check(args); err != nil {
 		return nil, err
@@ -49,8 +50,9 @@ func (*doOp) EvalExpr(ctx context.Context, args []types.Value) (_ types.Value, _
 	}()
 
 	var lastVal types.Value
+	empty := make([]types.Value, 0)
 	for i := range args {
-		v, rbFunc, err := args[i].Eval(ctx)
+		v, rbFunc, err := args[i].(types.Op).EvalExpr(ctx, empty)
 		g.Add(rbFunc)
 		if err != nil {
 			result = g.Error(err)
