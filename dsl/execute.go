@@ -50,14 +50,14 @@ func Execute(ctx context.Context, expr types.Expr) (_ types.Value, result error)
 	val, rollback, err := evalDepthFirst(ctx, expr)
 	if err != nil {
 		if rollback != nil {
-			rollback()
+			rollback(ctx)
 		}
 		return nil, errors.Wrap(err, "expression returned an error")
 	}
 	return val, nil
 }
 
-func evalDepthFirst(ctx context.Context, expr types.Expr) (_ types.Value, _ func(), result error) {
+func evalDepthFirst(ctx context.Context, expr types.Expr) (_ types.Value, _ func(context.Context), result error) {
 	op := expr.Op()
 	g := util.FuncGuard(op.String())
 	defer func() {

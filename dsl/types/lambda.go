@@ -19,7 +19,7 @@ func (v *lambdaT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 
-func (v *lambdaT) Eval(context.Context) (Value, func(), error) {
+func (v *lambdaT) Eval(context.Context) (Value, func(context.Context), error) {
 	return v, nil, nil
 }
 

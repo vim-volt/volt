@@ -13,7 +13,7 @@ func (*nullT) Invert(context.Context) (Value, error) {
 	return NullValue, nil
 }
 
-func (v *nullT) Eval(context.Context) (val Value, rollback func(), err error) {
+func (v *nullT) Eval(context.Context) (val Value, rollback func(context.Context), err error) {
 	return v, nil, nil
 }
 
@@ -57,7 +57,7 @@ func (v *boolT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 
-func (v *boolT) Eval(context.Context) (val Value, rollback func(), err error) {
+func (v *boolT) Eval(context.Context) (val Value, rollback func(context.Context), err error) {
 	return v, nil, nil
 }
 
@@ -92,7 +92,7 @@ func (v *numberT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 
-func (v *numberT) Eval(context.Context) (val Value, rollback func(), err error) {
+func (v *numberT) Eval(context.Context) (val Value, rollback func(context.Context), err error) {
 	return v, nil, nil
 }
 
@@ -127,7 +127,7 @@ func (v *stringT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 
-func (v *stringT) Eval(context.Context) (val Value, rollback func(), err error) {
+func (v *stringT) Eval(context.Context) (val Value, rollback func(context.Context), err error) {
 	return v, nil, nil
 }
 
@@ -165,7 +165,7 @@ func (v *arrayT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 
-func (v *arrayT) Eval(context.Context) (val Value, rollback func(), err error) {
+func (v *arrayT) Eval(context.Context) (val Value, rollback func(context.Context), err error) {
 	return v, nil, nil
 }
 
@@ -203,7 +203,7 @@ func (v *objectT) Invert(context.Context) (Value, error) {
 	return v, nil
 }
 
-func (v *objectT) Eval(context.Context) (val Value, rollback func(), err error) {
+func (v *objectT) Eval(context.Context) (val Value, rollback func(context.Context), err error) {
 	return v, nil, nil
 }
 

@@ -1,7 +1,9 @@
 package util
 
 import (
+	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 )
 
@@ -24,10 +26,10 @@ type Guard interface {
 	Error(v interface{}) error
 
 	// Rollback calls rollback functions in reversed order
-	Rollback()
+	Rollback(ctx context.Context)
 
 	// Add adds given rollback functions, but skips if f == nil
-	Add(f func())
+	Add(f func(context.Context))
 }
 
 // FuncGuard returns Guard instance for function
@@ -38,7 +40,7 @@ func FuncGuard(name string) Guard {
 type guard struct {
 	errMsg  string
 	err     error
-	rbFuncs []func()
+	rbFuncs []func(context.Context)
 }
 
 func (g *guard) Error(v interface{}) error {
@@ -50,14 +52,14 @@ func (g *guard) Error(v interface{}) error {
 	return g.err
 }
 
-func (g *guard) Rollback() {
+func (g *guard) Rollback(ctx context.Context) {
 	for i := len(g.rbFuncs) - 1; i >= 0; i-- {
-		g.rbFuncs[i]()
+		g.rbFuncs[i](ctx)
 	}
 	g.rbFuncs = nil // do not rollback twice
 }
 
-func (g *guard) Add(f func()) {
+func (g *guard) Add(f func(context.Context)) {
 	if f != nil {
 		g.rbFuncs = append(g.rbFuncs, f)
 	}

@@ -12,7 +12,7 @@ type Value interface {
 
 	// Eval returns a evaluated value.
 	// Literals like string,number,... return itself as-is.
-	Eval(ctx context.Context) (val Value, rollback func(), err error)
+	Eval(ctx context.Context) (val Value, rollback func(context.Context), err error)
 
 	// Type returns the type of this value.
 	Type() Type

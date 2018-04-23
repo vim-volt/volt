@@ -17,7 +17,7 @@ type Op interface {
 	// If this operator is a function, it executes the operation and returns its
 	// result and error.
 	// If this operator is a macro, this expands expression.
-	EvalExpr(ctx context.Context, args []Value) (ret Value, rollback func(), err error)
+	EvalExpr(ctx context.Context, args []Value) (ret Value, rollback func(context.Context), err error)
 
 	// IsMacro returns true if this operator is a macro
 	IsMacro() bool

@@ -27,6 +27,6 @@ func (*arrayOp) Bind(args ...types.Value) (types.Expr, error) {
 	return expr, nil
 }
 
-func (*arrayOp) EvalExpr(ctx context.Context, args []types.Value) (types.Value, func(), error) {
+func (*arrayOp) EvalExpr(ctx context.Context, args []types.Value) (types.Value, func(context.Context), error) {
 	return types.NewArray(args, types.AnyValue), nil, nil
 }

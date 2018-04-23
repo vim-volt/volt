@@ -39,7 +39,7 @@ func (expr *expr) RetType() Type {
 	return expr.retType
 }
 
-func (expr *expr) Eval(ctx context.Context) (val Value, rollback func(), err error) {
+func (expr *expr) Eval(ctx context.Context) (val Value, rollback func(context.Context), err error) {
 	return expr.op.EvalExpr(ctx, expr.args)
 }
 

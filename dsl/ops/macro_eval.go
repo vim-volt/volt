@@ -28,7 +28,7 @@ func (*evalOp) Bind(args ...types.Value) (types.Expr, error) {
 	return expr, nil
 }
 
-func (*evalOp) EvalExpr(ctx context.Context, args []types.Value) (types.Value, func(), error) {
+func (*evalOp) EvalExpr(ctx context.Context, args []types.Value) (types.Value, func(context.Context), error) {
 	if err := util.Signature(types.AnyValue).Check(args); err != nil {
 		return nil, nil, err
 	}

@@ -43,7 +43,7 @@ func (*doOp) InvertExpr(ctx context.Context, args []types.Value) (types.Value, e
 	return DoOp.Bind(newargs...)
 }
 
-func (*doOp) EvalExpr(ctx context.Context, args []types.Value) (_ types.Value, _ func(), result error) {
+func (*doOp) EvalExpr(ctx context.Context, args []types.Value) (_ types.Value, _ func(context.Context), result error) {
 	g := util.FuncGuard(DoOp.String())
 	defer func() {
 		result = g.Error(recover())
