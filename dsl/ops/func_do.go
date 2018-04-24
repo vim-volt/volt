@@ -50,9 +50,8 @@ func (*doOp) EvalExpr(ctx context.Context, args []types.Value) (_ types.Value, _
 	}()
 
 	var lastVal types.Value
-	empty := make([]types.Value, 0)
 	for i := range args {
-		v, rbFunc, err := args[i].(types.Op).EvalExpr(ctx, empty)
+		v, rbFunc, err := args[i].(types.Lambda).Call(ctx)
 		g.Add(rbFunc)
 		if err != nil {
 			result = g.Error(err)
