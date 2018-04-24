@@ -122,10 +122,14 @@ Parameter types are
 * expression (only macro can treat this)
 
 But all values must be able to be serialized to JSON.  Because AST of whole
-process is serialized and saved as a "transaction log file".  The process can be
-rolled back, when an error occur while the process, or user send SIGINT signal,
-or `volt history undo` command is executed.  The transaction log file does not
-have ID but the saved directory `{id}` does:
+process is serialized and saved as a "transaction log file".
+
+NOTE: All macros has `$` prefixed name for readability.
+Macros are not saved in transaction log (expanded before saving).
+
+The process can be rolled back, when an error occur while the process, or user
+send SIGINT signal, or `volt history undo` command is executed.  The transaction
+log file does not have ID but the saved directory `{id}` does:
 
 ```
 $VOLTPATH/trx/{id}/log.json
@@ -367,10 +371,7 @@ As the above signature shows, operators must take care the following points:
 
 TODO: Move to Godoc.
 
-### Basic macros
-
-All macros has `$` prefixed name for readability.
-Macros are not saved in transaction log (expanded before saving).
+### Basic operators
 
 * `["$array", v1 Value, ...] Array`
   * Returns inverse expression of given expression.
@@ -390,20 +391,31 @@ Macros are not saved in transaction log (expanded before saving).
     instead of its expression.
   * See `repos/git/fetch`, `repos/git/update` for concrete example.
 
-### Basic operators
+* `["fn", [args ...[]string], body Expr[R]]R`
+  * Returns a lambda with `arity` number arguments and `body` expression.
+  * e.g.
+    * `["fn", [], ["lockjson/write"]]`
+    * see below
 
-* `["$label", linenum: number, tmpl string, expr Expr[* => R]] R`
+```json
+[["fn", [["path", "string"], ["profiles", ["array", "string"]]],
+  ["lockjson/add", ["repos/get", ["arg", "path"]], ["arg", "profiles"]]],
+  "github.com/tyru/caw.vim",
+  ["$array", "default"]]
+```
+
+* `["$label", linenum number, tmpl string, expr Expr[R]] R`
   * `["$label", linenum, tmpl, expr]` expands to
     `["label", linenum, tmpl, ["fn", [] expr]]`
 
-* `["label", linenum: number, tmpl string, thunk Func[* => R]] R`
+* `["label", linenum number, tmpl string, thunk Func[R]] R`
   * Render `tmpl` by text/template to `linenum` line (1-origin).
     Returns the evaluated value of `thunk`.
   * e.g.
     * `["$invert", ["label", linenum, "msg", thunk]]` = `["label", ["$invert", linenum], "revert: \"msg\"", ["$invert", thunk]]`
     * See `Label examples` section for more details
 
-* `["$do", expr1 Expr[* => R1], ..., expr_last Expr[* => R2]] R2`
+* `["$do", expr1 Expr[R1], ..., expr_last Expr[R2]] R2`
   * `["$do", expr1, expr2]` expands to
     `["do", ["fn", [], expr1], ["fn", [], expr2]]`
 
@@ -414,11 +426,11 @@ Macros are not saved in transaction log (expanded before saving).
     * `["$invert", ["do", thunk1, thunk2]]` = `["do", ["$invert", thunk1], ["$invert", thunk2]]`
       * Note that the arguments are reversed.
 
-* `["$parallel", expr1 Expr[* => R1], ..., expr_last Expr[* => R2]] R2`
+* `["$parallel", expr1 Expr[R1], ..., expr_last Expr[R2]] R2`
   * `["$parallel", expr1, expr2]` expands to
     `["parallel", ["fn", [], expr1], ["fn", [], expr2]]`
 
-* `["parallel", thunk1 Func[* => R1], ..., thunk_last Func[* => R2]] R2`
+* `["parallel", thunk1 Func[R1], ..., thunk_last Func[R2]] R2`
   * Executes multiple lambdas in parallel.
   * Returns the evaluated value of the last lambda.
   * e.g.
@@ -549,7 +561,7 @@ Macros are not saved in transaction log (expanded before saving).
 
 ### Vim directory operators
 
-* `["vimdir/with-install", paths "all" | []ReposPath, expr Expr[* => R]] R`
+* `["vimdir/with-install", paths "all" | []ReposPath, expr Expr[R]] R`
   * `paths` is the list of repositories to build after `expr` is executed.
     * `"all"` means all repositories of current profile.
   * e.g.
