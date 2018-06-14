@@ -257,7 +257,7 @@ endfunction
 "
 " This function must contain 'return "<str>"' code.
 " (the argument of :return must be string literal)
-function! s:depends()
+function! s:loaded_on()
   " this is the default value, you don't have to write this
   return 'start'
 endfunction
