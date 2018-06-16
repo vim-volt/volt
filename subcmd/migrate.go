@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/subcmd/migrate"
+	"github.com/vim-volt/volt/subcmd/migration"
 )
 
 func init() {
@@ -26,7 +26,7 @@ func (cmd *migrateCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		args := fs.Args()
 		if len(args) > 0 {
-			m, err := migrate.GetMigrater(args[0])
+			m, err := migration.GetMigrater(args[0])
 			if err != nil {
 				return
 			}
@@ -55,8 +55,8 @@ Available operations`)
 	return fs
 }
 
-func (cmd *migrateCmd) Run(args []string) *Error {
-	op, err := cmd.parseArgs(args)
+func (cmd *migrateCmd) Run(runctx *RunContext) *Error {
+	op, err := cmd.parseArgs(runctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}
@@ -64,7 +64,7 @@ func (cmd *migrateCmd) Run(args []string) *Error {
 		return &Error{Code: 10, Msg: "Failed to parse args: " + err.Error()}
 	}
 
-	if err := op.Migrate(); err != nil {
+	if err := op.Migrate(runctx.LockJSON, runctx.Config); err != nil {
 		return &Error{Code: 11, Msg: "Failed to migrate: " + err.Error()}
 	}
 
@@ -72,7 +72,7 @@ func (cmd *migrateCmd) Run(args []string) *Error {
 	return nil
 }
 
-func (cmd *migrateCmd) parseArgs(args []string) (migrate.Migrater, error) {
+func (cmd *migrateCmd) parseArgs(args []string) (migration.Migrater, error) {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {
@@ -82,11 +82,11 @@ func (cmd *migrateCmd) parseArgs(args []string) (migrate.Migrater, error) {
 	if len(args) == 0 {
 		return nil, errors.New("please specify migration operation")
 	}
-	return migrate.GetMigrater(args[0])
+	return migration.GetMigrater(args[0])
 }
 
 func (cmd *migrateCmd) showAvailableOps(write func(string)) {
-	for _, m := range migrate.ListMigraters() {
+	for _, m := range migration.ListMigraters() {
 		write(fmt.Sprintf("  %s", m.Name()))
 		write(fmt.Sprintf("    %s", m.Description(true)))
 	}

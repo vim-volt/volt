@@ -41,8 +41,8 @@ Description
 	return fs
 }
 
-func (cmd *disableCmd) Run(args []string) *Error {
-	reposPathList, err := cmd.parseArgs(args)
+func (cmd *disableCmd) Run(runctx *RunContext) *Error {
+	reposPathList, err := cmd.parseArgs(runctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}
@@ -51,10 +51,11 @@ func (cmd *disableCmd) Run(args []string) *Error {
 	}
 
 	profCmd := profileCmd{}
-	err = profCmd.doRm(append(
+	runctx.Args = append(
 		[]string{"-current"},
 		reposPathList.Strings()...,
-	))
+	)
+	err = profCmd.doRm(runctx)
 	if err != nil {
 		return &Error{Code: 11, Msg: err.Error()}
 	}

@@ -37,10 +37,12 @@ func init() {
 	os.RemoveAll(filepath.Join(testdataDir, "voltpath"))
 }
 
+// TestdataDir returns the fullpath of "testdata" directory
 func TestdataDir() string {
 	return testdataDir
 }
 
+// SetUpEnv sets up environment variables related to volt.
 func SetUpEnv(t *testing.T) {
 	tempDir, err := ioutil.TempDir("", "volt-test-")
 	if err != nil {
@@ -58,12 +60,16 @@ func SetUpEnv(t *testing.T) {
 	}
 }
 
+// RunVolt invokes volt command by os/exec.Command() and returns cmd.CombinedOutput()
 func RunVolt(args ...string) ([]byte, error) {
 	cmd := exec.Command(voltCommand, args...)
 	// cmd.Env = append(os.Environ(), "VOLTPATH="+voltpath)
 	return cmd.CombinedOutput()
 }
 
+// SuccessExit fails if any of the following conditions met:
+// * out has "[WARN]" or "[ERROR]"
+// * err is non-nil
 func SuccessExit(t *testing.T, out []byte, err error) {
 	t.Helper()
 	outstr := string(out)
@@ -75,6 +81,9 @@ func SuccessExit(t *testing.T, out []byte, err error) {
 	}
 }
 
+// FailExit fails if any of the following conditions met:
+// * out does not has "[WARN]" nor "[ERROR]"
+// * err is nil
 func FailExit(t *testing.T, out []byte, err error) {
 	t.Helper()
 	outstr := string(out)
@@ -86,7 +95,7 @@ func FailExit(t *testing.T, out []byte, err error) {
 	}
 }
 
-// Return sorted list of command names list
+// GetCmdList returns sorted list of command names list
 func GetCmdList() ([]string, error) {
 	out, err := RunVolt("help")
 	if err != nil {
@@ -117,7 +126,7 @@ func GetCmdList() ([]string, error) {
 	return cmdList, nil
 }
 
-// Set up $VOLTPATH after "volt get <repos>"
+// SetUpRepos sets up $VOLTPATH after "volt get <repos>"
 // but the same repository is cloned only at first time
 // under testdata/voltpath/{testdataName}/repos/<repos>
 func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, reposPathList []pathutil.ReposPath, strategy string) func() {
@@ -196,6 +205,8 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 	return func() {}
 }
 
+// InstallConfig installs config file of "testdata/config/{filename}"
+// to $VOLTPATH/config.toml
 func InstallConfig(t *testing.T, filename string) {
 	configFile := filepath.Join(testdataDir, "config", filename)
 	voltpath := os.Getenv("VOLTPATH")
@@ -206,6 +217,9 @@ func InstallConfig(t *testing.T, filename string) {
 	}
 }
 
+// DefaultMatrix enumerates the combination of:
+// * strategy (symlink,copy)
+// * full (true,false)
 func DefaultMatrix(t *testing.T, f func(*testing.T, bool, string)) {
 	for _, tt := range []struct {
 		full     bool
@@ -222,6 +236,7 @@ func DefaultMatrix(t *testing.T, f func(*testing.T, bool, string)) {
 	}
 }
 
+// AvailableStrategies returns all avaiable strategies
 func AvailableStrategies() []string {
 	return []string{config.SymlinkBuilder, config.CopyBuilder}
 }

@@ -5,12 +5,12 @@ package main
 import (
 	"os"
 
+	"github.com/vim-volt/volt/gateway"
 	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/subcmd"
 )
 
 func main() {
-	err := subcmd.Run(os.Args, subcmd.DefaultRunner)
+	err := gateway.Run(os.Args, gateway.DefaultRunner)
 	if err != nil {
 		logger.Error(err.Msg)
 		os.Exit(err.Code)

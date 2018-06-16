@@ -5,6 +5,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/lockjson"
 )
 
 func TestVoltSelfUpgrade(t *testing.T) {
@@ -31,7 +34,7 @@ func testVoltSelfUpgradeCheckFromOldVer(t *testing.T) {
 	var err *Error
 	out := captureOutput(t, func() {
 		args := []string{"volt", "self-upgrade", "-check"}
-		err = Run(args, DefaultRunner)
+		runSelfUpgrade(t, args)
 	})
 
 	if err != nil {
@@ -47,7 +50,7 @@ func testVoltSelfUpgradeCheckFromCurrentVer(t *testing.T) {
 	var err *Error
 	out := captureOutput(t, func() {
 		args := []string{"volt", "self-upgrade", "-check"}
-		err = Run(args, DefaultRunner)
+		runSelfUpgrade(t, args)
 	})
 
 	if err != nil {
@@ -56,6 +59,31 @@ func testVoltSelfUpgradeCheckFromCurrentVer(t *testing.T) {
 	if out != "[INFO] No updates were found.\n" {
 		t.Error("Expected no updates found, but got: " + out)
 	}
+}
+
+func runSelfUpgrade(t *testing.T, args []string) {
+	t.Helper()
+
+	// Read lock.json
+	lockJSON, err := lockjson.Read()
+	if err != nil {
+		t.Error("failed to read lock.json: " + err.Error())
+		return
+	}
+
+	// Read config.toml
+	cfg, err := config.Read()
+	if err != nil {
+		t.Error("could not read config.toml: " + err.Error())
+		return
+	}
+
+	cmd := &selfUpgradeCmd{}
+	err = cmd.Run(&RunContext{
+		Args:     args,
+		LockJSON: lockJSON,
+		Config:   cfg,
+	})
 }
 
 func captureOutput(t *testing.T, f func()) string {

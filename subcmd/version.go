@@ -40,9 +40,9 @@ Description
 	return fs
 }
 
-func (cmd *versionCmd) Run(args []string) *Error {
+func (cmd *versionCmd) Run(runctx *RunContext) *Error {
 	fs := cmd.FlagSet()
-	fs.Parse(args)
+	fs.Parse(runctx.Args)
 	if cmd.helped {
 		return nil
 	}

@@ -586,6 +586,8 @@ func gitCommitOne(reposPath pathutil.ReposPath) (prev plumbing.Hash, current plu
 		err = errors.New("ioutil.WriteFile() failed: " + err.Error())
 		return
 	}
+
+	// Set previous HEAD hash
 	r, err := git.PlainOpen(reposPath.FullPath())
 	if err != nil {
 		return
@@ -593,9 +595,10 @@ func gitCommitOne(reposPath pathutil.ReposPath) (prev plumbing.Hash, current plu
 	head, err := r.Head()
 	if err != nil {
 		return
-	} else {
-		prev = head.Hash()
 	}
+	prev = head.Hash()
+
+	// Set current HEAD hash
 	w, err := r.Worktree()
 	if err != nil {
 		return
@@ -617,18 +620,20 @@ func gitResetHard(reposPath pathutil.ReposPath, ref string) (current plumbing.Ha
 	if err != nil {
 		return
 	}
+
+	// Set next HEAD hash
 	head, err := r.Head()
 	if err != nil {
 		return
-	} else {
-		next = head.Hash()
 	}
+	next = head.Hash()
+
+	// Set current and 'git reset --hard {current}'
 	rev, err := r.ResolveRevision(plumbing.Revision(ref))
 	if err != nil {
 		return
-	} else {
-		current = *rev
 	}
+	current = *rev
 	err = w.Reset(&git.ResetOptions{
 		Commit: current,
 		Mode:   git.HardReset,

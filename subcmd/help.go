@@ -99,7 +99,8 @@ Command
 	return fs
 }
 
-func (cmd *helpCmd) Run(args []string) *Error {
+func (cmd *helpCmd) Run(runctx *RunContext) *Error {
+	args := runctx.Args
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		return nil
@@ -112,7 +113,7 @@ func (cmd *helpCmd) Run(args []string) *Error {
 	if !exists {
 		return &Error{Code: 1, Msg: fmt.Sprintf("Unknown command '%s'", args[0])}
 	}
-	args = append([]string{"-help"}, args[1:]...)
-	fs.Run(args)
+	runctx.Args = append([]string{"-help"}, args[1:]...)
+	fs.Run(runctx)
 	return nil
 }

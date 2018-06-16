@@ -4,10 +4,11 @@ import (
 	"errors"
 	"os"
 
+	"github.com/vim-volt/volt/buildinfo"
 	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
-	"github.com/vim-volt/volt/subcmd/buildinfo"
 )
 
 // Builder creates/updates ~/.vim/pack/volt directory
@@ -18,15 +19,9 @@ type Builder interface {
 const currentBuildInfoVersion = 2
 
 // Build creates/updates ~/.vim/pack/volt directory
-func Build(full bool) error {
-	// Read config.toml
-	cfg, err := config.Read()
-	if err != nil {
-		return errors.New("could not read config.toml: " + err.Error())
-	}
-
+func Build(full bool, lockJSON *lockjson.LockJSON, cfg *config.Config) error {
 	// Get builder
-	blder, err := getBuilder(cfg.Build.Strategy)
+	blder, err := getBuilder(cfg.Build.Strategy, lockJSON)
 	if err != nil {
 		return err
 	}
@@ -78,12 +73,13 @@ func Build(full bool) error {
 	return blder.Build(buildInfo, buildReposMap)
 }
 
-func getBuilder(strategy string) (Builder, error) {
+func getBuilder(strategy string, lockJSON *lockjson.LockJSON) (Builder, error) {
+	base := &BaseBuilder{lockJSON: lockJSON}
 	switch strategy {
 	case config.SymlinkBuilder:
-		return &symlinkBuilder{}, nil
+		return &symlinkBuilder{base}, nil
 	case config.CopyBuilder:
-		return &copyBuilder{}, nil
+		return &copyBuilder{base}, nil
 	default:
 		return nil, errors.New("unknown builder type: " + strategy)
 	}

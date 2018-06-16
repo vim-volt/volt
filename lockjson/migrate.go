@@ -35,7 +35,7 @@ func migrate1To2(rawJSON []byte, lockJSON *LockJSON) error {
 		return err
 	}
 	lockJSON.CurrentProfileName = j.ActiveProfile
-	lockJSON.Version += 1
+	lockJSON.Version++
 
 	return nil
 }

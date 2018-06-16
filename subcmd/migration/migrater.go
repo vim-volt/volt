@@ -1,13 +1,16 @@
-package migrate
+package migration
 
 import (
 	"errors"
 	"sort"
+
+	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/lockjson"
 )
 
 // Migrater migrates many kinds of data.
 type Migrater interface {
-	Migrate() error
+	Migrate(*lockjson.LockJSON, *config.Config) error
 	Name() string
 	Description(brief bool) string
 }

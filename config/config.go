@@ -9,20 +9,20 @@ import (
 
 // Config is marshallable content of config.toml
 type Config struct {
-	Alias map[string][]string `toml:"alias"`
-	Build configBuild         `toml:"build"`
-	Get   configGet           `toml:"get"`
+	Alias map[string][]string `toml:"alias" json:"alias"`
+	Build configBuild         `toml:"build" json:"build"`
+	Get   configGet           `toml:"get" json:"get"`
 }
 
 // configBuild is a config for 'volt build'.
 type configBuild struct {
-	Strategy string `toml:"strategy"`
+	Strategy string `toml:"strategy" json:"strategy"`
 }
 
 // configGet is a config for 'volt get'.
 type configGet struct {
-	CreateSkeletonPlugconf *bool `toml:"create_skeleton_plugconf"`
-	FallbackGitCmd         *bool `toml:"fallback_git_cmd"`
+	CreateSkeletonPlugconf *bool `toml:"create_skeleton_plugconf" json:"create_skeleton_plugconf"`
+	FallbackGitCmd         *bool `toml:"fallback_git_cmd" json:"fallback_git_cmd"`
 }
 
 const (

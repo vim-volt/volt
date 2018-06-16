@@ -99,9 +99,9 @@ Quick example
 	return fs
 }
 
-func (cmd *profileCmd) Run(args []string) *Error {
+func (cmd *profileCmd) Run(runctx *RunContext) *Error {
 	// Parse args
-	args, err := cmd.parseArgs(args)
+	args, err := cmd.parseArgs(runctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}
@@ -110,23 +110,24 @@ func (cmd *profileCmd) Run(args []string) *Error {
 	}
 
 	subCmd := args[0]
+	runctx.Args = args[1:]
 	switch subCmd {
 	case "set":
-		err = cmd.doSet(args[1:])
+		err = cmd.doSet(runctx)
 	case "show":
-		err = cmd.doShow(args[1:])
+		err = cmd.doShow(runctx)
 	case "list":
-		err = cmd.doList(args[1:])
+		err = cmd.doList(runctx)
 	case "new":
-		err = cmd.doNew(args[1:])
+		err = cmd.doNew(runctx)
 	case "destroy":
-		err = cmd.doDestroy(args[1:])
+		err = cmd.doDestroy(runctx)
 	case "rename":
-		err = cmd.doRename(args[1:])
+		err = cmd.doRename(runctx)
 	case "add":
-		err = cmd.doAdd(args[1:])
+		err = cmd.doAdd(runctx)
 	case "rm":
-		err = cmd.doRm(args[1:])
+		err = cmd.doRm(runctx)
 	default:
 		return &Error{Code: 11, Msg: "Unknown subcommand: " + subCmd}
 	}
@@ -152,15 +153,10 @@ func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
 	return fs.Args(), nil
 }
 
-func (*profileCmd) getCurrentProfile() (string, error) {
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return "", errors.New("failed to read lock.json: " + err.Error())
-	}
-	return lockJSON.CurrentProfileName, nil
-}
+func (cmd *profileCmd) doSet(runctx *RunContext) (result error) {
+	args := runctx.Args
+	lockJSON := runctx.LockJSON
 
-func (cmd *profileCmd) doSet(args []string) error {
 	// Parse args
 	createProfile := false
 	if len(args) > 0 && args[0] == "-n" {
@@ -174,29 +170,19 @@ func (cmd *profileCmd) doSet(args []string) error {
 	}
 	profileName := args[0]
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
-	}
-
 	// Exit if current profile is same as profileName
 	if lockJSON.CurrentProfileName == profileName {
 		return fmt.Errorf("'%s' is current profile", profileName)
 	}
 
 	// Create given profile unless the profile exists
-	if _, err = lockJSON.Profiles.FindByName(profileName); err != nil {
+	if _, err := lockJSON.Profiles.FindByName(profileName); err != nil {
 		if !createProfile {
 			return err
 		}
-		if err = cmd.doNew([]string{profileName}); err != nil {
+		runctx.Args = []string{profileName}
+		if err := cmd.doNew(runctx); err != nil {
 			return err
-		}
-		// Read lock.json again
-		lockJSON, err = lockjson.Read()
-		if err != nil {
-			return errors.New("failed to read lock.json: " + err.Error())
 		}
 		if _, err = lockJSON.Profiles.FindByName(profileName); err != nil {
 			return err
@@ -204,11 +190,15 @@ func (cmd *profileCmd) doSet(args []string) error {
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	// Set profile name
 	lockJSON.CurrentProfileName = profileName
@@ -222,7 +212,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	logger.Info("Changed current profile: " + profileName)
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, lockJSON, runctx.Config)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
@@ -230,17 +220,14 @@ func (cmd *profileCmd) doSet(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doShow(args []string) error {
+func (cmd *profileCmd) doShow(runctx *RunContext) error {
+	args := runctx.Args
+	lockJSON := runctx.LockJSON
+
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile show' receives profile name.")
 		return nil
-	}
-
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
 	}
 
 	var profileName string
@@ -260,18 +247,21 @@ repos path:
   {{ . }}
 {{- end -}}
 {{- end }}
-`, profileName, profileName))
+`, profileName, profileName), lockJSON)
 }
 
-func (cmd *profileCmd) doList(args []string) error {
+func (cmd *profileCmd) doList(runctx *RunContext) error {
 	return (&listCmd{}).list(`
 {{- range .Profiles -}}
 {{- if eq .Name $.CurrentProfileName -}}*{{- else }} {{ end }} {{ .Name }}
 {{ end -}}
-`)
+`, runctx.LockJSON)
 }
 
-func (cmd *profileCmd) doNew(args []string) error {
+func (cmd *profileCmd) doNew(runctx *RunContext) (result error) {
+	args := runctx.Args
+	lockJSON := runctx.LockJSON
+
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile new' receives profile name.")
@@ -279,24 +269,22 @@ func (cmd *profileCmd) doNew(args []string) error {
 	}
 	profileName := args[0]
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
-	}
-
 	// Return error if profiles[]/name matches profileName
-	_, err = lockJSON.Profiles.FindByName(profileName)
+	_, err := lockJSON.Profiles.FindByName(profileName)
 	if err == nil {
 		return errors.New("profile '" + profileName + "' already exists")
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	// Add profile
 	lockJSON.Profiles = append(lockJSON.Profiles, lockjson.Profile{
@@ -315,25 +303,26 @@ func (cmd *profileCmd) doNew(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doDestroy(args []string) error {
+func (cmd *profileCmd) doDestroy(runctx *RunContext) (result error) {
+	args := runctx.Args
+	lockJSON := runctx.LockJSON
+
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile destroy' receives profile name.")
 		return nil
 	}
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
-	}
-
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	var merr *multierror.Error
 	for i := range args {
@@ -373,7 +362,10 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 	return merr.ErrorOrNil()
 }
 
-func (cmd *profileCmd) doRename(args []string) error {
+func (cmd *profileCmd) doRename(runctx *RunContext) (result error) {
+	args := runctx.Args
+	lockJSON := runctx.LockJSON
+
 	if len(args) != 2 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile rename' receives profile name.")
@@ -381,12 +373,6 @@ func (cmd *profileCmd) doRename(args []string) error {
 	}
 	oldName := args[0]
 	newName := args[1]
-
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
-	}
 
 	// Return error if profiles[]/name does not match oldName
 	index := lockJSON.Profiles.FindIndexByName(oldName)
@@ -400,11 +386,15 @@ func (cmd *profileCmd) doRename(args []string) error {
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	// Rename profile names
 	lockJSON.Profiles[index].Name = newName
@@ -432,12 +422,9 @@ func (cmd *profileCmd) doRename(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doAdd(args []string) error {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
-	}
+func (cmd *profileCmd) doAdd(runctx *RunContext) error {
+	args := runctx.Args
+	lockJSON := runctx.LockJSON
 
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs(lockJSON, "add", args)
@@ -466,7 +453,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, lockJSON, runctx.Config)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
@@ -474,12 +461,9 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doRm(args []string) error {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
-	}
+func (cmd *profileCmd) doRm(runctx *RunContext) error {
+	args := runctx.Args
+	lockJSON := runctx.LockJSON
 
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs(lockJSON, "rm", args)
@@ -510,7 +494,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, lockJSON, runctx.Config)
 	if err != nil {
 		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
 	}
@@ -547,7 +531,7 @@ func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, 
 }
 
 // Run modifyProfile and write modified structure to lock.json
-func (*profileCmd) transactProfile(lockJSON *lockjson.LockJSON, profileName string, modifyProfile func(*lockjson.Profile)) (*lockjson.LockJSON, error) {
+func (*profileCmd) transactProfile(lockJSON *lockjson.LockJSON, profileName string, modifyProfile func(*lockjson.Profile)) (resultLockJSON *lockjson.LockJSON, result error) {
 	// Return error if profiles[]/name does not match profileName
 	profile, err := lockJSON.Profiles.FindByName(profileName)
 	if err != nil {
@@ -555,11 +539,15 @@ func (*profileCmd) transactProfile(lockJSON *lockjson.LockJSON, profileName stri
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
 		return nil, err
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = err
+		}
+	}()
 
 	modifyProfile(profile)
 

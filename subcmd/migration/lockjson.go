@@ -1,10 +1,14 @@
-package migrate
+package migration
 
 import (
-	"errors"
+	"context"
 
+	"github.com/pkg/errors"
+	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/dsl"
+	"github.com/vim-volt/volt/dsl/dslctx"
+	"github.com/vim-volt/volt/dsl/ops"
 	"github.com/vim-volt/volt/lockjson"
-	"github.com/vim-volt/volt/transaction"
 )
 
 func init() {
@@ -31,24 +35,12 @@ Description
   To suppress this, running this command simply reads and writes migrated structure to lock.json.`
 }
 
-func (*lockjsonMigrater) Migrate() error {
-	// Read lock.json
-	lockJSON, err := lockjson.ReadNoMigrationMsg()
+func (*lockjsonMigrater) Migrate(lockJSON *lockjson.LockJSON, cfg *config.Config) error {
+	ctx := dslctx.WithDSLValues(context.Background(), lockJSON, cfg)
+	expr, err := ops.LockJSONWriteOp.Bind()
 	if err != nil {
-		return errors.New("could not read lock.json: " + err.Error())
+		return errors.Wrapf(err, "cannot bind %s operator", ops.LockJSONWriteOp.String())
 	}
-
-	// Begin transaction
-	err = transaction.Create()
-	if err != nil {
-		return err
-	}
-	defer transaction.Remove()
-
-	// Write to lock.json
-	err = lockJSON.Write()
-	if err != nil {
-		return errors.New("could not write to lock.json: " + err.Error())
-	}
-	return nil
+	_, err = dsl.Execute(ctx, expr)
+	return err
 }

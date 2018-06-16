@@ -61,6 +61,12 @@
   revision = "b8bc1bf767474819792c23f32d8286a45736f1c6"
 
 [[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/sergi/go-diff"
   packages = ["diffmatchpatch"]
@@ -189,6 +195,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b1abfdb1122cba036acff15042e704f2621de2eb3348e5751a2eb4fe46112e4a"
+  inputs-digest = "184a72da18c6dd9f91e0525a9fe6a5e072c2758b9046233614da5c88483acece"
   solver-name = "gps-cdcl"
   solver-version = 1
