@@ -5,20 +5,14 @@ package main
 import (
 	"os"
 
-	"github.com/vim-volt/volt/cmd"
 	"github.com/vim-volt/volt/logger"
+	"github.com/vim-volt/volt/subcmd"
 )
 
 func main() {
-	os.Exit(doMain())
-}
-
-func doMain() int {
-	if os.Getenv("VOLT_DEBUG") != "" {
-		logger.SetLevel(logger.DebugLevel)
+	err := subcmd.Run(os.Args, subcmd.DefaultRunner)
+	if err != nil {
+		logger.Error(err.Msg)
+		os.Exit(err.Code)
 	}
-	if len(os.Args) <= 1 {
-		os.Args = append(os.Args, "help")
-	}
-	return cmd.Run(os.Args[1], os.Args[2:])
 }

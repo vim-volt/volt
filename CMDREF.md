@@ -1,3 +1,76 @@
+```
+ .----------------.  .----------------.  .----------------.  .----------------.
+| .--------------. || .--------------. || .--------------. || .--------------. |
+| | ____   ____  | || |     ____     | || |   _____      | || |  _________   | |
+| ||_  _| |_  _| | || |   .'    `.   | || |  |_   _|     | || | |  _   _  |  | |
+| |  \ \   / /   | || |  /  .--.  \  | || |    | |       | || | |_/ | | \_|  | |
+| |   \ \ / /    | || |  | |    | |  | || |    | |   _   | || |     | |      | |
+| |    \ ' /     | || |  \  `--'  /  | || |   _| |__/ |  | || |    _| |_     | |
+| |     \_/      | || |   `.____.'   | || |  |________|  | || |   |_____|    | |
+| |              | || |              | || |              | || |              | |
+| '--------------' || '--------------' || '--------------' || '--------------' |
+ '----------------'  '----------------'  '----------------'  '----------------'
+
+Usage
+  volt COMMAND ARGS
+
+Command
+  get [-l] [-u] [{repository} ...]
+    Install or upgrade given {repository} list, or add local {repository} list as plugins
+
+  rm [-r] [-p] {repository} [{repository2} ...]
+    Remove vim plugin from ~/.vim/pack/volt/opt/ directory
+
+  list [-f {text/template string}]
+    Vim plugin information extractor.
+    Unless -f flag was given, this command shows vim plugins of **current profile** (not all installed plugins) by default.
+
+  enable {repository} [{repository2} ...]
+    This is shortcut of:
+    volt profile add -current {repository} [{repository2} ...]
+
+  disable {repository} [{repository2} ...]
+    This is shortcut of:
+    volt profile rm -current {repository} [{repository2} ...]
+
+  profile set {name}
+    Set profile name
+
+  profile show {name}
+    Show profile info
+
+  profile list
+    List all profiles
+
+  profile new {name}
+    Create new profile
+
+  profile destroy {name}
+    Delete profile
+
+  profile rename {old} {new}
+    Rename profile {old} to {new}
+
+  profile add {name} {repository} [{repository2} ...]
+    Add one or more repositories to profile
+
+  profile rm {name} {repository} [{repository2} ...]
+    Remove one or more repositories to profile
+
+  build [-full]
+    Build ~/.vim/pack/volt/ directory
+
+  migrate {migration operation}
+    Perform miscellaneous migration operations.
+    See 'volt migrate -help' for all available operations
+
+  self-upgrade [-check]
+    Upgrade to the latest volt command, or if -check was given, it only checks the newer version is available
+
+  version
+    Show volt command version
+```
+
 # volt build
 
 ```
@@ -137,7 +210,7 @@ Quick example
 
   Show repositories used by current profile:
 
-  $ volt list -f '{{ range .Profiles }}{{ if eq $.CurrentProfileName .Name }}{{ range .ReposPath }}{{ . }}{{ end }}{{ end }}{{ end }}'
+  $ volt list -f '{{ range .Profiles }}{{ if eq $.CurrentProfileName .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}'
 
   Or (see "Additional property"):
 

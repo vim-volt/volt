@@ -1,4 +1,4 @@
-package cmd
+package subcmd
 
 import (
 	"errors"
@@ -6,34 +6,33 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 )
 
 func init() {
-	cmdMap["enable"] = &enableCmd{}
+	cmdMap["disable"] = &disableCmd{}
 }
 
-type enableCmd struct {
+type disableCmd struct {
 	helped bool
 }
 
-func (cmd *enableCmd) ProhibitRootExecution(args []string) bool { return true }
+func (cmd *disableCmd) ProhibitRootExecution(args []string) bool { return true }
 
-func (cmd *enableCmd) FlagSet() *flag.FlagSet {
+func (cmd *disableCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt enable [-help] {repository} [{repository2} ...]
+  volt disable [-help] {repository} [{repository2} ...]
 
 Quick example
-  $ volt enable tyru/caw.vim # will enable tyru/caw.vim plugin in current profile
+  $ volt disable tyru/caw.vim # will disable tyru/caw.vim plugin in current profile
 
 Description
   This is shortcut of:
-  volt profile add {current profile} {repository} [{repository2} ...]` + "\n\n")
+  volt profile rm {current profile} {repository} [{repository2} ...]` + "\n\n")
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()
@@ -42,30 +41,28 @@ Description
 	return fs
 }
 
-func (cmd *enableCmd) Run(args []string) int {
+func (cmd *disableCmd) Run(args []string) *Error {
 	reposPathList, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
-		return 0
+		return nil
 	}
 	if err != nil {
-		logger.Error("Failed to parse args: " + err.Error())
-		return 10
+		return &Error{Code: 10, Msg: "Failed to parse args: " + err.Error()}
 	}
 
 	profCmd := profileCmd{}
-	err = profCmd.doAdd(append(
+	err = profCmd.doRm(append(
 		[]string{"-current"},
 		reposPathList.Strings()...,
 	))
 	if err != nil {
-		logger.Error(err.Error())
-		return 11
+		return &Error{Code: 11, Msg: err.Error()}
 	}
 
-	return 0
+	return nil
 }
 
-func (cmd *enableCmd) parseArgs(args []string) (pathutil.ReposPathList, error) {
+func (cmd *disableCmd) parseArgs(args []string) (pathutil.ReposPathList, error) {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {

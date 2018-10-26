@@ -1,4 +1,4 @@
-package cmd
+package subcmd
 
 import (
 	"errors"
@@ -14,7 +14,6 @@ import (
 
 	"gopkg.in/src-d/go-git.v4"
 
-	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/gitutil"
@@ -22,6 +21,7 @@ import (
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/plugconf"
+	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -115,41 +115,36 @@ Options`)
 	return fs
 }
 
-func (cmd *getCmd) Run(args []string) int {
+func (cmd *getCmd) Run(args []string) *Error {
 	// Parse args
 	args, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
-		return 0
+		return nil
 	}
 	if err != nil {
-		logger.Error("Failed to parse args: " + err.Error())
-		return 10
+		return &Error{Code: 10, Msg: "Failed to parse args: " + err.Error()}
 	}
 
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		logger.Error("Could not read lock.json: " + err.Error())
-		return 11
+		return &Error{Code: 11, Msg: "Could not read lock.json: " + err.Error()}
 	}
 
 	reposPathList, err := cmd.getReposPathList(args, lockJSON)
 	if err != nil {
-		logger.Error("Could not get repos list: " + err.Error())
-		return 12
+		return &Error{Code: 12, Msg: "Could not get repos list: " + err.Error()}
 	}
 	if len(reposPathList) == 0 {
-		logger.Error("No repositories are specified")
-		return 13
+		return &Error{Code: 13, Msg: "No repositories are specified"}
 	}
 
 	err = cmd.doGet(reposPathList, lockJSON)
 	if err != nil {
-		logger.Error(err.Error())
-		return 20
+		return &Error{Code: 20, Msg: err.Error()}
 	}
 
-	return 0
+	return nil
 }
 
 func (cmd *getCmd) parseArgs(args []string) ([]string, error) {
@@ -638,8 +633,11 @@ func (cmd *getCmd) gitPull(r *git.Repository, workDir string, remote string, cfg
 		return err
 	}
 	err = wt.Pull(&git.PullOptions{
-		RemoteName:        remote,
-		RecurseSubmodules: 10,
+		RemoteName: remote,
+		// TODO: Temporarily recursive clone is disabled, because go-git does
+		// not support relative submodule url in .gitmodules and it causes an
+		// error
+		RecurseSubmodules: 0,
 	})
 	if err == nil || err == git.NoErrAlreadyUpToDate {
 		return err

@@ -4,7 +4,6 @@
 ----
 
 ```
-$ volt
  .----------------.  .----------------.  .----------------.  .----------------.
 | .--------------. || .--------------. || .--------------. || .--------------. |
 | | ____   ____  | || |     ____     | || |   _____      | || |  _________   | |
@@ -16,65 +15,6 @@ $ volt
 | |              | || |              | || |              | || |              | |
 | '--------------' || '--------------' || '--------------' || '--------------' |
  '----------------'  '----------------'  '----------------'  '----------------'
-
-Usage
-  volt COMMAND ARGS
-
-Command
-  get [-l] [-u] [{repository} ...]
-    Install or upgrade given {repository} list, or add local {repository} list as plugins
-
-  rm [-r] [-p] {repository} [{repository2} ...]
-    Remove vim plugin from ~/.vim/pack/volt/opt/ directory
-
-  list [-f {text/template string}]
-    Vim plugin information extractor.
-    Unless -f flag was given, this command shows vim plugins of **current profile** (not all installed plugins) by default.
-
-  enable {repository} [{repository2} ...]
-    This is shortcut of:
-    volt profile add -current {repository} [{repository2} ...]
-
-  disable {repository} [{repository2} ...]
-    This is shortcut of:
-    volt profile rm -current {repository} [{repository2} ...]
-
-  profile set {name}
-    Set profile name
-
-  profile show {name}
-    Show profile info
-
-  profile list
-    List all profiles
-
-  profile new {name}
-    Create new profile
-
-  profile destroy {name}
-    Delete profile
-
-  profile rename {old} {new}
-    Rename profile {old} to {new}
-
-  profile add {name} {repository} [{repository2} ...]
-    Add one or more repositories to profile
-
-  profile rm {name} {repository} [{repository2} ...]
-    Remove one or more repositories to profile
-
-  build [-full]
-    Build ~/.vim/pack/volt/ directory
-
-  migrate {migration operation}
-    Perform miscellaneous migration operations.
-    See 'volt migrate -help' for all available operations
-
-  self-upgrade [-check]
-    Upgrade to the latest volt command, or if -check was given, it only checks the newer version is available
-
-  version
-    Show volt command version
 ```
 
 See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.md) for more details.
@@ -82,8 +22,6 @@ See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.
 
 * [What is Volt](#what-is-volt)
 * [Install](#install)
-* [Build Environment](#build-environment)
-* [Config](#config)
 * [Self upgrade](#self-upgrade)
 * [Introduction](#introduction)
   * [VOLTPATH](#voltpath)
@@ -92,6 +30,7 @@ See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.
   * [Uninstall plugins](#uninstall-plugins)
 * [How it works](#how-it-works)
   * [Syncing ~/.vim/pack/volt directory with $VOLTPATH](#syncing-vimpackvolt-directory-with-voltpath)
+* [Config](#config)
 * [Features](#features)
   * [Easy setup](#easy-setup)
   * [Configuration per plugin ("Plugconf" feature)](#configuration-per-plugin-plugconf-feature)
@@ -104,6 +43,7 @@ See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.
 ## What is Volt
 
 * Multi-platform CLI tool managing Vim plugin life
+* Parallel vim plugin update
 * Based on Vim 8 [packages feature](http://vimhelp.appspot.com/repeat.txt.html#packages)
     * All plugins are installed under `~/.vim/pack/volt` directory
 * Zero overhead & optimizations
@@ -114,43 +54,21 @@ See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.
     * This separates plugin configuration from vimrc, so you can easily disable/remove plugins in a second
 * [Profile feature](#switch-set-of-plugins-profile-feature) saves set of plugins, vimrc, and gvimrc
     * You can switch those combinations with one command
+    * For example, you can switch various Vim such as Web development mode, Essential plugins + vimrc only, or Vanilla Vim.
 
 ## Install
 
-```
-$ go get github.com/vim-volt/volt
-```
-
-Or download binaries from [GitHub releases](https://github.com/vim-volt/volt/releases).
-
-## Build environment
-
-* Go 1.9 or higher
-  * If you are on WSL (Windows Subsystem Linux), note that you need **[the patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ([#1](https://github.com/vim-volt/go-volt/issues/1))**
+* **RECOMMENDED**: Download binaries from [GitHub releases](https://github.com/vim-volt/volt/releases)
+* Or `go get github.com/vim-volt/volt`
+  * You need Go 1.9 or higher
+  * And if you are using Windows Subsystem Linux, you need to apply **[the patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ! ([#1](https://github.com/vim-volt/go-volt/issues/1))**
   * But it's a hassle, you can just download linux-386/amd64 binaries from [GitHub releases](https://github.com/vim-volt/volt/releases) :)
 
-## Config
-
-Config file: `$VOLTPATH/config.toml`
-
-```toml
-[build]
-# * "symlink" (default): "volt build" creates symlinks "~/.vim/pack/volt/opt/<repos>" referring to "$VOLTPATH/repos/<repos>"
-# * "copy": "volt build" copies "$VOLTPATH/repos/<repos>" files to "~/.vim/pack/volt/opt/<repos>"
-strategy = "symlink"
-
-[get]
-# * true (default): "volt get" creates skeleton plugconf file at "$VOLTPATH/plugconf/<repos>.vim"
-# * false: It does not creates skeleton plugconf file
-create_skeleton_plugconf = true
-
-# * true (default): When "volt get" or "volt get -u" fail and "git" command is
-#                   installed, it tries to execute "git clone" or "git pull" as a fallback
-# * false: "volt get" or "volt get -u" won't try to execute fallback commands
-fallback_git_cmd = true
-```
+And there is bash completion script in [\_contrib](https://github.com/vim-volt/volt/blob/master/_contrib/completion/bash) directory (thanks @AvianY).
 
 ## Self upgrade
+
+If you already have older version's `volt` command, you can use `volt self-upgrade` command.
 
 ```
 $ volt self-upgrade
@@ -158,12 +76,7 @@ $ volt self-upgrade
 
 will upgrade current running volt binary to the latest version if the [newer releases](https://github.com/vim-volt/volt/releases) published.
 
-```
-$ volt self-upgrade -check
-```
-
-just checks if the newer releases published.
-It also shows the release note of the latest version.
+Or also you can just checks if the newer releases published by running `volt self-upgrade -check`.
 
 ## Introduction
 
@@ -245,6 +158,31 @@ But if you edit `$VOLTPATH/rc/<profile>/vimrc.vim` or `$VOLTPATH/rc/<profile>/gv
 `volt build` uses cache for the next running.
 Normally `volt build` synchronizes correctly, but if you met the bug, try `volt build -full` (or please [file an issue](https://github.com/vim-volt/volt/issues/new) as possible :) to ignore the previous cache.
 
+## Config
+
+Config file: `$VOLTPATH/config.toml`
+
+```toml
+[alias]
+# You can use `volt update` in addition to `volt get -u`
+update = ["get", "-u"]
+
+[build]
+# * "symlink" (default): "volt build" creates symlinks "~/.vim/pack/volt/opt/<repos>" referring to "$VOLTPATH/repos/<repos>"
+# * "copy": "volt build" copies "$VOLTPATH/repos/<repos>" files to "~/.vim/pack/volt/opt/<repos>"
+strategy = "symlink"
+
+[get]
+# * true (default): "volt get" creates skeleton plugconf file at "$VOLTPATH/plugconf/<repos>.vim"
+# * false: It does not creates skeleton plugconf file
+create_skeleton_plugconf = true
+
+# * true (default): When "volt get" or "volt get -u" fail and "git" command is
+#                   installed, it tries to execute "git clone" or "git pull" as a fallback
+# * false: "volt get" or "volt get -u" won't try to execute fallback commands
+fallback_git_cmd = true
+```
+
 ## Features
 
 ### Easy setup
@@ -323,7 +261,7 @@ endfunction
 "
 " This function must contain 'return "<str>"' code.
 " (the argument of :return must be string literal)
-function! s:depends()
+function! s:loaded_on()
   " this is the default value, you don't have to write this
   return 'start'
 endfunction
@@ -454,7 +392,7 @@ Because if you run `volt get localhost/{user}/{name}` accidentally you only get 
 So it is guaranteed that you won't install a unwanted plugin :)
 
 In other words, this means you can also manage your `~/.vim/*` files as a vim plugin.
-Off cource you can disable/enable it by `volt disable <repos>` and `volt enable <repos>`. 
+Off cource you can disable/enable it by `volt disable <repos>` and `volt enable <repos>`.
 
 ```
 Move files/directories to vimdir

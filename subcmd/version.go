@@ -1,4 +1,4 @@
-package cmd
+package subcmd
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 )
 
 // This variable is not constant for testing (to change it temporarily)
-var voltVersion = "v0.3.4"
+var voltVersion = "v0.3.5"
 
 func init() {
 	cmdMap["version"] = &versionCmd{}
@@ -40,15 +40,15 @@ Description
 	return fs
 }
 
-func (cmd *versionCmd) Run(args []string) int {
+func (cmd *versionCmd) Run(args []string) *Error {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {
-		return 0
+		return nil
 	}
 
 	fmt.Printf("volt version: %s\n", voltVersion)
-	return 0
+	return nil
 }
 
 // [major, minor, patch, alphaBeta]

@@ -1,4 +1,4 @@
-package cmd
+package subcmd
 
 import (
 	"errors"
@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/plugconf"
+	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 )
 
@@ -62,30 +62,27 @@ Description
 	return fs
 }
 
-func (cmd *rmCmd) Run(args []string) int {
+func (cmd *rmCmd) Run(args []string) *Error {
 	reposPathList, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
-		return 0
+		return nil
 	}
 	if err != nil {
-		logger.Error(err.Error())
-		return 10
+		return &Error{Code: 10, Msg: err.Error()}
 	}
 
 	err = cmd.doRemove(reposPathList)
 	if err != nil {
-		logger.Error("Failed to remove repository: " + err.Error())
-		return 11
+		return &Error{Code: 11, Msg: "Failed to remove repository: " + err.Error()}
 	}
 
 	// Build opt dir
 	err = builder.Build(false)
 	if err != nil {
-		logger.Error("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
-		return 12
+		return &Error{Code: 12, Msg: "Could not build " + pathutil.VimVoltDir() + ": " + err.Error()}
 	}
 
-	return 0
+	return nil
 }
 
 func (cmd *rmCmd) parseArgs(args []string) ([]pathutil.ReposPath, error) {

@@ -1,4 +1,4 @@
-package cmd
+package subcmd
 
 import (
 	"encoding/json"
@@ -49,30 +49,27 @@ Description
 	return fs
 }
 
-func (cmd *selfUpgradeCmd) Run(args []string) int {
+func (cmd *selfUpgradeCmd) Run(args []string) *Error {
 	err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
-		return 0
+		return nil
 	}
 	if err != nil {
-		logger.Error("Failed to parse args: " + err.Error())
-		return 10
+		return &Error{Code: 10, Msg: "Failed to parse args: " + err.Error()}
 	}
 
 	if ppidStr := os.Getenv("VOLT_SELF_UPGRADE_PPID"); ppidStr != "" {
 		if err = cmd.doCleanUp(ppidStr); err != nil {
-			logger.Error("Failed to clean up old binary: " + err.Error())
-			return 11
+			return &Error{Code: 11, Msg: "Failed to clean up old binary: " + err.Error()}
 		}
 	} else {
 		latestURL := "https://api.github.com/repos/vim-volt/volt/releases/latest"
 		if err = cmd.doSelfUpgrade(latestURL); err != nil {
-			logger.Error("Failed to self-upgrade: " + err.Error())
-			return 12
+			return &Error{Code: 12, Msg: "Failed to self-upgrade: " + err.Error()}
 		}
 	}
 
-	return 0
+	return nil
 }
 
 func (cmd *selfUpgradeCmd) parseArgs(args []string) error {

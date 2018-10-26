@@ -1,7 +1,7 @@
 
 NAME := volt
 SRC := $(shell find . -type d -name 'vendor' -prune -o -type f -name '*.go' -print)
-VERSION := $(shell sed -n -E 's/var voltVersion = "([^"]+)"/\1/p' cmd/version.go)
+VERSION := $(shell sed -n -E 's/var voltVersion = "([^"]+)"/\1/p' subcmd/version.go)
 RELEASE_LDFLAGS := -s -w -extldflags '-static'
 RELEASE_OS := linux windows darwin
 RELEASE_ARCH := amd64 386
@@ -43,7 +43,6 @@ release: $(BIN_DIR)/$(NAME)
 	done
 
 update-doc: all
-	go run _scripts/update-readme.go README.md
-	go run _scripts/update-cmdref.go CMDREF.md
+	go run _scripts/update-cmdref.go >CMDREF.md
 
 .PHONY: all precompile install-dep dep-ensure test release update-doc

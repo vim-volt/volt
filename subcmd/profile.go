@@ -1,4 +1,4 @@
-package cmd
+package subcmd
 
 import (
 	"errors"
@@ -7,10 +7,10 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/vim-volt/volt/cmd/builder"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
+	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 )
 
@@ -99,15 +99,14 @@ Quick example
 	return fs
 }
 
-func (cmd *profileCmd) Run(args []string) int {
+func (cmd *profileCmd) Run(args []string) *Error {
 	// Parse args
 	args, err := cmd.parseArgs(args)
 	if err == ErrShowedHelp {
-		return 0
+		return nil
 	}
 	if err != nil {
-		logger.Error(err.Error())
-		return 10
+		return &Error{Code: 10, Msg: err.Error()}
 	}
 
 	subCmd := args[0]
@@ -129,16 +128,14 @@ func (cmd *profileCmd) Run(args []string) int {
 	case "rm":
 		err = cmd.doRm(args[1:])
 	default:
-		logger.Error("unknown subcommand: " + subCmd)
-		return 11
+		return &Error{Code: 11, Msg: "Unknown subcommand: " + subCmd}
 	}
 
 	if err != nil {
-		logger.Error(err.Error())
-		return 20
+		return &Error{Code: 20, Msg: err.Error()}
 	}
 
-	return 0
+	return nil
 }
 
 func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
