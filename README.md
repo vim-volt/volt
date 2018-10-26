@@ -163,6 +163,10 @@ Normally `volt build` synchronizes correctly, but if you met the bug, try `volt 
 Config file: `$VOLTPATH/config.toml`
 
 ```toml
+[alias]
+# You can use `volt update` in addition to `volt get -u`
+update = ["get", "-u"]
+
 [build]
 # * "symlink" (default): "volt build" creates symlinks "~/.vim/pack/volt/opt/<repos>" referring to "$VOLTPATH/repos/<repos>"
 # * "copy": "volt build" copies "$VOLTPATH/repos/<repos>" files to "~/.vim/pack/volt/opt/<repos>"
