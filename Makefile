@@ -38,7 +38,7 @@ release: $(BIN_DIR)/$(NAME)
 				exe=$$exe.exe; \
 			fi; \
 			echo "Creating $$exe ... (os=$$os, arch=$$arch)"; \
-			GOOS=$$os GOARCH=$$arch go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $$exe; \
+			GOOS=$$os GOARCH=$$arch GO111MODULE=off go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $$exe; \
 		done; \
 	done
 
