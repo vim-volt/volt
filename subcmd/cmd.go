@@ -2,12 +2,14 @@ package subcmd
 
 import (
 	"flag"
-	"github.com/pkg/errors"
 	"os"
 	"os/user"
 	"runtime"
 
+	"github.com/pkg/errors"
+
 	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 )
 
@@ -17,13 +19,20 @@ var cmdMap = make(map[string]Cmd)
 // All subcommands must implement this.
 type Cmd interface {
 	ProhibitRootExecution(args []string) bool
-	Run(args []string) *Error
+	Run(cmdctx *CmdContext) *Error
 	FlagSet() *flag.FlagSet
+}
+
+// CmdContext is a data transfer object between Subcmd and Gateway layer.
+type CmdContext struct {
+	Args     []string
+	LockJSON *lockjson.LockJSON
+	Config   *config.Config
 }
 
 // RunnerFunc invokes c with args.
 // On unit testing, a mock function was given.
-type RunnerFunc func(c Cmd, args []string) *Error
+type RunnerFunc func(c Cmd, cmdctx *CmdContext) *Error
 
 // Error is a command error.
 // It also has a exit code.
@@ -37,8 +46,8 @@ func (e *Error) Error() string {
 }
 
 // DefaultRunner simply runs command with args
-func DefaultRunner(c Cmd, args []string) *Error {
-	return c.Run(args)
+func DefaultRunner(c Cmd, cmdctx *CmdContext) *Error {
+	return c.Run(cmdctx)
 }
 
 // Run is invoked by main(), each argument means 'volt {subcmd} {args}'.
@@ -61,7 +70,7 @@ func Run(args []string, cont RunnerFunc) *Error {
 
 	c, exists := cmdMap[subCmd]
 	if !exists {
-		return &Error{Code: 3, Msg: "unknown command '" + subCmd + "'"}
+		return &Error{Code: 3, Msg: "Unknown command '" + subCmd + "'"}
 	}
 
 	// Disallow executing the commands which may modify files in root priviledge
@@ -72,7 +81,21 @@ func Run(args []string, cont RunnerFunc) *Error {
 		}
 	}
 
-	return cont(c, args)
+	lockJSON, err := lockjson.Read()
+	if err != nil {
+		return &Error{Code: 20, Msg: errors.Wrap(err, "failed to read lock.json").Error()}
+	}
+
+	cfg, err := config.Read()
+	if err != nil {
+		return &Error{Code: 30, Msg: errors.Wrap(err, "failed to read config.toml").Error()}
+	}
+
+	return cont(c, &CmdContext{
+		Args:     args,
+		LockJSON: lockJSON,
+		Config:   cfg,
+	})
 }
 
 func expandAlias(subCmd string, args []string) (string, []string, error) {

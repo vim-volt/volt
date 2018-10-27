@@ -125,9 +125,9 @@ repos path:
 `
 }
 
-func (cmd *listCmd) Run(args []string) *Error {
+func (cmd *listCmd) Run(cmdctx *CmdContext) *Error {
 	fs := cmd.FlagSet()
-	fs.Parse(args)
+	fs.Parse(cmdctx.Args)
 	if cmd.helped {
 		return nil
 	}

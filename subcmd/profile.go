@@ -100,9 +100,9 @@ Quick example
 	return fs
 }
 
-func (cmd *profileCmd) Run(args []string) *Error {
+func (cmd *profileCmd) Run(cmdctx *CmdContext) *Error {
 	// Parse args
-	args, err := cmd.parseArgs(args)
+	args, err := cmd.parseArgs(cmdctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}

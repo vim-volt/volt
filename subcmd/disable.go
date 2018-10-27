@@ -41,8 +41,8 @@ Description
 	return fs
 }
 
-func (cmd *disableCmd) Run(args []string) *Error {
-	reposPathList, err := cmd.parseArgs(args)
+func (cmd *disableCmd) Run(cmdctx *CmdContext) *Error {
+	reposPathList, err := cmd.parseArgs(cmdctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}

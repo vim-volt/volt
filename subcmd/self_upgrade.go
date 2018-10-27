@@ -50,8 +50,8 @@ Description
 	return fs
 }
 
-func (cmd *selfUpgradeCmd) Run(args []string) *Error {
-	err := cmd.parseArgs(args)
+func (cmd *selfUpgradeCmd) Run(cmdctx *CmdContext) *Error {
+	err := cmd.parseArgs(cmdctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}

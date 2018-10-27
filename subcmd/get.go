@@ -116,9 +116,9 @@ Options`)
 	return fs
 }
 
-func (cmd *getCmd) Run(args []string) *Error {
+func (cmd *getCmd) Run(cmdctx *CmdContext) *Error {
 	// Parse args
-	args, err := cmd.parseArgs(args)
+	args, err := cmd.parseArgs(cmdctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}
@@ -126,13 +126,7 @@ func (cmd *getCmd) Run(args []string) *Error {
 		return &Error{Code: 10, Msg: "Failed to parse args: " + err.Error()}
 	}
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return &Error{Code: 11, Msg: "Could not read lock.json: " + err.Error()}
-	}
-
-	reposPathList, err := cmd.getReposPathList(args, lockJSON)
+	reposPathList, err := cmd.getReposPathList(args, cmdctx.LockJSON)
 	if err != nil {
 		return &Error{Code: 12, Msg: "Could not get repos list: " + err.Error()}
 	}
@@ -140,7 +134,7 @@ func (cmd *getCmd) Run(args []string) *Error {
 		return &Error{Code: 13, Msg: "No repositories are specified"}
 	}
 
-	err = cmd.doGet(reposPathList, lockJSON)
+	err = cmd.doGet(reposPathList, cmdctx.LockJSON)
 	if err != nil {
 		return &Error{Code: 20, Msg: err.Error()}
 	}

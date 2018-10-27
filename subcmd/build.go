@@ -53,10 +53,10 @@ Description
 	return fs
 }
 
-func (cmd *buildCmd) Run(args []string) *Error {
+func (cmd *buildCmd) Run(cmdctx *CmdContext) *Error {
 	// Parse args
 	fs := cmd.FlagSet()
-	fs.Parse(args)
+	fs.Parse(cmdctx.Args)
 	if cmd.helped {
 		return nil
 	}

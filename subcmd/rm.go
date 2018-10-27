@@ -63,8 +63,8 @@ Description
 	return fs
 }
 
-func (cmd *rmCmd) Run(args []string) *Error {
-	reposPathList, err := cmd.parseArgs(args)
+func (cmd *rmCmd) Run(cmdctx *CmdContext) *Error {
+	reposPathList, err := cmd.parseArgs(cmdctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}

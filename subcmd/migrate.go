@@ -55,8 +55,8 @@ Available operations`)
 	return fs
 }
 
-func (cmd *migrateCmd) Run(args []string) *Error {
-	op, err := cmd.parseArgs(args)
+func (cmd *migrateCmd) Run(cmdctx *CmdContext) *Error {
+	op, err := cmd.parseArgs(cmdctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}
