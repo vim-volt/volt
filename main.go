@@ -67,6 +67,9 @@ func run(args []string) (int, string) {
 		LockJSON: lockJSON,
 		Config:   cfg,
 	})
+	if result == nil {
+		return 0, ""
+	}
 	return result.Code, result.Msg
 }
 
