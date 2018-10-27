@@ -1,12 +1,12 @@
-package subcmd
+package gateway
 
 import (
 	"flag"
 	"fmt"
 	"os"
 
+	"github.com/vim-volt/volt/gateway/builder"
 	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 )
 

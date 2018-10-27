@@ -1,4 +1,4 @@
-package subcmd
+package gateway
 
 import (
 	"flag"
@@ -10,11 +10,11 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/vim-volt/volt/fileutil"
+	"github.com/vim-volt/volt/gateway/builder"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/plugconf"
-	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 )
 

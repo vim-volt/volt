@@ -1,4 +1,4 @@
-package subcmd
+package gateway
 
 import (
 	"fmt"

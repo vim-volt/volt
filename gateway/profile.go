@@ -1,4 +1,4 @@
-package subcmd
+package gateway
 
 import (
 	"flag"
@@ -8,10 +8,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/vim-volt/volt/gateway/builder"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
-	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 )
 
@@ -29,8 +29,8 @@ func (cmd *profileCmd) ProhibitRootExecution(args []string) bool {
 	if len(args) == 0 {
 		return true
 	}
-	subCmd := args[0]
-	switch subCmd {
+	gateway := args[0]
+	switch gateway {
 	case "show":
 		return false
 	case "list":
@@ -110,8 +110,8 @@ func (cmd *profileCmd) Run(cmdctx *CmdContext) *Error {
 		return &Error{Code: 10, Msg: err.Error()}
 	}
 
-	subCmd := args[0]
-	switch subCmd {
+	gateway := args[0]
+	switch gateway {
 	case "set":
 		err = cmd.doSet(args[1:])
 	case "show":
@@ -129,7 +129,7 @@ func (cmd *profileCmd) Run(cmdctx *CmdContext) *Error {
 	case "rm":
 		err = cmd.doRm(args[1:])
 	default:
-		return &Error{Code: 11, Msg: "Unknown subcommand: " + subCmd}
+		return &Error{Code: 11, Msg: "Unknown subcommand: " + gateway}
 	}
 
 	if err != nil {
@@ -519,10 +519,10 @@ func (cmd *profileCmd) doRm(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, args []string) (string, []pathutil.ReposPath, error) {
+func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, gateway string, args []string) (string, []pathutil.ReposPath, error) {
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
-		logger.Errorf("'volt profile %s' receives profile name and one or more repositories.", subCmd)
+		logger.Errorf("'volt profile %s' receives profile name and one or more repositories.", gateway)
 		return "", nil, nil
 	}
 
