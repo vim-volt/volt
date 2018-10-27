@@ -1,4 +1,4 @@
-package subcmd
+package gateway
 
 import (
 	"flag"
@@ -10,29 +10,29 @@ import (
 )
 
 func init() {
-	cmdMap["disable"] = &disableCmd{}
+	cmdMap["enable"] = &enableCmd{}
 }
 
-type disableCmd struct {
+type enableCmd struct {
 	helped bool
 }
 
-func (cmd *disableCmd) ProhibitRootExecution(args []string) bool { return true }
+func (cmd *enableCmd) ProhibitRootExecution(args []string) bool { return true }
 
-func (cmd *disableCmd) FlagSet() *flag.FlagSet {
+func (cmd *enableCmd) FlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.Usage = func() {
 		fmt.Print(`
 Usage
-  volt disable [-help] {repository} [{repository2} ...]
+  volt enable [-help] {repository} [{repository2} ...]
 
 Quick example
-  $ volt disable tyru/caw.vim # will disable tyru/caw.vim plugin in current profile
+  $ volt enable tyru/caw.vim # will enable tyru/caw.vim plugin in current profile
 
 Description
   This is shortcut of:
-  volt profile rm {current profile} {repository} [{repository2} ...]` + "\n\n")
+  volt profile add {current profile} {repository} [{repository2} ...]` + "\n\n")
 		//fmt.Println("Options")
 		//fs.PrintDefaults()
 		fmt.Println()
@@ -41,7 +41,7 @@ Description
 	return fs
 }
 
-func (cmd *disableCmd) Run(cmdctx *CmdContext) *Error {
+func (cmd *enableCmd) Run(cmdctx *CmdContext) *Error {
 	reposPathList, err := cmd.parseArgs(cmdctx.Args)
 	if err == ErrShowedHelp {
 		return nil
@@ -51,7 +51,7 @@ func (cmd *disableCmd) Run(cmdctx *CmdContext) *Error {
 	}
 
 	profCmd := profileCmd{}
-	err = profCmd.doRm(append(
+	err = profCmd.doAdd(append(
 		[]string{"-current"},
 		reposPathList.Strings()...,
 	))
@@ -62,7 +62,7 @@ func (cmd *disableCmd) Run(cmdctx *CmdContext) *Error {
 	return nil
 }
 
-func (cmd *disableCmd) parseArgs(args []string) (pathutil.ReposPathList, error) {
+func (cmd *enableCmd) parseArgs(args []string) (pathutil.ReposPathList, error) {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {

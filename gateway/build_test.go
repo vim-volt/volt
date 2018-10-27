@@ -1,4 +1,4 @@
-package subcmd
+package gateway
 
 import (
 	"bytes"
@@ -13,10 +13,10 @@ import (
 	"github.com/haya14busa/go-vimlparser"
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
+	"github.com/vim-volt/volt/gateway/builder"
 	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
-	"github.com/vim-volt/volt/subcmd/builder"
 )
 
 // Checks:

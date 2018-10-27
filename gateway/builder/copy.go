@@ -10,12 +10,12 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/fileutil"
+	"github.com/vim-volt/volt/gateway/buildinfo"
 	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/plugconf"
-	"github.com/vim-volt/volt/subcmd/buildinfo"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"

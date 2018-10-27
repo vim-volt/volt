@@ -1,4 +1,4 @@
-package subcmd
+package gateway
 
 import (
 	"flag"
@@ -6,8 +6,8 @@ import (
 	"github.com/pkg/errors"
 	"os"
 
+	"github.com/vim-volt/volt/gateway/migrate"
 	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/subcmd/migrate"
 )
 
 func init() {

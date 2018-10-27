@@ -9,9 +9,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/gateway"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/subcmd"
 )
 
 func main() {
@@ -39,7 +39,7 @@ func run(args []string) (int, string) {
 		return 1, err.Error()
 	}
 
-	c := subcmd.LookUpCmd(subCmd)
+	c := gateway.LookUpCmd(subCmd)
 	if c == nil {
 		return 3, "Unknown command '" + subCmd + "'"
 	}
@@ -62,7 +62,7 @@ func run(args []string) (int, string) {
 		return 30, errors.Wrap(err, "failed to read config.toml").Error()
 	}
 
-	result := c.Run(&subcmd.CmdContext{
+	result := c.Run(&gateway.CmdContext{
 		Args:     args,
 		LockJSON: lockJSON,
 		Config:   cfg,
