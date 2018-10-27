@@ -1,8 +1,8 @@
 package subcmd
 
 import (
-	"errors"
 	"flag"
+	"github.com/pkg/errors"
 	"os"
 	"os/user"
 	"runtime"
@@ -61,7 +61,7 @@ func Run(args []string, cont RunnerFunc) *Error {
 
 	c, exists := cmdMap[subCmd]
 	if !exists {
-		return &Error{Code: 3, Msg: "Unknown command '" + subCmd + "'"}
+		return &Error{Code: 3, Msg: "unknown command '" + subCmd + "'"}
 	}
 
 	// Disallow executing the commands which may modify files in root priviledge
@@ -78,7 +78,7 @@ func Run(args []string, cont RunnerFunc) *Error {
 func expandAlias(subCmd string, args []string) (string, []string, error) {
 	cfg, err := config.Read()
 	if err != nil {
-		return "", nil, errors.New("could not read config.toml: " + err.Error())
+		return "", nil, errors.Wrap(err, "could not read config.toml")
 	}
 	if newArgs, exists := cfg.Alias[subCmd]; exists && len(newArgs) > 0 {
 		subCmd = newArgs[0]
@@ -97,11 +97,11 @@ func detectPriviledgedUser() error {
 	}
 	u, err := user.Current()
 	if err != nil {
-		return errors.New("Cannot get current user: " + err.Error())
+		return errors.Wrap(err, "cannot get current user")
 	}
 	if u.Uid == "0" {
 		return errors.New(
-			"Cannot run this sub command with root priviledge. " +
+			"cannot run this sub command with root priviledge. " +
 				"Please run as normal user")
 	}
 	return nil

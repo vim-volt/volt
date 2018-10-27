@@ -2,9 +2,9 @@ package subcmd
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
+	"github.com/pkg/errors"
 	"os"
 	"text/template"
 
@@ -141,7 +141,7 @@ func (cmd *listCmd) list(format string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
+		return errors.Wrap(err, "failed to read lock.json")
 	}
 	// Parse template string
 	t, err := template.New("volt").Funcs(cmd.funcMap(lockJSON)).Parse(format)

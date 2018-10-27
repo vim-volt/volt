@@ -1,12 +1,13 @@
 package subcmd
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/lockjson"
@@ -129,7 +130,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 			return err
 		}
 		if len(rdeps) > 0 {
-			return fmt.Errorf("cannot remove '%s' because it's depended by '%s'",
+			return errors.Errorf("cannot remove '%s' because it's depended by '%s'",
 				reposPath, strings.Join(rdeps.Strings(), "', '"))
 		}
 	}

@@ -1,7 +1,7 @@
 package migrate
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"sort"
 )
 

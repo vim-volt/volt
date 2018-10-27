@@ -1,7 +1,6 @@
 package subcmd
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +10,8 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"gopkg.in/src-d/go-git.v4"
 
@@ -205,7 +206,7 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 	// Read config.toml
 	cfg, err := config.Read()
 	if err != nil {
-		return errors.New("could not read config.toml: " + err.Error())
+		return errors.Wrap(err, "could not read config.toml")
 	}
 
 	done := make(chan getParallelResult, len(reposPathList))
@@ -249,14 +250,14 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 		// Write to lock.json
 		err = lockJSON.Write()
 		if err != nil {
-			return errors.New("could not write to lock.json: " + err.Error())
+			return errors.Wrap(err, "could not write to lock.json")
 		}
 	}
 
 	// Build ~/.vim/pack/volt dir
 	err = builder.Build(false)
 	if err != nil {
-		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
+		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}
 
 	// Show results
@@ -341,7 +342,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		// Get HEAD hash string
 		fromHash, err = gitutil.GetHEAD(reposPath)
 		if err != nil {
-			result := errors.New("failed to get HEAD commit hash: " + err.Error())
+			result := errors.Wrap(err, "failed to get HEAD commit hash")
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf(fmtInstallFailed, reposPath),
@@ -369,7 +370,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		logger.Debug("Upgrading " + reposPath + " ...")
 		err := cmd.upgradePlugin(reposPath, cfg)
 		if err != git.NoErrAlreadyUpToDate && err != nil {
-			result := errors.New("failed to upgrade plugin: " + err.Error())
+			result := errors.Wrap(err, "failed to upgrade plugin")
 			done <- getParallelResult{
 				reposPath: reposPath,
 				status:    fmt.Sprintf(fmtUpgradeFailed, reposPath),
@@ -387,7 +388,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		logger.Debug("Installing " + reposPath + " ...")
 		err := cmd.clonePlugin(reposPath, cfg)
 		if err != nil {
-			result := errors.New("failed to install plugin: " + err.Error())
+			result := errors.Wrap(err, "failed to install plugin")
 			logger.Debug("Rollbacking " + fullReposPath + " ...")
 			err = cmd.removeDir(fullReposPath)
 			if err != nil {
@@ -412,7 +413,7 @@ func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.R
 		// Get HEAD hash string
 		toHash, err = gitutil.GetHEAD(reposPath)
 		if err != nil {
-			result := errors.New("failed to get HEAD commit hash: " + err.Error())
+			result := errors.Wrap(err, "failed to get HEAD commit hash")
 			if doInstall {
 				logger.Debug("Rollbacking " + fullReposPath + " ...")
 				err = cmd.removeDir(fullReposPath)
@@ -454,7 +455,7 @@ func (cmd *getCmd) installPlugconf(reposPath pathutil.ReposPath, pluginResult *g
 	logger.Debug("Installing plugconf " + reposPath + " ...")
 	err := cmd.downloadPlugconf(reposPath)
 	if err != nil {
-		result := errors.New("failed to install plugconf: " + err.Error())
+		result := errors.Wrap(err, "failed to install plugconf")
 		// TODO: Call cmd.removeDir() only when the repos *did not* exist previously
 		// and was installed newly.
 		// fullReposPath := reposPath.FullPath()
@@ -487,7 +488,7 @@ func (*getCmd) removeDir(fullReposPath string) error {
 	if pathutil.Exists(fullReposPath) {
 		err := os.RemoveAll(fullReposPath)
 		if err != nil {
-			return fmt.Errorf("rollback failed: cannot remove '%s'", fullReposPath)
+			return errors.Errorf("rollback failed: cannot remove '%s'", fullReposPath)
 		}
 		// Remove parent directories
 		fileutil.RemoveDirs(filepath.Dir(fullReposPath))
@@ -552,7 +553,7 @@ func (cmd *getCmd) downloadPlugconf(reposPath pathutil.ReposPath) error {
 	}
 	content, merr := tmpl.Generate(path)
 	if merr.ErrorOrNil() != nil {
-		return fmt.Errorf("parse error in fetched plugconf %s: %s", reposPath, merr.Error())
+		return errors.Errorf("parse error in fetched plugconf %s: %s", reposPath, merr.Error())
 	}
 	os.MkdirAll(filepath.Dir(path), 0755)
 	err = ioutil.WriteFile(path, content, 0644)
@@ -692,7 +693,7 @@ func (cmd *getCmd) gitClone(cloneURL, dstDir string, cfg *config.Config) error {
 		}
 		out, err := exec.Command("git", "clone", "--recursive", cloneURL, dstDir).CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("\"git clone --recursive %s %s\" failed, out=%s: %s", cloneURL, dstDir, string(out), err.Error())
+			return errors.Errorf("\"git clone --recursive %s %s\" failed, out=%s: %s", cloneURL, dstDir, string(out), err.Error())
 		}
 	}
 

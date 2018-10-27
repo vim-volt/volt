@@ -1,9 +1,9 @@
 package subcmd
 
 import (
-	"errors"
 	"flag"
 	"fmt"
+	"github.com/pkg/errors"
 	"os"
 )
 

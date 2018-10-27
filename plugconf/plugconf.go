@@ -3,7 +3,6 @@ package plugconf
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"path"
@@ -11,6 +10,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/httputil"
@@ -392,7 +393,7 @@ func ParsePlugconf(file *ast.File, src []byte, path string) (*ParsedInfo, *Parse
 			}
 		case isProhibitedFuncName(ident.Name):
 			parseErr.merr = multierror.Append(parseErr.merr,
-				fmt.Errorf(
+				errors.Errorf(
 					"'%s' is prohibited function name. please use other function name", ident.Name))
 		default:
 			functions = append(functions, string(extractBody(fn, src)))

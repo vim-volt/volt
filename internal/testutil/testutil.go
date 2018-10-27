@@ -1,8 +1,8 @@
 package testutil
 
 import (
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"os/exec"

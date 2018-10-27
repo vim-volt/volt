@@ -1,9 +1,9 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
+
 	"github.com/vim-volt/volt/pathutil"
 )
 
@@ -80,7 +80,7 @@ func merge(cfg, initCfg *Config) {
 
 func validate(cfg *Config) error {
 	if cfg.Build.Strategy != "symlink" && cfg.Build.Strategy != "copy" {
-		return fmt.Errorf("build.strategy is %q: valid values are %q or %q", cfg.Build.Strategy, "symlink", "copy")
+		return errors.Errorf("build.strategy is %q: valid values are %q or %q", cfg.Build.Strategy, "symlink", "copy")
 	}
 	return nil
 }

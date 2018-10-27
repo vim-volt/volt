@@ -1,13 +1,13 @@
 package builder
 
 import (
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/pkg/errors"
 
 	"gopkg.in/src-d/go-git.v4"
 
@@ -33,7 +33,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	// Get current profile's repos list
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("could not read lock.json: " + err.Error())
+		return errors.Wrap(err, "could not read lock.json")
 	}
 	reposList, err := lockJSON.GetCurrentReposList()
 	if err != nil {
@@ -128,7 +128,7 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 		r, err := git.PlainOpen(src)
 		if err != nil {
 			done <- actionReposResult{
-				err: fmt.Errorf("repository %q: %s", src, err.Error()),
+				err: errors.Errorf("repository %q: %s", src, err.Error()),
 			}
 			return
 		}
@@ -137,7 +137,7 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 		head, err := gitutil.GetHEADRepository(r)
 		if err != nil {
 			done <- actionReposResult{
-				err: fmt.Errorf("failed to get HEAD revision of %q: %s", src, err.Error()),
+				err: errors.Errorf("failed to get HEAD revision of %q: %s", src, err.Error()),
 			}
 			return
 		}
@@ -151,7 +151,7 @@ func (builder *symlinkBuilder) installRepos(repos *lockjson.Repos, vimExePath st
 		cfg, err := r.Config()
 		if err != nil {
 			done <- actionReposResult{
-				err: fmt.Errorf("failed to get repository config of %q: %s", src, err.Error()),
+				err: errors.Errorf("failed to get repository config of %q: %s", src, err.Error()),
 			}
 			return
 		}

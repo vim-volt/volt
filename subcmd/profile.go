@@ -1,10 +1,11 @@
 package subcmd
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/pkg/errors"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/lockjson"
@@ -155,7 +156,7 @@ func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
 func (*profileCmd) getCurrentProfile() (string, error) {
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return "", errors.New("failed to read lock.json: " + err.Error())
+		return "", errors.Wrap(err, "failed to read lock.json")
 	}
 	return lockJSON.CurrentProfileName, nil
 }
@@ -177,12 +178,12 @@ func (cmd *profileCmd) doSet(args []string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
+		return errors.Wrap(err, "failed to read lock.json")
 	}
 
 	// Exit if current profile is same as profileName
 	if lockJSON.CurrentProfileName == profileName {
-		return fmt.Errorf("'%s' is current profile", profileName)
+		return errors.Errorf("'%s' is current profile", profileName)
 	}
 
 	// Create given profile unless the profile exists
@@ -196,7 +197,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 		// Read lock.json again
 		lockJSON, err = lockjson.Read()
 		if err != nil {
-			return errors.New("failed to read lock.json: " + err.Error())
+			return errors.Wrap(err, "failed to read lock.json")
 		}
 		if _, err = lockJSON.Profiles.FindByName(profileName); err != nil {
 			return err
@@ -224,7 +225,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	// Build ~/.vim/pack/volt dir
 	err = builder.Build(false)
 	if err != nil {
-		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
+		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}
 
 	return nil
@@ -240,7 +241,7 @@ func (cmd *profileCmd) doShow(args []string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
+		return errors.Wrap(err, "failed to read lock.json")
 	}
 
 	var profileName string
@@ -249,7 +250,7 @@ func (cmd *profileCmd) doShow(args []string) error {
 	} else {
 		profileName = args[0]
 		if lockJSON.Profiles.FindIndexByName(profileName) == -1 {
-			return fmt.Errorf("profile '%s' does not exist", profileName)
+			return errors.Errorf("profile '%s' does not exist", profileName)
 		}
 	}
 
@@ -282,7 +283,7 @@ func (cmd *profileCmd) doNew(args []string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
+		return errors.Wrap(err, "failed to read lock.json")
 	}
 
 	// Return error if profiles[]/name matches profileName
@@ -325,7 +326,7 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
+		return errors.Wrap(err, "failed to read lock.json")
 	}
 
 	// Begin transaction
@@ -385,7 +386,7 @@ func (cmd *profileCmd) doRename(args []string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
+		return errors.Wrap(err, "failed to read lock.json")
 	}
 
 	// Return error if profiles[]/name does not match oldName
@@ -417,7 +418,7 @@ func (cmd *profileCmd) doRename(args []string) error {
 	if pathutil.Exists(oldRCDir) {
 		newRCDir := pathutil.RCDir(newName)
 		if err = os.Rename(oldRCDir, newRCDir); err != nil {
-			return fmt.Errorf("could not rename %s to %s", oldRCDir, newRCDir)
+			return errors.Errorf("could not rename %s to %s", oldRCDir, newRCDir)
 		}
 	}
 
@@ -436,13 +437,13 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
+		return errors.Wrap(err, "failed to read lock.json")
 	}
 
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs(lockJSON, "add", args)
 	if err != nil {
-		return errors.New("failed to parse args: " + err.Error())
+		return errors.Wrap(err, "failed to parse args")
 	}
 
 	if profileName == "-current" {
@@ -468,7 +469,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	// Build ~/.vim/pack/volt dir
 	err = builder.Build(false)
 	if err != nil {
-		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
+		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}
 
 	return nil
@@ -478,13 +479,13 @@ func (cmd *profileCmd) doRm(args []string) error {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return errors.New("failed to read lock.json: " + err.Error())
+		return errors.Wrap(err, "failed to read lock.json")
 	}
 
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs(lockJSON, "rm", args)
 	if err != nil {
-		return errors.New("failed to parse args: " + err.Error())
+		return errors.Wrap(err, "failed to parse args")
 	}
 
 	if profileName == "-current" {
@@ -512,7 +513,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	// Build ~/.vim/pack/volt dir
 	err = builder.Build(false)
 	if err != nil {
-		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
+		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}
 
 	return nil
