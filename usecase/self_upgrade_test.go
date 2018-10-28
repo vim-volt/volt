@@ -1,4 +1,4 @@
-package gateway
+package usecase
 
 import (
 	"io/ioutil"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/gateway"
 	"github.com/vim-volt/volt/lockjson"
 )
 
@@ -32,7 +33,7 @@ func testVoltSelfUpgradeCheckFromOldVer(t *testing.T) {
 
 	// =============== run =============== //
 
-	var err *Error
+	var err *gateway.Error
 	out := captureOutput(t, func() {
 		err = runVolt(t, "self-upgrade", "-check")
 	})
@@ -60,6 +61,7 @@ func testVoltSelfUpgradeCheckFromCurrentVer(t *testing.T) {
 	}
 }
 
+// TODO use https://github.com/rhysd/go-fakeio
 func captureOutput(t *testing.T, f func()) string {
 	r, w, err := os.Pipe()
 	if err != nil {

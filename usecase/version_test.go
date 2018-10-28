@@ -1,4 +1,4 @@
-package gateway
+package usecase
 
 import "testing"
 
@@ -36,13 +36,13 @@ func TestCompareVersion(t *testing.T) {
 	}
 }
 
-func parse(t *testing.T, ver string) versionInfo {
+func parse(t *testing.T, ver string) VersionInfo {
 	vinfo, err := parseVersion(ver)
 	if err != nil {
 		t.Errorf("\"%s\" should be a version number but isn't: %s", ver, err.Error())
 	}
 	if len(vinfo) != 4 {
-		t.Errorf("parseVersion(%q) returned invalid versionInfo: %q", ver, vinfo)
+		t.Errorf("parseVersion(%q) returned invalid version info: %q", ver, vinfo)
 	}
 	return vinfo
 }

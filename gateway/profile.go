@@ -13,6 +13,7 @@ import (
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/transaction"
+	"github.com/vim-volt/volt/usecase"
 )
 
 type profileCmd struct {
@@ -110,26 +111,28 @@ func (cmd *profileCmd) Run(cmdctx *CmdContext) *Error {
 		return &Error{Code: 10, Msg: err.Error()}
 	}
 
-	gateway := args[0]
-	switch gateway {
+	subCmd := args[0]
+	cmdctx.Args = args[1:]
+
+	switch subCmd {
 	case "set":
-		err = cmd.doSet(args[1:])
+		err = cmd.doSet(cmdctx)
 	case "show":
-		err = cmd.doShow(args[1:])
+		err = cmd.doShow(cmdctx)
 	case "list":
-		err = cmd.doList(args[1:])
+		err = cmd.doList(cmdctx)
 	case "new":
-		err = cmd.doNew(args[1:])
+		err = cmd.doNew(cmdctx)
 	case "destroy":
-		err = cmd.doDestroy(args[1:])
+		err = cmd.doDestroy(cmdctx)
 	case "rename":
-		err = cmd.doRename(args[1:])
+		err = cmd.doRename(cmdctx)
 	case "add":
-		err = cmd.doAdd(args[1:])
+		err = cmd.doAdd(cmdctx)
 	case "rm":
-		err = cmd.doRm(args[1:])
+		err = cmd.doRm(cmdctx)
 	default:
-		return &Error{Code: 11, Msg: "Unknown subcommand: " + gateway}
+		return &Error{Code: 11, Msg: "Unknown subcommand: " + subCmd}
 	}
 
 	if err != nil {
@@ -161,7 +164,8 @@ func (*profileCmd) getCurrentProfile() (string, error) {
 	return lockJSON.CurrentProfileName, nil
 }
 
-func (cmd *profileCmd) doSet(args []string) error {
+func (cmd *profileCmd) doSet(cmdctx *CmdContext) error {
+	args := cmdctx.Args
 	// Parse args
 	createProfile := false
 	if len(args) > 0 && args[0] == "-n" {
@@ -191,7 +195,8 @@ func (cmd *profileCmd) doSet(args []string) error {
 		if !createProfile {
 			return err
 		}
-		if err = cmd.doNew([]string{profileName}); err != nil {
+		cmdctx.Args = []string{profileName}
+		if err = cmd.doNew(cmdctx); err != nil {
 			return err
 		}
 		// Read lock.json again
@@ -231,7 +236,8 @@ func (cmd *profileCmd) doSet(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doShow(args []string) error {
+func (cmd *profileCmd) doShow(cmdctx *CmdContext) error {
+	args := cmdctx.Args
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile show' receives profile name.")
@@ -254,25 +260,28 @@ func (cmd *profileCmd) doShow(args []string) error {
 		}
 	}
 
-	return (&listCmd{}).list(fmt.Sprintf(`name: %s
+	format := fmt.Sprintf(`name: %s
 repos path:
 {{- with profile %q -}}
 {{- range .ReposPath }}
   {{ . }}
 {{- end -}}
 {{- end }}
-`, profileName, profileName))
+`, profileName, profileName)
+	return usecase.List(os.Stdout, format, cmdctx.LockJSON, cmdctx.Config)
 }
 
-func (cmd *profileCmd) doList(args []string) error {
-	return (&listCmd{}).list(`
+func (cmd *profileCmd) doList(cmdctx *CmdContext) error {
+	format := `
 {{- range .Profiles -}}
 {{- if eq .Name $.CurrentProfileName -}}*{{- else }} {{ end }} {{ .Name }}
 {{ end -}}
-`)
+`
+	return usecase.List(os.Stdout, format, cmdctx.LockJSON, cmdctx.Config)
 }
 
-func (cmd *profileCmd) doNew(args []string) error {
+func (cmd *profileCmd) doNew(cmdctx *CmdContext) error {
+	args := cmdctx.Args
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile new' receives profile name.")
@@ -316,7 +325,8 @@ func (cmd *profileCmd) doNew(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doDestroy(args []string) error {
+func (cmd *profileCmd) doDestroy(cmdctx *CmdContext) error {
+	args := cmdctx.Args
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile destroy' receives profile name.")
@@ -374,7 +384,8 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 	return merr.ErrorOrNil()
 }
 
-func (cmd *profileCmd) doRename(args []string) error {
+func (cmd *profileCmd) doRename(cmdctx *CmdContext) error {
+	args := cmdctx.Args
 	if len(args) != 2 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile rename' receives profile name.")
@@ -433,7 +444,8 @@ func (cmd *profileCmd) doRename(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doAdd(args []string) error {
+func (cmd *profileCmd) doAdd(cmdctx *CmdContext) error {
+	args := cmdctx.Args
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -475,7 +487,8 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doRm(args []string) error {
+func (cmd *profileCmd) doRm(cmdctx *CmdContext) error {
+	args := cmdctx.Args
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
@@ -519,10 +532,10 @@ func (cmd *profileCmd) doRm(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, gateway string, args []string) (string, []pathutil.ReposPath, error) {
+func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, args []string) (string, []pathutil.ReposPath, error) {
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
-		logger.Errorf("'volt profile %s' receives profile name and one or more repositories.", gateway)
+		logger.Errorf("'volt profile %s' receives profile name and one or more repositories.", subCmd)
 		return "", nil, nil
 	}
 
