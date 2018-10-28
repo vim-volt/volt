@@ -1,4 +1,4 @@
-package migrate
+package usecase
 
 import (
 	"github.com/pkg/errors"

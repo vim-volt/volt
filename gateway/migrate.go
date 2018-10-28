@@ -3,11 +3,12 @@ package gateway
 import (
 	"flag"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
 
-	"github.com/vim-volt/volt/gateway/migrate"
+	"github.com/pkg/errors"
+
 	"github.com/vim-volt/volt/logger"
+	"github.com/vim-volt/volt/usecase"
 )
 
 func init() {
@@ -26,7 +27,7 @@ func (cmd *migrateCmd) FlagSet() *flag.FlagSet {
 	fs.Usage = func() {
 		args := fs.Args()
 		if len(args) > 0 {
-			m, err := migrate.GetMigrater(args[0])
+			m, err := usecase.GetMigrater(args[0])
 			if err != nil {
 				return
 			}
@@ -72,7 +73,7 @@ func (cmd *migrateCmd) Run(cmdctx *CmdContext) *Error {
 	return nil
 }
 
-func (cmd *migrateCmd) parseArgs(args []string) (migrate.Migrater, error) {
+func (cmd *migrateCmd) parseArgs(args []string) (usecase.Migrater, error) {
 	fs := cmd.FlagSet()
 	fs.Parse(args)
 	if cmd.helped {
@@ -82,11 +83,11 @@ func (cmd *migrateCmd) parseArgs(args []string) (migrate.Migrater, error) {
 	if len(args) == 0 {
 		return nil, errors.New("please specify migration operation")
 	}
-	return migrate.GetMigrater(args[0])
+	return usecase.GetMigrater(args[0])
 }
 
 func (cmd *migrateCmd) showAvailableOps(write func(string)) {
-	for _, m := range migrate.ListMigraters() {
+	for _, m := range usecase.ListMigraters() {
 		write(fmt.Sprintf("  %s", m.Name()))
 		write(fmt.Sprintf("    %s", m.Description(true)))
 	}
