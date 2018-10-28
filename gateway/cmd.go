@@ -24,6 +24,7 @@ type Cmd interface {
 
 // CmdContext is a data transfer object between Subcmd and Gateway layer.
 type CmdContext struct {
+	Cmd      string
 	Args     []string
 	LockJSON *lockjson.LockJSON
 	Config   *config.Config

@@ -63,6 +63,7 @@ func run(args []string) (int, string) {
 	}
 
 	result := c.Run(&gateway.CmdContext{
+		Cmd:      subCmd,
 		Args:     args,
 		LockJSON: lockJSON,
 		Config:   cfg,
