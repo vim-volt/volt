@@ -73,16 +73,16 @@ func run(args []string) (int, string) {
 	return result.Code, result.Msg
 }
 
-func expandAlias(gateway string, args []string) (string, []string, error) {
+func expandAlias(subCmd string, args []string) (string, []string, error) {
 	cfg, err := config.Read()
 	if err != nil {
 		return "", nil, errors.Wrap(err, "could not read config.toml")
 	}
-	if newArgs, exists := cfg.Alias[gateway]; exists && len(newArgs) > 0 {
-		gateway = newArgs[0]
+	if newArgs, exists := cfg.Alias[subCmd]; exists && len(newArgs) > 0 {
+		subCmd = newArgs[0]
 		args = append(newArgs[1:], args...)
 	}
-	return gateway, args, nil
+	return subCmd, args, nil
 }
 
 // On Windows, this function always returns nil.
