@@ -1,7 +1,7 @@
 
 NAME := volt
 SRC := $(shell find . -type d -name 'vendor' -prune -o -type f -name '*.go' -print)
-VERSION := $(shell sed -n -E 's/var voltVersion = "([^"]+)"/\1/p' gateway/version.go)
+VERSION := $(shell sed -n -E 's/var VoltVersion = "([^"]+)"/\1/p' usecase/version.go)
 RELEASE_LDFLAGS := -s -w -extldflags '-static'
 RELEASE_OS := linux windows darwin
 RELEASE_ARCH := amd64 386

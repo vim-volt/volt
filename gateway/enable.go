@@ -51,10 +51,11 @@ func (cmd *enableCmd) Run(cmdctx *CmdContext) *Error {
 	}
 
 	profCmd := profileCmd{}
-	err = profCmd.doAdd(append(
+	cmdctx.Args = append(
 		[]string{"-current"},
 		reposPathList.Strings()...,
-	))
+	)
+	err = profCmd.doAdd(cmdctx)
 	if err != nil {
 		return &Error{Code: 11, Msg: err.Error()}
 	}

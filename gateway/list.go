@@ -1,23 +1,27 @@
 package gateway
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/pkg/errors"
+	"io"
 	"os"
-	"text/template"
 
+	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/lockjson"
+	"github.com/vim-volt/volt/usecase"
 )
 
 func init() {
-	cmdMap["list"] = &listCmd{}
+	cmdMap["list"] = &listCmd{
+		List: usecase.List,
+	}
 }
 
 type listCmd struct {
 	helped bool
 	format string
+
+	List func(w io.Writer, format string, lockJSON *lockjson.LockJSON, cfg *config.Config) error
 }
 
 func (cmd *listCmd) ProhibitRootExecution(args []string) bool { return false }
@@ -131,64 +135,8 @@ func (cmd *listCmd) Run(cmdctx *CmdContext) *Error {
 	if cmd.helped {
 		return nil
 	}
-	if err := cmd.list(cmd.format); err != nil {
+	if err := cmd.List(os.Stdout, cmd.format, cmdctx.LockJSON, cmdctx.Config); err != nil {
 		return &Error{Code: 10, Msg: "Failed to render template: " + err.Error()}
 	}
 	return nil
-}
-
-func (cmd *listCmd) list(format string) error {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
-	// Parse template string
-	t, err := template.New("volt").Funcs(cmd.funcMap(lockJSON)).Parse(format)
-	if err != nil {
-		return err
-	}
-	// Output templated information
-	return t.Execute(os.Stdout, lockJSON)
-}
-
-func (*listCmd) funcMap(lockJSON *lockjson.LockJSON) template.FuncMap {
-	profileOf := func(name string) *lockjson.Profile {
-		profile, err := lockJSON.Profiles.FindByName(name)
-		if err != nil {
-			return &lockjson.Profile{}
-		}
-		return profile
-	}
-
-	return template.FuncMap{
-		"json": func(value interface{}, args ...string) string {
-			var b []byte
-			switch len(args) {
-			case 0:
-				b, _ = json.MarshalIndent(value, "", "")
-			case 1:
-				b, _ = json.MarshalIndent(value, args[0], "")
-			default:
-				b, _ = json.MarshalIndent(value, args[0], args[1])
-			}
-			return string(b)
-		},
-		"currentProfile": func() *lockjson.Profile {
-			return profileOf(lockJSON.CurrentProfileName)
-		},
-		"profile": profileOf,
-		"version": func() string {
-			return voltVersion
-		},
-		"versionMajor": func() int {
-			return voltVersionInfo()[0]
-		},
-		"versionMinor": func() int {
-			return voltVersionInfo()[1]
-		},
-		"versionPatch": func() int {
-			return voltVersionInfo()[2]
-		},
-	}
 }
