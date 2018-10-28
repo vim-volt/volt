@@ -24,6 +24,8 @@ var profileSubCmd = make(map[string]func([]string) error)
 
 func init() {
 	cmdMap["profile"] = &profileCmd{}
+	cmdMap["enable"] = cmdMap["profile"]
+	cmdMap["disable"] = cmdMap["profile"]
 }
 
 func (cmd *profileCmd) ProhibitRootExecution(args []string) bool {
@@ -69,6 +71,14 @@ Command
   profile rename {old} {new}
     Rename profile {old} to {new}.
 
+  enable {repository} [{repository2} ...]
+    This is shortcut of:
+    volt profile add -current {repository} [{repository2} ...]
+
+  disable {repository} [{repository2} ...]
+    This is shortcut of:
+    volt profile rm -current {repository} [{repository2} ...]
+
   profile add [-current | {name}] {repository} [{repository2} ...]
     Add one or more repositories to profile {name}.
 
@@ -103,7 +113,7 @@ Quick example
 
 func (cmd *profileCmd) Run(cmdctx *CmdContext) *Error {
 	// Parse args
-	args, err := cmd.parseArgs(cmdctx.Args)
+	args, err := cmd.parseArgs(cmdctx)
 	if err == ErrShowedHelp {
 		return nil
 	}
@@ -142,9 +152,18 @@ func (cmd *profileCmd) Run(cmdctx *CmdContext) *Error {
 	return nil
 }
 
-func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
+func (cmd *profileCmd) parseArgs(cmdctx *CmdContext) ([]string, error) {
+	switch cmdctx.Cmd {
+	case "enable":
+		cmdctx.Cmd = "profile"
+		cmdctx.Args = append([]string{"add", "-current"}, cmdctx.Args...)
+	case "disable":
+		cmdctx.Cmd = "profile"
+		cmdctx.Args = append([]string{"rm", "-current"}, cmdctx.Args...)
+	}
+
 	fs := cmd.FlagSet()
-	fs.Parse(args)
+	fs.Parse(cmdctx.Args)
 	if cmd.helped {
 		return nil, ErrShowedHelp
 	}
