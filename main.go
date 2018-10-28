@@ -67,10 +67,10 @@ func run(args []string) (int, string) {
 		LockJSON: lockJSON,
 		Config:   cfg,
 	})
-	if result == nil {
-		return 0, ""
+	if result != nil {
+		return result.Code, result.Msg
 	}
-	return result.Code, result.Msg
+	return 0, ""
 }
 
 func expandAlias(subCmd string, args []string) (string, []string, error) {
