@@ -64,7 +64,7 @@ func (cmd *migrateCmd) Run(cmdctx *CmdContext) *Error {
 		return &Error{Code: 10, Msg: "Failed to parse args: " + err.Error()}
 	}
 
-	if err := op.Migrate(); err != nil {
+	if err := op.Migrate(cmdctx.Config, cmdctx.LockJSON); err != nil {
 		return &Error{Code: 11, Msg: "Failed to migrate: " + err.Error()}
 	}
 
