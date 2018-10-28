@@ -175,16 +175,10 @@ func (cmd *profileCmd) parseArgs(cmdctx *CmdContext) ([]string, error) {
 	return fs.Args(), nil
 }
 
-func (*profileCmd) getCurrentProfile() (string, error) {
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return "", errors.Wrap(err, "failed to read lock.json")
-	}
-	return lockJSON.CurrentProfileName, nil
-}
-
 func (cmd *profileCmd) doSet(cmdctx *CmdContext) error {
 	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
+
 	// Parse args
 	createProfile := false
 	if len(args) > 0 && args[0] == "-n" {
@@ -198,19 +192,13 @@ func (cmd *profileCmd) doSet(cmdctx *CmdContext) error {
 	}
 	profileName := args[0]
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
-
 	// Exit if current profile is same as profileName
 	if lockJSON.CurrentProfileName == profileName {
 		return errors.Errorf("'%s' is current profile", profileName)
 	}
 
 	// Create given profile unless the profile exists
-	if _, err = lockJSON.Profiles.FindByName(profileName); err != nil {
+	if _, err := lockJSON.Profiles.FindByName(profileName); err != nil {
 		if !createProfile {
 			return err
 		}
@@ -219,7 +207,7 @@ func (cmd *profileCmd) doSet(cmdctx *CmdContext) error {
 			return err
 		}
 		// Read lock.json again
-		lockJSON, err = lockjson.Read()
+		err = lockJSON.Reload()
 		if err != nil {
 			return errors.Wrap(err, "failed to read lock.json")
 		}
@@ -229,7 +217,7 @@ func (cmd *profileCmd) doSet(cmdctx *CmdContext) error {
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	err := transaction.Create()
 	if err != nil {
 		return err
 	}
@@ -247,7 +235,7 @@ func (cmd *profileCmd) doSet(cmdctx *CmdContext) error {
 	logger.Info("Changed current profile: " + profileName)
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, cmdctx.Config, lockJSON)
 	if err != nil {
 		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}
@@ -257,16 +245,12 @@ func (cmd *profileCmd) doSet(cmdctx *CmdContext) error {
 
 func (cmd *profileCmd) doShow(cmdctx *CmdContext) error {
 	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
+
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile show' receives profile name.")
 		return nil
-	}
-
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
 	}
 
 	var profileName string
@@ -301,6 +285,8 @@ func (cmd *profileCmd) doList(cmdctx *CmdContext) error {
 
 func (cmd *profileCmd) doNew(cmdctx *CmdContext) error {
 	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
+
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile new' receives profile name.")
@@ -308,14 +294,8 @@ func (cmd *profileCmd) doNew(cmdctx *CmdContext) error {
 	}
 	profileName := args[0]
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
-
 	// Return error if profiles[]/name matches profileName
-	_, err = lockJSON.Profiles.FindByName(profileName)
+	_, err := lockJSON.Profiles.FindByName(profileName)
 	if err == nil {
 		return errors.New("profile '" + profileName + "' already exists")
 	}
@@ -346,20 +326,16 @@ func (cmd *profileCmd) doNew(cmdctx *CmdContext) error {
 
 func (cmd *profileCmd) doDestroy(cmdctx *CmdContext) error {
 	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
+
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile destroy' receives profile name.")
 		return nil
 	}
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
-
 	// Begin transaction
-	err = transaction.Create()
+	err := transaction.Create()
 	if err != nil {
 		return err
 	}
@@ -405,6 +381,8 @@ func (cmd *profileCmd) doDestroy(cmdctx *CmdContext) error {
 
 func (cmd *profileCmd) doRename(cmdctx *CmdContext) error {
 	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
+
 	if len(args) != 2 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile rename' receives profile name.")
@@ -412,12 +390,6 @@ func (cmd *profileCmd) doRename(cmdctx *CmdContext) error {
 	}
 	oldName := args[0]
 	newName := args[1]
-
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
 
 	// Return error if profiles[]/name does not match oldName
 	index := lockJSON.Profiles.FindIndexByName(oldName)
@@ -431,7 +403,7 @@ func (cmd *profileCmd) doRename(cmdctx *CmdContext) error {
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	err := transaction.Create()
 	if err != nil {
 		return err
 	}
@@ -465,11 +437,7 @@ func (cmd *profileCmd) doRename(cmdctx *CmdContext) error {
 
 func (cmd *profileCmd) doAdd(cmdctx *CmdContext) error {
 	args := cmdctx.Args
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
+	lockJSON := cmdctx.LockJSON
 
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs(lockJSON, "add", args)
@@ -498,7 +466,7 @@ func (cmd *profileCmd) doAdd(cmdctx *CmdContext) error {
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, cmdctx.Config, lockJSON)
 	if err != nil {
 		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}
@@ -508,11 +476,7 @@ func (cmd *profileCmd) doAdd(cmdctx *CmdContext) error {
 
 func (cmd *profileCmd) doRm(cmdctx *CmdContext) error {
 	args := cmdctx.Args
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
+	lockJSON := cmdctx.LockJSON
 
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs(lockJSON, "rm", args)
@@ -543,7 +507,7 @@ func (cmd *profileCmd) doRm(cmdctx *CmdContext) error {
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, cmdctx.Config, lockJSON)
 	if err != nil {
 		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}

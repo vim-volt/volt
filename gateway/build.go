@@ -69,7 +69,7 @@ func (cmd *buildCmd) Run(cmdctx *CmdContext) *Error {
 	}
 	defer transaction.Remove()
 
-	err = builder.Build(cmd.full)
+	err = builder.Build(cmd.full, cmdctx.Config, cmdctx.LockJSON)
 	if err != nil {
 		logger.Error()
 		return &Error{Code: 12, Msg: "Failed to build: " + err.Error()}

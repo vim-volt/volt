@@ -24,17 +24,13 @@ type symlinkBuilder struct {
 }
 
 // TODO: rollback when return err (!= nil)
-func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos) error {
+func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos, lockJSON *lockjson.LockJSON) error {
 	// Exit if vim executable was not found in PATH
 	if _, err := pathutil.VimExecutable(); err != nil {
 		return err
 	}
 
 	// Get current profile's repos list
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "could not read lock.json")
-	}
 	reposList, err := lockJSON.GetCurrentReposList()
 	if err != nil {
 		return err
