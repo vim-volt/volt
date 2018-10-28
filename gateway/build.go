@@ -1,12 +1,12 @@
-package subcmd
+package gateway
 
 import (
 	"flag"
 	"fmt"
 	"os"
 
+	"github.com/vim-volt/volt/gateway/builder"
 	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 )
 
@@ -53,10 +53,10 @@ Description
 	return fs
 }
 
-func (cmd *buildCmd) Run(args []string) *Error {
+func (cmd *buildCmd) Run(cmdctx *CmdContext) *Error {
 	// Parse args
 	fs := cmd.FlagSet()
-	fs.Parse(args)
+	fs.Parse(cmdctx.Args)
 	if cmd.helped {
 		return nil
 	}
@@ -69,7 +69,7 @@ func (cmd *buildCmd) Run(args []string) *Error {
 	}
 	defer transaction.Remove()
 
-	err = builder.Build(cmd.full)
+	err = builder.Build(cmd.full, cmdctx.Config, cmdctx.LockJSON)
 	if err != nil {
 		logger.Error()
 		return &Error{Code: 12, Msg: "Failed to build: " + err.Error()}

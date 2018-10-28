@@ -1,4 +1,4 @@
-package subcmd
+package gateway
 
 import (
 	"flag"
@@ -8,11 +8,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/vim-volt/volt/gateway/builder"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
-	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
+	"github.com/vim-volt/volt/usecase"
 )
 
 type profileCmd struct {
@@ -23,14 +24,16 @@ var profileSubCmd = make(map[string]func([]string) error)
 
 func init() {
 	cmdMap["profile"] = &profileCmd{}
+	cmdMap["enable"] = cmdMap["profile"]
+	cmdMap["disable"] = cmdMap["profile"]
 }
 
 func (cmd *profileCmd) ProhibitRootExecution(args []string) bool {
 	if len(args) == 0 {
 		return true
 	}
-	subCmd := args[0]
-	switch subCmd {
+	gateway := args[0]
+	switch gateway {
 	case "show":
 		return false
 	case "list":
@@ -68,6 +71,14 @@ Command
   profile rename {old} {new}
     Rename profile {old} to {new}.
 
+  enable {repository} [{repository2} ...]
+    This is shortcut of:
+    volt profile add -current {repository} [{repository2} ...]
+
+  disable {repository} [{repository2} ...]
+    This is shortcut of:
+    volt profile rm -current {repository} [{repository2} ...]
+
   profile add [-current | {name}] {repository} [{repository2} ...]
     Add one or more repositories to profile {name}.
 
@@ -100,9 +111,9 @@ Quick example
 	return fs
 }
 
-func (cmd *profileCmd) Run(args []string) *Error {
+func (cmd *profileCmd) Run(cmdctx *CmdContext) *Error {
 	// Parse args
-	args, err := cmd.parseArgs(args)
+	args, err := cmd.parseArgs(cmdctx)
 	if err == ErrShowedHelp {
 		return nil
 	}
@@ -111,23 +122,25 @@ func (cmd *profileCmd) Run(args []string) *Error {
 	}
 
 	subCmd := args[0]
+	cmdctx.Args = args[1:]
+
 	switch subCmd {
 	case "set":
-		err = cmd.doSet(args[1:])
+		err = cmd.doSet(cmdctx)
 	case "show":
-		err = cmd.doShow(args[1:])
+		err = cmd.doShow(cmdctx)
 	case "list":
-		err = cmd.doList(args[1:])
+		err = cmd.doList(cmdctx)
 	case "new":
-		err = cmd.doNew(args[1:])
+		err = cmd.doNew(cmdctx)
 	case "destroy":
-		err = cmd.doDestroy(args[1:])
+		err = cmd.doDestroy(cmdctx)
 	case "rename":
-		err = cmd.doRename(args[1:])
+		err = cmd.doRename(cmdctx)
 	case "add":
-		err = cmd.doAdd(args[1:])
+		err = cmd.doAdd(cmdctx)
 	case "rm":
-		err = cmd.doRm(args[1:])
+		err = cmd.doRm(cmdctx)
 	default:
 		return &Error{Code: 11, Msg: "Unknown subcommand: " + subCmd}
 	}
@@ -139,9 +152,18 @@ func (cmd *profileCmd) Run(args []string) *Error {
 	return nil
 }
 
-func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
+func (cmd *profileCmd) parseArgs(cmdctx *CmdContext) ([]string, error) {
+	switch cmdctx.Cmd {
+	case "enable":
+		cmdctx.Cmd = "profile"
+		cmdctx.Args = append([]string{"add", "-current"}, cmdctx.Args...)
+	case "disable":
+		cmdctx.Cmd = "profile"
+		cmdctx.Args = append([]string{"rm", "-current"}, cmdctx.Args...)
+	}
+
 	fs := cmd.FlagSet()
-	fs.Parse(args)
+	fs.Parse(cmdctx.Args)
 	if cmd.helped {
 		return nil, ErrShowedHelp
 	}
@@ -153,15 +175,10 @@ func (cmd *profileCmd) parseArgs(args []string) ([]string, error) {
 	return fs.Args(), nil
 }
 
-func (*profileCmd) getCurrentProfile() (string, error) {
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return "", errors.Wrap(err, "failed to read lock.json")
-	}
-	return lockJSON.CurrentProfileName, nil
-}
+func (cmd *profileCmd) doSet(cmdctx *CmdContext) error {
+	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
 
-func (cmd *profileCmd) doSet(args []string) error {
 	// Parse args
 	createProfile := false
 	if len(args) > 0 && args[0] == "-n" {
@@ -175,27 +192,22 @@ func (cmd *profileCmd) doSet(args []string) error {
 	}
 	profileName := args[0]
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
-
 	// Exit if current profile is same as profileName
 	if lockJSON.CurrentProfileName == profileName {
 		return errors.Errorf("'%s' is current profile", profileName)
 	}
 
 	// Create given profile unless the profile exists
-	if _, err = lockJSON.Profiles.FindByName(profileName); err != nil {
+	if _, err := lockJSON.Profiles.FindByName(profileName); err != nil {
 		if !createProfile {
 			return err
 		}
-		if err = cmd.doNew([]string{profileName}); err != nil {
+		cmdctx.Args = []string{profileName}
+		if err = cmd.doNew(cmdctx); err != nil {
 			return err
 		}
 		// Read lock.json again
-		lockJSON, err = lockjson.Read()
+		err = lockJSON.Reload()
 		if err != nil {
 			return errors.Wrap(err, "failed to read lock.json")
 		}
@@ -205,7 +217,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	err := transaction.Create()
 	if err != nil {
 		return err
 	}
@@ -223,7 +235,7 @@ func (cmd *profileCmd) doSet(args []string) error {
 	logger.Info("Changed current profile: " + profileName)
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, cmdctx.Config, lockJSON)
 	if err != nil {
 		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}
@@ -231,17 +243,14 @@ func (cmd *profileCmd) doSet(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doShow(args []string) error {
+func (cmd *profileCmd) doShow(cmdctx *CmdContext) error {
+	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
+
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile show' receives profile name.")
 		return nil
-	}
-
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
 	}
 
 	var profileName string
@@ -254,25 +263,30 @@ func (cmd *profileCmd) doShow(args []string) error {
 		}
 	}
 
-	return (&listCmd{}).list(fmt.Sprintf(`name: %s
+	format := fmt.Sprintf(`name: %s
 repos path:
 {{- with profile %q -}}
 {{- range .ReposPath }}
   {{ . }}
 {{- end -}}
 {{- end }}
-`, profileName, profileName))
+`, profileName, profileName)
+	return usecase.List(os.Stdout, format, cmdctx.LockJSON, cmdctx.Config)
 }
 
-func (cmd *profileCmd) doList(args []string) error {
-	return (&listCmd{}).list(`
+func (cmd *profileCmd) doList(cmdctx *CmdContext) error {
+	format := `
 {{- range .Profiles -}}
 {{- if eq .Name $.CurrentProfileName -}}*{{- else }} {{ end }} {{ .Name }}
 {{ end -}}
-`)
+`
+	return usecase.List(os.Stdout, format, cmdctx.LockJSON, cmdctx.Config)
 }
 
-func (cmd *profileCmd) doNew(args []string) error {
+func (cmd *profileCmd) doNew(cmdctx *CmdContext) error {
+	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
+
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile new' receives profile name.")
@@ -280,14 +294,8 @@ func (cmd *profileCmd) doNew(args []string) error {
 	}
 	profileName := args[0]
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
-
 	// Return error if profiles[]/name matches profileName
-	_, err = lockJSON.Profiles.FindByName(profileName)
+	_, err := lockJSON.Profiles.FindByName(profileName)
 	if err == nil {
 		return errors.New("profile '" + profileName + "' already exists")
 	}
@@ -316,21 +324,18 @@ func (cmd *profileCmd) doNew(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doDestroy(args []string) error {
+func (cmd *profileCmd) doDestroy(cmdctx *CmdContext) error {
+	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
+
 	if len(args) == 0 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile destroy' receives profile name.")
 		return nil
 	}
 
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
-
 	// Begin transaction
-	err = transaction.Create()
+	err := transaction.Create()
 	if err != nil {
 		return err
 	}
@@ -374,7 +379,10 @@ func (cmd *profileCmd) doDestroy(args []string) error {
 	return merr.ErrorOrNil()
 }
 
-func (cmd *profileCmd) doRename(args []string) error {
+func (cmd *profileCmd) doRename(cmdctx *CmdContext) error {
+	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
+
 	if len(args) != 2 {
 		cmd.FlagSet().Usage()
 		logger.Error("'volt profile rename' receives profile name.")
@@ -382,12 +390,6 @@ func (cmd *profileCmd) doRename(args []string) error {
 	}
 	oldName := args[0]
 	newName := args[1]
-
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
 
 	// Return error if profiles[]/name does not match oldName
 	index := lockJSON.Profiles.FindIndexByName(oldName)
@@ -401,7 +403,7 @@ func (cmd *profileCmd) doRename(args []string) error {
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	err := transaction.Create()
 	if err != nil {
 		return err
 	}
@@ -433,12 +435,9 @@ func (cmd *profileCmd) doRename(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doAdd(args []string) error {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
+func (cmd *profileCmd) doAdd(cmdctx *CmdContext) error {
+	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
 
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs(lockJSON, "add", args)
@@ -467,7 +466,7 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, cmdctx.Config, lockJSON)
 	if err != nil {
 		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}
@@ -475,12 +474,9 @@ func (cmd *profileCmd) doAdd(args []string) error {
 	return nil
 }
 
-func (cmd *profileCmd) doRm(args []string) error {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.Wrap(err, "failed to read lock.json")
-	}
+func (cmd *profileCmd) doRm(cmdctx *CmdContext) error {
+	args := cmdctx.Args
+	lockJSON := cmdctx.LockJSON
 
 	// Parse args
 	profileName, reposPathList, err := cmd.parseAddArgs(lockJSON, "rm", args)
@@ -511,7 +507,7 @@ func (cmd *profileCmd) doRm(args []string) error {
 	}
 
 	// Build ~/.vim/pack/volt dir
-	err = builder.Build(false)
+	err = builder.Build(false, cmdctx.Config, lockJSON)
 	if err != nil {
 		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}

@@ -1,30 +1,26 @@
 package builder
 
 import (
-	"github.com/pkg/errors"
 	"os"
 
+	"github.com/pkg/errors"
+
 	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/gateway/buildinfo"
+	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
-	"github.com/vim-volt/volt/subcmd/buildinfo"
 )
 
 // Builder creates/updates ~/.vim/pack/volt directory
 type Builder interface {
-	Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos) error
+	Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos, lockJSON *lockjson.LockJSON) error
 }
 
 const currentBuildInfoVersion = 2
 
 // Build creates/updates ~/.vim/pack/volt directory
-func Build(full bool) error {
-	// Read config.toml
-	cfg, err := config.Read()
-	if err != nil {
-		return errors.Wrap(err, "could not read config.toml")
-	}
-
+func Build(full bool, cfg *config.Config, lockJSON *lockjson.LockJSON) error {
 	// Get builder
 	blder, err := getBuilder(cfg.Build.Strategy)
 	if err != nil {
@@ -75,7 +71,7 @@ func Build(full bool) error {
 		}
 	}
 
-	return blder.Build(buildInfo, buildReposMap)
+	return blder.Build(buildInfo, buildReposMap, lockJSON)
 }
 
 func getBuilder(strategy string) (Builder, error) {

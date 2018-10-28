@@ -10,12 +10,12 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/fileutil"
+	"github.com/vim-volt/volt/gateway/buildinfo"
 	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/plugconf"
-	"github.com/vim-volt/volt/subcmd/buildinfo"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
@@ -25,17 +25,11 @@ type copyBuilder struct {
 	BaseBuilder
 }
 
-func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos) error {
+func (builder *copyBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposMap map[pathutil.ReposPath]*buildinfo.Repos, lockJSON *lockjson.LockJSON) error {
 	// Exit if vim executable was not found in PATH
 	vimExePath, err := pathutil.VimExecutable()
 	if err != nil {
 		return err
-	}
-
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return errors.New("could not read lock.json: " + err.Error())
 	}
 
 	// Get current profile's repos list

@@ -1,4 +1,4 @@
-package subcmd
+package gateway
 
 import (
 	"encoding/json"
@@ -18,6 +18,7 @@ import (
 
 	"github.com/vim-volt/volt/httputil"
 	"github.com/vim-volt/volt/logger"
+	"github.com/vim-volt/volt/usecase"
 )
 
 func init() {
@@ -50,8 +51,8 @@ Description
 	return fs
 }
 
-func (cmd *selfUpgradeCmd) Run(args []string) *Error {
-	err := cmd.parseArgs(args)
+func (cmd *selfUpgradeCmd) Run(cmdctx *CmdContext) *Error {
+	err := cmd.parseArgs(cmdctx.Args)
 	if err == ErrShowedHelp {
 		return nil
 	}
@@ -139,15 +140,15 @@ func (cmd *selfUpgradeCmd) doSelfUpgrade(latestURL string) error {
 		return err
 	}
 	logger.Debugf("tag_name = %q", release.TagName)
-	tagNameVer, err := parseVersion(release.TagName)
+	tagNameVer, err := usecase.ParseVersion(release.TagName)
 	if err != nil {
 		return err
 	}
-	if compareVersion(tagNameVer, voltVersionInfo()) <= 0 {
+	if usecase.CompareVersion(tagNameVer, usecase.Version()) <= 0 {
 		logger.Info("No updates were found.")
 		return nil
 	}
-	logger.Infof("Found update: %s -> %s", voltVersion, release.TagName)
+	logger.Infof("Found update: %s -> %s", usecase.VersionString(), release.TagName)
 
 	// Show release note
 	fmt.Println("---")

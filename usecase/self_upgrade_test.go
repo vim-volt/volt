@@ -1,10 +1,15 @@
-package subcmd
+package usecase
 
 import (
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/pkg/errors"
+	"github.com/vim-volt/volt/config"
+	"github.com/vim-volt/volt/gateway"
+	"github.com/vim-volt/volt/lockjson"
 )
 
 func TestVoltSelfUpgrade(t *testing.T) {
@@ -28,10 +33,9 @@ func testVoltSelfUpgradeCheckFromOldVer(t *testing.T) {
 
 	// =============== run =============== //
 
-	var err *Error
+	var err *gateway.Error
 	out := captureOutput(t, func() {
-		args := []string{"volt", "self-upgrade", "-check"}
-		err = Run(args, DefaultRunner)
+		err = runVolt(t, "self-upgrade", "-check")
 	})
 
 	if err != nil {
@@ -46,8 +50,7 @@ func testVoltSelfUpgradeCheckFromOldVer(t *testing.T) {
 func testVoltSelfUpgradeCheckFromCurrentVer(t *testing.T) {
 	var err *Error
 	out := captureOutput(t, func() {
-		args := []string{"volt", "self-upgrade", "-check"}
-		err = Run(args, DefaultRunner)
+		err = runVolt(t, "self-upgrade", "-check")
 	})
 
 	if err != nil {
@@ -58,6 +61,7 @@ func testVoltSelfUpgradeCheckFromCurrentVer(t *testing.T) {
 	}
 }
 
+// TODO use https://github.com/rhysd/go-fakeio
 func captureOutput(t *testing.T, f func()) string {
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -82,4 +86,24 @@ func captureOutput(t *testing.T, f func()) string {
 	os.Stdout = oldStdout
 	os.Stderr = oldStderr
 	return <-outCh
+}
+
+func runVolt(t *testing.T, cmd string, args ...string) *Error {
+	c := LookUpCmd(cmd)
+	if c == nil {
+		t.Fatal("unknown command '" + cmd + "'")
+	}
+	lockJSON, err := lockjson.Read()
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "failed to read lock.json").Error())
+	}
+	cfg, err := config.Read()
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "failed to read config.toml").Error())
+	}
+	return c.Run(&CmdContext{
+		Args:     args,
+		LockJSON: lockJSON,
+		Config:   cfg,
+	})
 }

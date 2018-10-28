@@ -1,4 +1,4 @@
-package subcmd
+package usecase
 
 import (
 	"strconv"
@@ -106,8 +106,8 @@ func TestVoltListFunctions(t *testing.T) {
 		testutil.SuccessExit(t, out, err)
 
 		// (b)
-		if string(out) != voltVersion {
-			t.Errorf("expected %q but got %q", voltVersion, string(out))
+		if string(out) != VoltVersion {
+			t.Errorf("expected %q but got %q", VoltVersion, string(out))
 		}
 	})
 
@@ -123,7 +123,7 @@ func TestVoltListFunctions(t *testing.T) {
 		testutil.SuccessExit(t, out, err)
 
 		// (c)
-		expected := strconv.Itoa(voltVersionInfo()[0])
+		expected := strconv.Itoa(Version()[0])
 		if string(out) != expected {
 			t.Errorf("expected %q but got %q", expected, string(out))
 		}
@@ -141,7 +141,7 @@ func TestVoltListFunctions(t *testing.T) {
 		testutil.SuccessExit(t, out, err)
 
 		// (d)
-		expected := strconv.Itoa(voltVersionInfo()[1])
+		expected := strconv.Itoa(Version()[1])
 		if string(out) != expected {
 			t.Errorf("expected %q but got %q", expected, string(out))
 		}
@@ -159,7 +159,7 @@ func TestVoltListFunctions(t *testing.T) {
 		testutil.SuccessExit(t, out, err)
 
 		// (e)
-		expected := strconv.Itoa(voltVersionInfo()[2])
+		expected := strconv.Itoa(Version()[2])
 		if string(out) != expected {
 			t.Errorf("expected %q but got %q", expected, string(out))
 		}

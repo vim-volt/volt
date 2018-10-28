@@ -56,46 +56,48 @@ type Profile struct {
 
 const lockJSONVersion = 2
 
-func initialLockJSON() *LockJSON {
-	return &LockJSON{
-		Version:            lockJSONVersion,
-		CurrentProfileName: "default",
-		Repos:              make([]Repos, 0),
-		Profiles: []Profile{
-			Profile{
-				Name:      "default",
-				ReposPath: make([]pathutil.ReposPath, 0),
-			},
+func initLockJSON(lockJSON *LockJSON) {
+	lockJSON.Version = lockJSONVersion
+	lockJSON.CurrentProfileName = "default"
+	lockJSON.Repos = make([]Repos, 0)
+	lockJSON.Profiles = []Profile{
+		Profile{
+			Name:      "default",
+			ReposPath: make([]pathutil.ReposPath, 0),
 		},
 	}
 }
 
 // Read reads from lock.json and returns LockJSON
 func Read() (*LockJSON, error) {
-	return read(true)
+	var lockJSON LockJSON
+	err := read(true, &lockJSON)
+	return &lockJSON, err
 }
 
 // ReadNoMigrationMsg is same as Read, but no migration message is printed.
 func ReadNoMigrationMsg() (*LockJSON, error) {
-	return read(false)
+	var lockJSON LockJSON
+	err := read(false, &lockJSON)
+	return &lockJSON, err
 }
 
-func read(doLog bool) (*LockJSON, error) {
+func read(doLog bool, lockJSON *LockJSON) error {
 	// Return initial lock.json struct if lockfile does not exist
 	lockfile := pathutil.LockJSON()
 	if !pathutil.Exists(lockfile) {
-		return initialLockJSON(), nil
+		initLockJSON(lockJSON)
+		return nil
 	}
 
 	// Read lock.json
 	bytes, err := ioutil.ReadFile(lockfile)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var lockJSON LockJSON
-	err = json.Unmarshal(bytes, &lockJSON)
+	err = json.Unmarshal(bytes, lockJSON)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if lockJSON.Version < lockJSONVersion {
@@ -103,19 +105,18 @@ func read(doLog bool) (*LockJSON, error) {
 			logger.Warnf("Performing auto-migration of lock.json: v%d -> v%d", lockJSON.Version, lockJSONVersion)
 			logger.Warn("Please run 'volt migrate' to migrate explicitly if it's not updated by after operations")
 		}
-		err = migrate(bytes, &lockJSON)
+		err = migrate(bytes, lockJSON)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	// Validate lock.json
-	err = validate(&lockJSON)
+	err = validate(lockJSON)
 	if err != nil {
-		return nil, errors.Wrap(err, "validation failed: lock.json")
+		return errors.Wrap(err, "validation failed: lock.json")
 	}
-
-	return &lockJSON, nil
+	return nil
 }
 
 func validate(lockJSON *LockJSON) error {
@@ -250,6 +251,11 @@ func validateMissing(lockJSON *LockJSON) error {
 		}
 	}
 	return nil
+}
+
+// Reload reads lock.json again from filesystem.
+func (lockJSON *LockJSON) Reload() error {
+	return read(true, lockJSON)
 }
 
 func (lockJSON *LockJSON) Write() error {
