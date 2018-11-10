@@ -677,8 +677,11 @@ func (cmd *getCmd) getWorktreeChanges(r *git.Repository, before string) (bool, e
 func (cmd *getCmd) gitClone(cloneURL, dstDir string, cfg *config.Config) error {
 	isBare := false
 	r, err := git.PlainClone(dstDir, isBare, &git.CloneOptions{
-		URL:               cloneURL,
-		RecurseSubmodules: 10,
+		URL: cloneURL,
+		// TODO: Temporarily recursive clone is disabled, because go-git does
+		// not support relative submodule url in .gitmodules and it causes an
+		// error
+		RecurseSubmodules: 0,
 	})
 	if err != nil {
 		// When fallback_git_cmd is true and git command is installed,
