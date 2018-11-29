@@ -1,33 +1,27 @@
 package gateway
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
-	"strings"
-	"syscall"
-	"time"
 
-	"github.com/pkg/errors"
-
-	"github.com/vim-volt/volt/httputil"
-	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/usecase"
 )
 
 func init() {
-	cmdMap["self-upgrade"] = &selfUpgradeCmd{}
+	cmdMap["self-upgrade"] = &selfUpgradeCmd{
+		SelfUpgrade:     usecase.SelfUpgrade,
+		RemoveOldBinary: usecase.RemoveOldBinary,
+	}
 }
 
 type selfUpgradeCmd struct {
-	helped bool
-	check  bool
+	helped    bool
+	checkOnly bool
+
+	SelfUpgrade     func(latestURL string, checkOnly bool) error
+	RemoveOldBinary func(ppid int) error
 }
 
 func (cmd *selfUpgradeCmd) ProhibitRootExecution(args []string) bool { return true }
@@ -47,7 +41,7 @@ Description
 		fmt.Println()
 		cmd.helped = true
 	}
-	fs.BoolVar(&cmd.check, "check", false, "only checks the newer version is available")
+	fs.BoolVar(&cmd.checkOnly, "check", false, "only checks the newer version is available")
 	return fs
 }
 
@@ -61,12 +55,16 @@ func (cmd *selfUpgradeCmd) Run(cmdctx *CmdContext) *Error {
 	}
 
 	if ppidStr := os.Getenv("VOLT_SELF_UPGRADE_PPID"); ppidStr != "" {
-		if err = cmd.doCleanUp(ppidStr); err != nil {
+		ppid, err := strconv.Atoi(ppidStr)
+		if err != nil {
+			return &Error{Code: 20, Msg: "Failed to parse VOLT_SELF_UPGRADE_PPID: " + err.Error()}
+		}
+		if err = cmd.RemoveOldBinary(ppid); err != nil {
 			return &Error{Code: 11, Msg: "Failed to clean up old binary: " + err.Error()}
 		}
 	} else {
 		latestURL := "https://api.github.com/repos/vim-volt/volt/releases/latest"
-		if err = cmd.doSelfUpgrade(latestURL); err != nil {
+		if err = cmd.SelfUpgrade(latestURL, cmd.checkOnly); err != nil {
 			return &Error{Code: 12, Msg: "Failed to self-upgrade: " + err.Error()}
 		}
 	}
@@ -79,155 +77,6 @@ func (cmd *selfUpgradeCmd) parseArgs(args []string) error {
 	fs.Parse(args)
 	if cmd.helped {
 		return ErrShowedHelp
-	}
-	return nil
-}
-
-func (cmd *selfUpgradeCmd) doCleanUp(ppidStr string) error {
-	ppid, err := strconv.Atoi(ppidStr)
-	if err != nil {
-		return errors.Wrap(err, "failed to parse VOLT_SELF_UPGRADE_PPID")
-	}
-
-	// Wait until the parent process exits
-	if died := cmd.waitUntilParentExits(ppid); !died {
-		return errors.Errorf("parent pid (%s) is keeping alive for long time", ppidStr)
-	}
-
-	// Remove old binary
-	voltExe, err := cmd.getExecutablePath()
-	if err != nil {
-		return err
-	}
-	return os.Remove(voltExe + ".old")
-}
-
-func (cmd *selfUpgradeCmd) waitUntilParentExits(pid int) bool {
-	fib := []int{1, 1, 2, 3, 5, 8, 13} // 33 second
-	for i := 0; i < len(fib); i++ {
-		if !cmd.processIsAlive(pid) {
-			return true
-		}
-		time.Sleep(time.Duration(fib[i]) * time.Second)
-	}
-	return false
-}
-
-func (*selfUpgradeCmd) processIsAlive(pid int) bool {
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	err = process.Signal(syscall.Signal(0))
-	return err == nil
-}
-
-type latestRelease struct {
-	TagName string `json:"tag_name"`
-	Body    string `json:"body"`
-	Assets  []releaseAsset
-}
-
-type releaseAsset struct {
-	BrowserDownloadURL string `json:"browser_download_url"`
-	Name               string `json:"name"`
-}
-
-func (cmd *selfUpgradeCmd) doSelfUpgrade(latestURL string) error {
-	// Check the latest binary info
-	release, err := cmd.checkLatest(latestURL)
-	if err != nil {
-		return err
-	}
-	logger.Debugf("tag_name = %q", release.TagName)
-	tagNameVer, err := usecase.ParseVersion(release.TagName)
-	if err != nil {
-		return err
-	}
-	if usecase.CompareVersion(tagNameVer, usecase.Version()) <= 0 {
-		logger.Info("No updates were found.")
-		return nil
-	}
-	logger.Infof("Found update: %s -> %s", usecase.VersionString(), release.TagName)
-
-	// Show release note
-	fmt.Println("---")
-	fmt.Println(release.Body)
-	fmt.Println("---")
-
-	if cmd.check {
-		return nil
-	}
-
-	// Download the latest binary as "volt[.exe].latest"
-	voltExe, err := cmd.getExecutablePath()
-	if err != nil {
-		return err
-	}
-	latestFile, err := os.OpenFile(voltExe+".latest", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
-	if err != nil {
-		return err
-	}
-	err = cmd.download(latestFile, release)
-	latestFile.Close()
-	if err != nil {
-		return err
-	}
-
-	// Rename dir/volt[.exe] to dir/volt[.exe].old
-	// NOTE: Windows can rename running executable file
-	if err := os.Rename(voltExe, voltExe+".old"); err != nil {
-		return err
-	}
-
-	// Rename dir/volt[.exe].latest to dir/volt[.exe]
-	if err := os.Rename(voltExe+".latest", voltExe); err != nil {
-		return err
-	}
-
-	// Spawn dir/volt[.exe] with env "VOLT_SELF_UPGRADE_PPID={pid}"
-	voltCmd := exec.Command(voltExe, "self-upgrade")
-	if err = voltCmd.Start(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (*selfUpgradeCmd) getExecutablePath() (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	return filepath.EvalSymlinks(exe)
-}
-
-func (*selfUpgradeCmd) checkLatest(url string) (*latestRelease, error) {
-	content, err := httputil.GetContent(url)
-	if err != nil {
-		return nil, err
-	}
-	var release latestRelease
-	if err = json.Unmarshal(content, &release); err != nil {
-		return nil, err
-	}
-	return &release, nil
-}
-
-func (*selfUpgradeCmd) download(w io.Writer, release *latestRelease) error {
-	suffix := runtime.GOOS + "-" + runtime.GOARCH
-	for i := range release.Assets {
-		// e.g.: Name = "volt-v0.1.2-linux-amd64"
-		if strings.HasSuffix(release.Assets[i].Name, suffix) {
-			r, err := httputil.GetContentReader(release.Assets[i].BrowserDownloadURL)
-			if err != nil {
-				return err
-			}
-			defer r.Close()
-			if _, err = io.Copy(w, r); err != nil {
-				return err
-			}
-			break
-		}
 	}
 	return nil
 }

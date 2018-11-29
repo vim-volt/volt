@@ -9,13 +9,13 @@ import (
 )
 
 func init() {
-	cmdMap["version"] = &versionCmd{Version: usecase.VersionString()}
+	cmdMap["version"] = &versionCmd{VersionString: usecase.VersionString()}
 }
 
 type versionCmd struct {
 	helped bool
 
-	Version string
+	VersionString string
 }
 
 func (cmd *versionCmd) ProhibitRootExecution(args []string) bool { return false }
@@ -45,6 +45,6 @@ func (cmd *versionCmd) Run(cmdctx *CmdContext) *Error {
 		return nil
 	}
 
-	fmt.Printf("volt version: %s\n", cmd.Version)
+	fmt.Printf("volt version: %s\n", cmd.VersionString)
 	return nil
 }
