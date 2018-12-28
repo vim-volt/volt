@@ -685,12 +685,14 @@ endfunction
 	}
 
 	if vimrcPath != "" || gvimrcPath != "" {
-		buf.WriteString("\n\n")
+		buf.WriteString("\n")
 		if vimrcPath != "" {
+			buf.WriteString("\n")
 			vimrcPath = strings.Replace(vimrcPath, "'", "''", -1)
 			buf.WriteString("let $MYVIMRC = '" + vimrcPath + "'")
 		}
 		if gvimrcPath != "" {
+			buf.WriteString("\n")
 			gvimrcPath = strings.Replace(gvimrcPath, "'", "''", -1)
 			buf.WriteString("let $MYGVIMRC = '" + gvimrcPath + "'")
 		}
