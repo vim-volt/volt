@@ -228,8 +228,10 @@ For example, [tyru/open-browser-github.vim](https://github.com/tyru/open-browser
 
 Some special functions can be defined in plugconf file:
 
-* `s:config()`
-    * Plugin configuration
+* `s:on_load_pre`
+    * Plugin configuration to be executed before a plugin is loaded
+* `s:on_load_post`
+    * Plugin configuration to be executed after a plugin is loaded
 * `s:loaded_on()` (optional)
     * Return value: String (when to load a plugin by `:packadd`)
     * This function specifies when to load a plugin by `:packadd`
@@ -247,7 +249,8 @@ An example config of [tyru/open-browser-github.vim](https://github.com/tyru/open
 
 ```vim
 " Plugin configuration like the code written in vimrc.
-function! s:config()
+" This configuration is executed *before* a plugin is loaded.
+function! s:on_load_pre()
   let g:openbrowser_github_always_use_commit_hash = 1
 endfunction
 
