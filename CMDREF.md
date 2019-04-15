@@ -33,6 +33,9 @@ Command
     This is shortcut of:
     volt profile rm -current {repository} [{repository2} ...]
 
+  edit [-e|--editor {editor}] {repository} [{repository2} ...]
+    Open the plugconf file(s) of one or more {repository} for editing.
+
   profile set {name}
     Set profile name
 
@@ -110,6 +113,23 @@ Quick example
 Description
   This is shortcut of:
   volt profile rm {current profile} {repository} [{repository2} ...]
+```
+
+# volt edit
+
+```
+Usage
+  volt edit [-help] [-e|--editor {editor}] {repository} [{repository2} ...]
+
+Quick example
+  $ volt edit tyru/caw.vim # will open the plugconf file for tyru/caw.vim for editing
+
+Description
+  Open the plugconf file(s) of one or more {repository} for editing.
+
+  If the -e option was given, use the given editor for editing those files (unless it cannot be found)
+
+  It also calls "volt build" afterwards if modifications were made to the plugconf file(s).
 ```
 
 # volt enable
