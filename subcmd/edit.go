@@ -63,7 +63,6 @@ func (cmd *editCmd) Run(args []string) *Error {
 
 	hasChanges, err := cmd.doEdit(reposPathList)
 	if err != nil {
-		//FIXME: Which error code to use?
 		return &Error{Code: 15, Msg: "Failed to edit plugconf file: " + err.Error()}
 	}
 
@@ -91,15 +90,12 @@ func (cmd *editCmd) doEdit(reposPathList []pathutil.ReposPath) (bool, error) {
 		return false, errors.New("could not read config.toml: " + err.Error())
 	}
 
-	viitor, err := cmd.identifyEditor(cfg)
-	if err != nil || viitor == "" {
-		//FIXME: Which error code to use?
-		return false, &Error{Code: 30, Msg: "No usable viitor found"}
+	editor, err := cmd.identifyEditor(cfg)
+	if err != nil || editor == "" {
+		return false, &Error{Code: 30, Msg: "No usable editor found"}
 	}
 
 	changeWasMade := false
-	//FIXME: Run single vim instance? Leads to problems if the configured
-	//editor does not support to open multiple files
 	for _, reposPath := range reposPathList {
 
 		// Edit plugconf file
@@ -120,12 +116,12 @@ func (cmd *editCmd) doEdit(reposPathList []pathutil.ReposPath) (bool, error) {
 		mTimeBefore := info.ModTime()
 
 		// Call the editor with the plugconf file
-		vimCmd := exec.Command(viitor, plugconfPath)
-		vimCmd.Stdin = os.Stdin
-		vimCmd.Stdout = os.Stdout
-		if err = vimCmd.Run(); err != nil {
-			//FIXME: Don't abort immediately, but try to edit remaining files?
-			return false, err
+		editorCmd := exec.Command(editor, plugconfPath)
+		editorCmd.Stdin = os.Stdin
+		editorCmd.Stdout = os.Stdout
+		if err = editorCmd.Run(); err != nil {
+			logger.Error("Error calling editor for '%s': %s", reposPath, err.Error)
+			continue
 		}
 
 		// Get modification time after closing the editor
@@ -179,7 +175,7 @@ func (cmd *editCmd) parseArgs(args []string) (pathutil.ReposPathList, error) {
 }
 
 func (cmd *editCmd) identifyEditor(cfg *config.Config) (string, error) {
-	var editors []string
+	editors := make([]string, 4, 6)
 
 	// if an editor is specified as commandline argument, consider it
 	// as alternative
@@ -193,8 +189,15 @@ func (cmd *editCmd) identifyEditor(cfg *config.Config) (string, error) {
 		editors = append(editors, cfg.Edit.Editor)
 	}
 
+	vimExecutable, err := pathutil.VimExecutable()
+	if err != nil {
+		logger.Debug("No vim executable found in $PATH")
+	} else {
+		editors = append(editors, vimExecutable)
+	}
+
 	// specifiy a fixed list of other alternatives
-	editors = append(editors, "$VISUAL", "nvim", "vim", "sensible-editor", "$EDITOR")
+	editors = append(editors, "$VISUAL", "sensible-editor", "$EDITOR")
 
 	for _, editor := range editors {
 		// resolve content of environment variables
@@ -207,7 +210,7 @@ func (cmd *editCmd) identifyEditor(cfg *config.Config) (string, error) {
 
 		path, err := exec.LookPath(editorName)
 		if err != nil {
-			logger.Debug(editor + " not found in $PATH")
+			logger.Debug(editorName + " not found in $PATH")
 		} else if path != "" {
 			logger.Debug("Using " + path + " as editor")
 			return editorName, nil

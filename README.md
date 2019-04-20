@@ -181,6 +181,13 @@ create_skeleton_plugconf = true
 #                   installed, it tries to execute "git clone" or "git pull" as a fallback
 # * false: "volt get" or "volt get -u" won't try to execute fallback commands
 fallback_git_cmd = true
+
+[edit]
+# If you ever wanted to use emacs to edit your vim plugin config, you can
+# do so with the following. If not specified, volt will try to use
+# vim/nvim, $VISUAL, sensible-editor, or $EDITOR in this order until a usable
+# one is found.
+editor = emacs
 ```
 
 ## Features
