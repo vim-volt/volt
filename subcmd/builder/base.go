@@ -1,13 +1,14 @@
 package builder
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/fileutil"
@@ -79,7 +80,7 @@ func (builder *BaseBuilder) installRCFile(profileName, srcRCFileName, dst string
 			if !pathutil.Exists(src) {
 				return nil
 			}
-			return fmt.Errorf("'%s' is not an auto-generated file. please move to '%s' and re-run 'volt build'", dst, pathutil.RCDir(profileName))
+			return errors.Errorf("'%s' is not an auto-generated file. please move to '%s' and re-run 'volt build'", dst, pathutil.RCDir(profileName))
 		}
 	}
 
@@ -175,7 +176,7 @@ func (builder *BaseBuilder) helptags(reposPath pathutil.ReposPath, vimExePath st
 	logger.Debugf("Executing '%s %s' ...", vimExePath, strings.Join(vimArgs, " "))
 	err := exec.Command(vimExePath, vimArgs...).Run()
 	if err != nil {
-		return errors.New("failed to make tags file: " + err.Error())
+		return errors.Wrap(err, "failed to make tags file")
 	}
 	return nil
 }

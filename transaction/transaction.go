@@ -1,7 +1,7 @@
 package transaction
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -19,7 +19,7 @@ func Create() error {
 	// Create trx.lock parent directories
 	err := os.MkdirAll(filepath.Dir(trxLockFile), 0755)
 	if err != nil {
-		return errors.New("failed to begin transaction: " + err.Error())
+		return errors.Wrap(err, "failed to begin transaction")
 	}
 
 	// Return error if the file exists
@@ -30,13 +30,13 @@ func Create() error {
 	// Write pid to trx.lock file
 	err = ioutil.WriteFile(trxLockFile, ownPid, 0644)
 	if err != nil {
-		return errors.New("failed to begin transaction: " + err.Error())
+		return errors.Wrap(err, "failed to begin transaction")
 	}
 
 	// Read pid from trx.lock file
 	pid, err := ioutil.ReadFile(trxLockFile)
 	if err != nil {
-		return errors.New("failed to begin transaction: " + err.Error())
+		return errors.Wrap(err, "failed to begin transaction")
 	}
 
 	if string(pid) != string(ownPid) {

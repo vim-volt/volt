@@ -2,8 +2,8 @@ package subcmd
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -583,7 +583,7 @@ func gitCommitOne(reposPath pathutil.ReposPath) (prev plumbing.Hash, current plu
 
 	filename := filepath.Join(reposPath.FullPath(), relPath)
 	if err = ioutil.WriteFile(filename, content, 0644); err != nil {
-		err = errors.New("ioutil.WriteFile() failed: " + err.Error())
+		err = errors.Wrap(err, "ioutil.WriteFile() failed")
 		return
 	}
 	r, err := git.PlainOpen(reposPath.FullPath())

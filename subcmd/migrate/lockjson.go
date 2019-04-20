@@ -1,7 +1,7 @@
 package migrate
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/transaction"
@@ -35,7 +35,7 @@ func (*lockjsonMigrater) Migrate() error {
 	// Read lock.json
 	lockJSON, err := lockjson.ReadNoMigrationMsg()
 	if err != nil {
-		return errors.New("could not read lock.json: " + err.Error())
+		return errors.Wrap(err, "could not read lock.json")
 	}
 
 	// Begin transaction
@@ -48,7 +48,7 @@ func (*lockjsonMigrater) Migrate() error {
 	// Write to lock.json
 	err = lockJSON.Write()
 	if err != nil {
-		return errors.New("could not write to lock.json: " + err.Error())
+		return errors.Wrap(err, "could not write to lock.json")
 	}
 	return nil
 }

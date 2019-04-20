@@ -1,7 +1,7 @@
 package builder
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"os"
 
 	"github.com/vim-volt/volt/config"
@@ -22,7 +22,7 @@ func Build(full bool) error {
 	// Read config.toml
 	cfg, err := config.Read()
 	if err != nil {
-		return errors.New("could not read config.toml: " + err.Error())
+		return errors.Wrap(err, "could not read config.toml")
 	}
 
 	// Get builder

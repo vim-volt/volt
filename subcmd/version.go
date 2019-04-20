@@ -1,16 +1,16 @@
 package subcmd
 
 import (
-	"errors"
 	"flag"
 	"fmt"
+	"github.com/pkg/errors"
 	"os"
 	"regexp"
 	"strconv"
 )
 
 // This variable is not constant for testing (to change it temporarily)
-var voltVersion = "v0.3.5"
+var voltVersion = "v0.3.6-alpha"
 
 func init() {
 	cmdMap["version"] = &versionCmd{}

@@ -1,12 +1,12 @@
 package builder
 
 import (
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/fileutil"
@@ -145,7 +145,7 @@ func (builder *copyBuilder) copyReposList(buildReposMap map[pathutil.ReposPath]*
 			n, err := builder.copyReposGit(&reposList[i], buildReposMap[reposList[i].Path], vimExePath, copyDone)
 			if err != nil {
 				copyDone <- actionReposResult{
-					err:   errors.New("failed to copy " + string(reposList[i].Type) + " repos: " + err.Error()),
+					err:   errors.Wrap(err, "failed to copy "+string(reposList[i].Type)+" repos"),
 					repos: &reposList[i],
 				}
 			}
@@ -168,13 +168,13 @@ func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buil
 	// Open ~/volt/repos/{repos}
 	r, err := git.PlainOpen(src)
 	if err != nil {
-		return 0, errors.New("failed to open repository: " + err.Error())
+		return 0, errors.Wrap(err, "failed to open repository")
 	}
 
 	// Show warning when HEAD and locked revision are different
 	head, err := gitutil.GetHEADRepository(r)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get HEAD revision of %q: %s", src, err.Error())
+		return 0, errors.Errorf("failed to get HEAD revision of %q: %s", src, err.Error())
 	}
 	if head != repos.Version {
 		logger.Warnf("%s: HEAD and locked revision are different", repos.Path)
@@ -185,7 +185,7 @@ func (builder *copyBuilder) copyReposGit(repos *lockjson.Repos, buildRepos *buil
 
 	cfg, err := r.Config()
 	if err != nil {
-		return 0, errors.New("failed to get repository config: " + err.Error())
+		return 0, errors.Wrap(err, "failed to get repository config")
 	}
 
 	isClean := false
@@ -244,9 +244,9 @@ func (*copyBuilder) waitCopyRepos(copyDone chan actionReposResult, copyCount int
 		if result.err != nil {
 			merr = multierror.Append(
 				merr,
-				errors.New(
+				errors.Wrap(result.err,
 					"failed to copy repository '"+result.repos.Path.String()+
-						"': "+result.err.Error()))
+						"'"))
 		} else {
 			err := callback(&result)
 			if err != nil {
@@ -305,9 +305,7 @@ func (*copyBuilder) waitRemoveRepos(removeDone chan actionReposResult, removeCou
 				target = result.repos.Path.String()
 			}
 			merr = multierror.Append(
-				merr, errors.New(
-					"Failed to remove "+target+
-						": "+result.err.Error()))
+				merr, errors.Wrap(result.err, "Failed to remove "+target))
 		} else {
 			callback(&result)
 		}
@@ -328,7 +326,7 @@ func (*copyBuilder) getLatestModTime(path string) (time.Time, error) {
 		return nil
 	})
 	if err != nil {
-		return time.Now(), errors.New("failed to readdir: " + err.Error())
+		return time.Now(), errors.Wrap(err, "failed to readdir")
 	}
 	return mtime, nil
 }
@@ -356,7 +354,7 @@ func (builder *copyBuilder) updateGitRepos(repos *lockjson.Repos, r *git.Reposit
 	err := os.RemoveAll(dst)
 	if err != nil {
 		done <- actionReposResult{
-			err:   errors.New("failed to remove repository: " + err.Error()),
+			err:   errors.Wrap(err, "failed to remove repository"),
 			repos: repos,
 		}
 		return
@@ -377,7 +375,7 @@ func (builder *copyBuilder) updateBareGitRepos(r *git.Repository, src, dst strin
 	commitObj, err := r.CommitObject(commit)
 	if err != nil {
 		done <- actionReposResult{
-			err:   errors.New("failed to get HEAD commit object: " + err.Error()),
+			err:   errors.Wrap(err, "failed to get HEAD commit object"),
 			repos: repos,
 		}
 		return
@@ -387,7 +385,7 @@ func (builder *copyBuilder) updateBareGitRepos(r *git.Repository, src, dst strin
 	tree, err := r.TreeObject(commitObj.TreeHash)
 	if err != nil {
 		done <- actionReposResult{
-			err:   errors.New("failed to get tree " + commit.String() + ": " + err.Error()),
+			err:   errors.Wrap(err, "failed to get tree "+commit.String()),
 			repos: repos,
 		}
 		return
@@ -398,12 +396,12 @@ func (builder *copyBuilder) updateBareGitRepos(r *git.Repository, src, dst strin
 	err = tree.Files().ForEach(func(file *object.File) error {
 		osMode, err := file.Mode.ToOSFileMode()
 		if err != nil {
-			return errors.New("failed to convert file mode: " + err.Error())
+			return errors.Wrap(err, "failed to convert file mode")
 		}
 
 		contents, err := file.Contents()
 		if err != nil {
-			return errors.New("failed to get file contents: " + err.Error())
+			return errors.Wrap(err, "failed to get file contents")
 		}
 
 		filename := filepath.Join(dst, file.Name)
@@ -540,7 +538,7 @@ func (builder *copyBuilder) updateStaticRepos(repos *lockjson.Repos, vimExePath 
 	err := os.RemoveAll(dst)
 	if err != nil {
 		done <- actionReposResult{
-			err:   errors.New("failed to remove repository: " + err.Error()),
+			err:   errors.Wrap(err, "failed to remove repository"),
 			repos: repos,
 		}
 		return
@@ -551,7 +549,7 @@ func (builder *copyBuilder) updateStaticRepos(repos *lockjson.Repos, vimExePath 
 	si, err := os.Stat(src)
 	if err != nil {
 		done <- actionReposResult{
-			err:   errors.New("failed to copy static directory: " + err.Error()),
+			err:   errors.Wrap(err, "failed to copy static directory"),
 			repos: repos,
 		}
 		return
@@ -566,7 +564,7 @@ func (builder *copyBuilder) updateStaticRepos(repos *lockjson.Repos, vimExePath 
 	err = fileutil.TryLinkDir(src, dst, buf, si.Mode(), BuildModeInvalidType)
 	if err != nil {
 		done <- actionReposResult{
-			err:   errors.New("failed to copy static directory: " + err.Error()),
+			err:   errors.Wrap(err, "failed to copy static directory"),
 			repos: repos,
 		}
 		return

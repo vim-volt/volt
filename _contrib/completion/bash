@@ -87,4 +87,10 @@ _volt() {
 	fi
 	return 0
 }
+
+if [ -n "$ZSH_VERSION" ]; then
+	autoload bashcompinit
+	bashcompinit
+fi
+
 complete -F _volt volt

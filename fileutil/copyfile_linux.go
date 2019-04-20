@@ -31,9 +31,10 @@
 package fileutil
 
 import (
-	"fmt"
 	"os"
 	"syscall"
+
+	"github.com/pkg/errors"
 )
 
 // CopyFile copies the contents of the file named src to the file named
@@ -63,7 +64,7 @@ func CopyFile(src, dst string, buf []byte, perm os.FileMode) error {
 		for {
 			n, err := syscall.Sendfile(wfd, rfd, nil, readsize)
 			if err != nil {
-				return fmt.Errorf("sendfile(%q, %q) failed: %s", src, dst, err.Error())
+				return errors.Errorf("sendfile(%q, %q) failed: %s", src, dst, err.Error())
 			}
 			written += int64(n)
 			if written >= fi.Size() {
@@ -72,7 +73,7 @@ func CopyFile(src, dst string, buf []byte, perm os.FileMode) error {
 		}
 	} else {
 		if _, err := syscall.Sendfile(wfd, rfd, nil, int(fi.Size())); err != nil {
-			return fmt.Errorf("sendfile(%q, %q) failed: %s", src, dst, err.Error())
+			return errors.Errorf("sendfile(%q, %q) failed: %s", src, dst, err.Error())
 		}
 	}
 	return nil

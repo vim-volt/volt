@@ -361,12 +361,7 @@ NOTE: If the path(s) exists, `$MYVIMRC` and `$MYGVIMRC` are set. So `:edit $MYVI
 
 This file is copied to `~/.vim/vimrc` and `~/.vim/gvimrc` with magic comment (shows error if existing vimrc/gvimrc files exist with no magic comment).
 
-And you can enable/disable vimrc by `volt profile use` (or you can simply remove `$VOLTPATH/rc/<profile name>/vimrc.vim` file if you don't want vimrc for the profile).
-
-```
-$ volt profile use -current vimrc false   # Disable installing vimrc on current profile
-$ volt profile use default gvimrc true   # Enable installing gvimrc on profile default
-```
+And you can enable/disable vimrc by removing (or renaming) `$VOLTPATH/rc/<profile name>/vimrc.vim` file if you don't want vimrc for the profile.
 
 See `volt help profile` for more detailed information.
 

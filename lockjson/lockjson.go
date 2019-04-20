@@ -2,12 +2,12 @@ package lockjson
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/pkg/errors"
 
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
@@ -112,7 +112,7 @@ func read(doLog bool) (*LockJSON, error) {
 	// Validate lock.json
 	err = validate(&lockJSON)
 	if err != nil {
-		return nil, errors.New("validation failed: lock.json: " + err.Error())
+		return nil, errors.Wrap(err, "validation failed: lock.json")
 	}
 
 	return &lockJSON, nil
@@ -120,11 +120,11 @@ func read(doLog bool) (*LockJSON, error) {
 
 func validate(lockJSON *LockJSON) error {
 	if lockJSON.Version < 1 {
-		return fmt.Errorf("lock.json version is '%d' (must be 1 or greater)", lockJSON.Version)
+		return errors.Errorf("lock.json version is '%d' (must be 1 or greater)", lockJSON.Version)
 	}
 	// Validate if volt can manipulate lock.json of this version
 	if lockJSON.Version > lockJSONVersion {
-		return fmt.Errorf("this lock.json version is '%d' which volt cannot recognize. please upgrade volt to process this file", lockJSON.Version)
+		return errors.Errorf("this lock.json version is '%d' which volt cannot recognize. please upgrade volt to process this file", lockJSON.Version)
 	}
 
 	// Validate if missing required keys exist

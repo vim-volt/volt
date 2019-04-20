@@ -1,7 +1,7 @@
 package migrate
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -43,7 +43,7 @@ func (*plugconfConfigMigrater) Migrate() error {
 	// Read lock.json
 	lockJSON, err := lockjson.ReadNoMigrationMsg()
 	if err != nil {
-		return errors.New("could not read lock.json: " + err.Error())
+		return errors.Wrap(err, "could not read lock.json")
 	}
 
 	results, parseErr := plugconf.ParseMultiPlugconf(lockJSON.Repos)
@@ -98,7 +98,7 @@ func (*plugconfConfigMigrater) Migrate() error {
 	// Build ~/.vim/pack/volt dir
 	err = builder.Build(false)
 	if err != nil {
-		return errors.New("could not build " + pathutil.VimVoltDir() + ": " + err.Error())
+		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
 	}
 
 	return nil

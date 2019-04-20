@@ -2,7 +2,7 @@ package buildinfo
 
 import (
 	"encoding/json"
-	"errors"
+	"github.com/pkg/errors"
 	"io/ioutil"
 
 	"github.com/vim-volt/volt/lockjson"
@@ -50,7 +50,7 @@ func Read() (*BuildInfo, error) {
 	// Validate build-info.json
 	err = buildInfo.validate()
 	if err != nil {
-		return nil, errors.New("validation failed: build-info.json: " + err.Error())
+		return nil, errors.Wrap(err, "validation failed: build-info.json")
 	}
 
 	return &buildInfo, nil
@@ -60,7 +60,7 @@ func (buildInfo *BuildInfo) Write() error {
 	// Validate build-info.json
 	err := buildInfo.validate()
 	if err != nil {
-		return errors.New("validation failed: build-info.json: " + err.Error())
+		return errors.Wrap(err, "validation failed: build-info.json")
 	}
 
 	// Write to build-info.json
