@@ -228,7 +228,7 @@ For example, [tyru/open-browser-github.vim](https://github.com/tyru/open-browser
 
 Some special functions can be defined in plugconf file:
 
-* `s:on_load_pre`
+* `s:on_load_pre()`
     * Plugin configuration to be executed before a plugin is loaded
 * `s:on_load_post`
     * Plugin configuration to be executed after a plugin is loaded
