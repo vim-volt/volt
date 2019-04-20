@@ -175,7 +175,7 @@ func (cmd *editCmd) parseArgs(args []string) (pathutil.ReposPathList, error) {
 }
 
 func (cmd *editCmd) identifyEditor(cfg *config.Config) (string, error) {
-	editors := make([]string, 4, 6)
+	editors := make([]string, 0, 6)
 
 	// if an editor is specified as commandline argument, consider it
 	// as alternative
