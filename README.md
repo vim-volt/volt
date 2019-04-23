@@ -187,7 +187,7 @@ fallback_git_cmd = true
 # do so with the following. If not specified, volt will try to use
 # vim/nvim, $VISUAL, sensible-editor, or $EDITOR in this order until a usable
 # one is found.
-editor = emacs
+editor = "emacs"
 ```
 
 ## Features
