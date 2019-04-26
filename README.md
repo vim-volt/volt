@@ -64,7 +64,7 @@ See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.
   * And if you are using Windows Subsystem Linux, you need to apply **[the patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ! ([#1](https://github.com/vim-volt/go-volt/issues/1))**
   * But it's a hassle, you can just download linux-386/amd64 binaries from [GitHub releases](https://github.com/vim-volt/volt/releases) :)
 
-And there is bash completion script in [\_contrib](https://github.com/vim-volt/volt/blob/master/_contrib/completion/bash) directory (thanks @AvianY).
+And there are bash/zsh completion scripts in [\_contrib](https://github.com/vim-volt/volt/blob/master/_contrib/completion) directory (by @AvianY, @mrymtsk).
 
 ## Self upgrade
 
