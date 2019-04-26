@@ -26,7 +26,7 @@ this_plug() {
 	volt list -f "{{ range .Profiles }}{{ if eq \"$1\" .Name }}{{ range .ReposPath }}{{ println . }}{{ end }}{{ end }}{{ end }}" | sed -E 's@^(www\.)?github\.com/@@' | sort -u
 }
 
-CMDS="get rm list enable disable profile build migrate self-upgrade version"
+CMDS="get rm list enable disable edit profile build migrate self-upgrade version"
 PROFILE_CMDS="set show list new destroy rename add rm"
 MIGRATE_CMDS="lockjson plugconf/config-func"
 
@@ -53,7 +53,7 @@ _volt() {
 	elif [[ "${first}" == "profile" && "${last}" == "profile" ]] ; then
 		COMPREPLY=( $(compgen -W "${PROFILE_CMDS}" -- ${cur}) )
 
-	elif [[ "${first}" =~ ^(rm|disable)$ ]] ; then
+	elif [[ "${first}" =~ ^(rm|disable|edit)$ ]] ; then
 		local profile=$(get_profile)
 		plugs=$(get_plugs "$profile" "this")
 		COMPREPLY=( $(compgen -W "${plugs}" -- ${cur}) )

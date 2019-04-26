@@ -58,6 +58,9 @@ Command
     This is shortcut of:
     volt profile rm -current {repository} [{repository2} ...]
 
+  edit [-e|--editor {editor}] {repository} [{repository2} ...]
+    Open the plugconf file(s) of one or more {repository} for editing.
+
   profile set {name}
     Set profile name
 
