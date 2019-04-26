@@ -1,9 +1,9 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
+
 	"github.com/vim-volt/volt/pathutil"
 )
 
@@ -12,6 +12,7 @@ type Config struct {
 	Alias map[string][]string `toml:"alias"`
 	Build configBuild         `toml:"build"`
 	Get   configGet           `toml:"get"`
+	Edit  configEdit          `toml:"edit"`
 }
 
 // configBuild is a config for 'volt build'.
@@ -23,6 +24,11 @@ type configBuild struct {
 type configGet struct {
 	CreateSkeletonPlugconf *bool `toml:"create_skeleton_plugconf"`
 	FallbackGitCmd         *bool `toml:"fallback_git_cmd"`
+}
+
+// configEdit is a config for 'volt edit'.
+type configEdit struct {
+	Editor string `toml:"editor"`
 }
 
 const (
@@ -42,6 +48,9 @@ func initialConfigTOML() *Config {
 		Get: configGet{
 			CreateSkeletonPlugconf: &trueValue,
 			FallbackGitCmd:         &falseValue,
+		},
+		Edit: configEdit{
+			Editor: "",
 		},
 	}
 }
@@ -76,11 +85,14 @@ func merge(cfg, initCfg *Config) {
 	if cfg.Get.FallbackGitCmd == nil {
 		cfg.Get.FallbackGitCmd = initCfg.Get.FallbackGitCmd
 	}
+	if cfg.Edit.Editor == "" {
+		cfg.Edit.Editor = initCfg.Edit.Editor
+	}
 }
 
 func validate(cfg *Config) error {
 	if cfg.Build.Strategy != "symlink" && cfg.Build.Strategy != "copy" {
-		return fmt.Errorf("build.strategy is %q: valid values are %q or %q", cfg.Build.Strategy, "symlink", "copy")
+		return errors.Errorf("build.strategy is %q: valid values are %q or %q", cfg.Build.Strategy, "symlink", "copy")
 	}
 	return nil
 }

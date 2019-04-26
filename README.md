@@ -181,6 +181,13 @@ create_skeleton_plugconf = true
 #                   installed, it tries to execute "git clone" or "git pull" as a fallback
 # * false: "volt get" or "volt get -u" won't try to execute fallback commands
 fallback_git_cmd = true
+
+[edit]
+# If you ever wanted to use emacs to edit your vim plugin config, you can
+# do so with the following. If not specified, volt will try to use
+# vim/nvim, $VISUAL, sensible-editor, or $EDITOR in this order until a usable
+# one is found.
+editor = "emacs"
 ```
 
 ## Features
@@ -228,8 +235,10 @@ For example, [tyru/open-browser-github.vim](https://github.com/tyru/open-browser
 
 Some special functions can be defined in plugconf file:
 
-* `s:config()`
-    * Plugin configuration
+* `s:on_load_pre()`
+    * Plugin configuration to be executed before a plugin is loaded
+* `s:on_load_post()`
+    * Plugin configuration to be executed after a plugin is loaded
 * `s:loaded_on()` (optional)
     * Return value: String (when to load a plugin by `:packadd`)
     * This function specifies when to load a plugin by `:packadd`
@@ -247,7 +256,8 @@ An example config of [tyru/open-browser-github.vim](https://github.com/tyru/open
 
 ```vim
 " Plugin configuration like the code written in vimrc.
-function! s:config()
+" This configuration is executed *before* a plugin is loaded.
+function! s:on_load_pre()
   let g:openbrowser_github_always_use_commit_hash = 1
 endfunction
 
@@ -361,12 +371,7 @@ NOTE: If the path(s) exists, `$MYVIMRC` and `$MYGVIMRC` are set. So `:edit $MYVI
 
 This file is copied to `~/.vim/vimrc` and `~/.vim/gvimrc` with magic comment (shows error if existing vimrc/gvimrc files exist with no magic comment).
 
-And you can enable/disable vimrc by `volt profile use` (or you can simply remove `$VOLTPATH/rc/<profile name>/vimrc.vim` file if you don't want vimrc for the profile).
-
-```
-$ volt profile use -current vimrc false   # Disable installing vimrc on current profile
-$ volt profile use default gvimrc true   # Enable installing gvimrc on profile default
-```
+And you can enable/disable vimrc by removing (or renaming) `$VOLTPATH/rc/<profile name>/vimrc.vim` file if you don't want vimrc for the profile.
 
 See `volt help profile` for more detailed information.
 

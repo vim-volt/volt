@@ -1,9 +1,9 @@
 package gitutil
 
 import (
-	"errors"
-	"fmt"
 	"regexp"
+
+	"github.com/pkg/errors"
 
 	"github.com/vim-volt/volt/pathutil"
 	git "gopkg.in/src-d/go-git.v4"
@@ -109,7 +109,7 @@ func GetUpstreamRemote(r *git.Repository) (string, error) {
 	subsec := cfg.Raw.Section("branch").Subsection(branch[1])
 	remote := subsec.Option("remote")
 	if remote == "" {
-		return "", fmt.Errorf("gitconfig 'branch.%s.remote' is not found", subsec.Name)
+		return "", errors.Errorf("gitconfig 'branch.%s.remote' is not found", subsec.Name)
 	}
 	return remote, nil
 }

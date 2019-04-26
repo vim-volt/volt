@@ -1,7 +1,7 @@
 package pathutil
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"os"
 	"os/exec"
 	"path/filepath"

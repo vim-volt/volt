@@ -2,7 +2,6 @@ package subcmd
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/vim-volt/volt/httputil"
 	"github.com/vim-volt/volt/logger"
@@ -84,12 +85,12 @@ func (cmd *selfUpgradeCmd) parseArgs(args []string) error {
 func (cmd *selfUpgradeCmd) doCleanUp(ppidStr string) error {
 	ppid, err := strconv.Atoi(ppidStr)
 	if err != nil {
-		return errors.New("failed to parse VOLT_SELF_UPGRADE_PPID: " + err.Error())
+		return errors.Wrap(err, "failed to parse VOLT_SELF_UPGRADE_PPID")
 	}
 
 	// Wait until the parent process exits
 	if died := cmd.waitUntilParentExits(ppid); !died {
-		return fmt.Errorf("parent pid (%s) is keeping alive for long time", ppidStr)
+		return errors.Errorf("parent pid (%s) is keeping alive for long time", ppidStr)
 	}
 
 	// Remove old binary

@@ -1,7 +1,7 @@
 package httputil
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"

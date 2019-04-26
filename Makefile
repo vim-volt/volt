@@ -18,12 +18,6 @@ precompile:
 	go build -a -i -o $(BIN_DIR)/$(NAME)
 	rm $(BIN_DIR)/$(NAME)
 
-install-dep:
-	[ -x bin/dep ] || go build -o bin/dep github.com/golang/dep/cmd/dep
-
-dep-ensure: install-dep
-	bin/dep ensure -v
-
 test:
 	make
 	go test -v -race -parallel 3 ./...
@@ -38,11 +32,11 @@ release: $(BIN_DIR)/$(NAME)
 				exe=$$exe.exe; \
 			fi; \
 			echo "Creating $$exe ... (os=$$os, arch=$$arch)"; \
-			GOOS=$$os GOARCH=$$arch GO111MODULE=off go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $$exe; \
+			GOOS=$$os GOARCH=$$arch go build -tags netgo -installsuffix netgo -ldflags "$(RELEASE_LDFLAGS)" -o $$exe; \
 		done; \
 	done
 
 update-doc: all
 	go run _scripts/update-cmdref.go >CMDREF.md
 
-.PHONY: all precompile install-dep dep-ensure test release update-doc
+.PHONY: all precompile test release update-doc

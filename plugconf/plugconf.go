@@ -3,7 +3,6 @@ package plugconf
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"path"
@@ -11,6 +10,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/httputil"
@@ -392,7 +393,7 @@ func ParsePlugconf(file *ast.File, src []byte, path string) (*ParsedInfo, *Parse
 			}
 		case isProhibitedFuncName(ident.Name):
 			parseErr.merr = multierror.Append(parseErr.merr,
-				fmt.Errorf(
+				errors.Errorf(
 					"'%s' is prohibited function name. please use other function name", ident.Name))
 		default:
 			functions = append(functions, string(extractBody(fn, src)))
@@ -684,12 +685,14 @@ endfunction
 	}
 
 	if vimrcPath != "" || gvimrcPath != "" {
-		buf.WriteString("\n\n")
+		buf.WriteString("\n")
 		if vimrcPath != "" {
+			buf.WriteString("\n")
 			vimrcPath = strings.Replace(vimrcPath, "'", "''", -1)
 			buf.WriteString("let $MYVIMRC = '" + vimrcPath + "'")
 		}
 		if gvimrcPath != "" {
+			buf.WriteString("\n")
 			gvimrcPath = strings.Replace(gvimrcPath, "'", "''", -1)
 			buf.WriteString("let $MYGVIMRC = '" + gvimrcPath + "'")
 		}
@@ -845,39 +848,37 @@ func FetchPlugconfTemplate(reposPath pathutil.ReposPath) (*Template, error) {
 	return &Template{content}, nil
 }
 
-const skeletonPlugconfOnLoadPre = `function! s:on_load_pre()
-  " Plugin configuration like the code written in vimrc.
-  " This configuration is executed *before* a plugin is loaded.
+const skeletonPlugconfOnLoadPre = `" Plugin configuration like the code written in vimrc.
+" This configuration is executed *before* a plugin is loaded.
+function! s:on_load_pre()
 endfunction`
 
-const skeletonPlugconfOnLoadPost = `function! s:on_load_post()
-  " Plugin configuration like the code written in vimrc.
-  " This configuration is executed *after* a plugin is loaded.
+const skeletonPlugconfOnLoadPost = `" Plugin configuration like the code written in vimrc.
+" This configuration is executed *after* a plugin is loaded.
+function! s:on_load_post()
 endfunction`
 
-const skeletonPlugconfLoadOn = `function! s:loaded_on()
-  " This function determines when a plugin is loaded.
-  "
-  " Possible values are:
-  " * 'start' (a plugin will be loaded at VimEnter event)
-  " * 'filetype=<filetypes>' (a plugin will be loaded at FileType event)
-  " * 'excmd=<excmds>' (a plugin will be loaded at CmdUndefined event)
-  " <filetypes> and <excmds> can be multiple values separated by comma.
-  "
-  " This function must contain 'return "<str>"' code.
-  " (the argument of :return must be string literal)
-
+const skeletonPlugconfLoadOn = `" This function determines when a plugin is loaded.
+"
+" Possible values are:
+" * 'start' (a plugin will be loaded at VimEnter event)
+" * 'filetype=<filetypes>' (a plugin will be loaded at FileType event)
+" * 'excmd=<excmds>' (a plugin will be loaded at CmdUndefined event)
+" <filetypes> and <excmds> can be multiple values separated by comma.
+"
+" This function must contain 'return "<str>"' code.
+" (the argument of :return must be string literal)
+function! s:loaded_on()
   return 'start'
 endfunction`
 
-const skeletonPlugconfDepends = `function! s:depends()
-  " Dependencies of this plugin.
-  " The specified dependencies are loaded after this plugin is loaded.
-  "
-  " This function must contain 'return [<repos>, ...]' code.
-  " (the argument of :return must be list literal, and the elements are string)
-  " e.g. return ['github.com/tyru/open-browser.vim']
-
+const skeletonPlugconfDepends = `" Dependencies of this plugin.
+" The specified dependencies are loaded after this plugin is loaded.
+"
+" This function must contain 'return [<repos>, ...]' code.
+" (the argument of :return must be list literal, and the elements are string)
+" e.g. return ['github.com/tyru/open-browser.vim']
+function! s:depends()
   return []
 endfunction`
 

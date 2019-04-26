@@ -1,0 +1,19 @@
+#compdef volt
+
+# zsh completion wrapper for volt
+#
+# Based on git and tig's zsh completion scripts.
+# git: https://git-scm.com
+# tig: https://jonas.github.io/tig
+#
+# Copy or symlink this script and bash completion script as '_volt' and
+# 'volt-completion.bash' to any directory in '$fpath'.
+
+
+_volt () {
+  local e
+  e=$(dirname ${funcsourcetrace[1]%:*})/volt-completion.bash
+  if [ -f $e ]; then
+    . $e
+  fi
+}
