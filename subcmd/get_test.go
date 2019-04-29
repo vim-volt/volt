@@ -3,12 +3,13 @@ package subcmd
 import (
 	"bytes"
 	"fmt"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
@@ -54,6 +55,7 @@ func TestVoltGetOnePlugin(t *testing.T) {
 				// =============== setup =============== //
 
 				testutil.SetUpEnv(t)
+				defer testutil.CleanUpEnv(t)
 				testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 				// =============== run =============== //
@@ -111,6 +113,7 @@ func TestVoltGetMsg(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 
@@ -314,6 +317,7 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 				// =============== setup =============== //
 
 				testutil.SetUpEnv(t)
+				defer testutil.CleanUpEnv(t)
 				testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 				// =============== run =============== //
@@ -378,6 +382,7 @@ func TestVoltGetLoptMustNotAddDisabledPlugins(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
@@ -408,6 +413,7 @@ func TestErrVoltGetInvalidArgs(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
@@ -453,6 +459,7 @@ func TestErrVoltGetNotFound(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 

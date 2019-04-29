@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -12,6 +11,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
@@ -55,6 +56,13 @@ func SetUpEnv(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to set %s", env)
 		}
+	}
+}
+
+func CleanUpEnv(t *testing.T) {
+	for _, env := range []string{"VOLTPATH", "HOME"} {
+		parent, _ := filepath.Split(os.Getenv(env))
+		os.RemoveAll(parent)
 	}
 }
 
@@ -141,6 +149,7 @@ func SetUpRepos(t *testing.T, testdataName string, rType lockjson.ReposType, rep
 					t.Fatalf("failed to set VOLTPATH: %s", err)
 				}
 				defer os.Setenv("HOME", home)
+				defer os.RemoveAll(home)
 				if err := os.Setenv("VOLTPATH", tmpVoltpath); err != nil {
 					t.Fatal("failed to set VOLTPATH")
 				}

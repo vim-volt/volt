@@ -12,6 +12,7 @@ func TestVoltHelpDiffOutput(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
@@ -35,6 +36,7 @@ func TestErrVoltHelpNonExistingCmd(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
@@ -50,6 +52,7 @@ func TestVoltHelpE478(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
