@@ -583,6 +583,9 @@ func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath pathuti
 		}
 		// Add repos to 'repos'
 		lockJSON.Repos = append(lockJSON.Repos, *repos)
+		sort.SliceStable(lockJSON.Repos, func(i, j int) bool {
+			return strings.ToLower(lockJSON.Repos[i].Path.FullPath()) < strings.ToLower(lockJSON.Repos[j].Path.FullPath())
+		})
 		added = true
 	} else {
 		// repos is found in lock.json
@@ -593,8 +596,12 @@ func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath pathuti
 	if !profile.ReposPath.Contains(reposPath) {
 		// Add repos to 'profiles[]/repos_path'
 		profile.ReposPath = append(profile.ReposPath, reposPath)
+		sort.SliceStable(profile.ReposPath, func(i, j int) bool {
+			return strings.ToLower(profile.ReposPath[i].FullPath()) < strings.ToLower(profile.ReposPath[j].FullPath())
+		})
 		added = true
 	}
+
 	return added
 }
 
