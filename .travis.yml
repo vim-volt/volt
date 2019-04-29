@@ -5,7 +5,14 @@ matrix:
     - os: linux
       go: 1.9
     - os: linux
+      go: 1.11
+      env: GO111MODULE="on"
+    - os: linux
+      go: 1.11
+      env: GO111MODULE="off"
+    - os: linux
       go: tip
+      env: GO111MODULE="on"
     # macOS build *extraordinary* slow, disable them
     # - os: osx
     #   osx_image: xcode8.3
@@ -13,6 +20,7 @@ matrix:
     # - os: osx
     #   osx_image: xcode8.3
     #   go: tip
+
 
 script:
   - go vet -v ./...
