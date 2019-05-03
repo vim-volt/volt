@@ -133,13 +133,6 @@ func (cmd *editCmd) doEdit(reposPathList []pathutil.ReposPath) (bool, error) {
 
 		// A change was made if the modification time was updated
 		changeWasMade = changeWasMade || mTimeAfter.After(mTimeBefore)
-
-		// Remove repository from lock.json
-		err = lockJSON.Repos.RemoveAllReposPath(reposPath)
-		err2 := lockJSON.Profiles.RemoveAllReposPath(reposPath)
-		if err == nil || err2 == nil {
-			// ignore?
-		}
 	}
 
 	// Write to lock.json
