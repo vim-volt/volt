@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -116,6 +117,26 @@ func read(doLog bool) (*LockJSON, error) {
 	}
 
 	return &lockJSON, nil
+}
+
+// sortArrays sorts all arrays in lock.json for generating readable diff output
+// when lock.json is under version-controled.
+func sortArrays(lockJSON *LockJSON) {
+	// Sort repos[] by path
+	sort.SliceStable(lockJSON.Repos, func(i, j int) bool {
+		return lockJSON.Repos[i].Path.FullPath() < lockJSON.Repos[j].Path.FullPath()
+	})
+	// Sort profiles[] by name
+	sort.SliceStable(lockJSON.Profiles, func(i, j int) bool {
+		return lockJSON.Profiles[i].Name < lockJSON.Profiles[j].Name
+	})
+	// Sort profiles[]/repos_path[] by URLs
+	for i := range lockJSON.Profiles {
+		pathList := lockJSON.Profiles[i].ReposPath
+		sort.SliceStable(pathList, func(i, j int) bool {
+			return pathList[i] < pathList[j]
+		})
+	}
 }
 
 func validate(lockJSON *LockJSON) error {
@@ -253,6 +274,9 @@ func validateMissing(lockJSON *LockJSON) error {
 }
 
 func (lockJSON *LockJSON) Write() error {
+	// Sort all arrays in lock.json for readable diff
+	sortArrays(lockJSON)
+
 	// Validate lock.json
 	err := validate(lockJSON)
 	if err != nil {
