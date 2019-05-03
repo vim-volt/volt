@@ -63,16 +63,6 @@ func (list ReposPathList) Strings() []string {
 	return result
 }
 
-// NormalizeLocalRepos normalizes name into ReposPath.
-// If name does not contain "/", it is ReposPath("localhost/local/" + name).
-// Otherwise same as NormalizeRepos(name).
-func NormalizeLocalRepos(name string) (ReposPath, error) {
-	if !strings.Contains(name, "/") {
-		return ReposPath("localhost/local/" + name), nil
-	}
-	return NormalizeRepos(name)
-}
-
 // HomeDir detects HOME path.
 // If HOME environment variable is not set,
 // use USERPROFILE environment variable instead.
