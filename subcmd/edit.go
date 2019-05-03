@@ -8,7 +8,6 @@ import (
 	"os/exec"
 
 	"github.com/vim-volt/volt/config"
-	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/subcmd/builder"
@@ -78,12 +77,6 @@ func (cmd *editCmd) Run(args []string) *Error {
 }
 
 func (cmd *editCmd) doEdit(reposPathList []pathutil.ReposPath) (bool, error) {
-	// Read lock.json
-	lockJSON, err := lockjson.Read()
-	if err != nil {
-		return false, err
-	}
-
 	// Read config.toml
 	cfg, err := config.Read()
 	if err != nil {
@@ -135,10 +128,6 @@ func (cmd *editCmd) doEdit(reposPathList []pathutil.ReposPath) (bool, error) {
 		changeWasMade = changeWasMade || mTimeAfter.After(mTimeBefore)
 	}
 
-	// Write to lock.json
-	if err = lockJSON.Write(); err != nil {
-		return changeWasMade, err
-	}
 	return changeWasMade, nil
 }
 
