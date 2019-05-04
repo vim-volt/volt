@@ -181,6 +181,11 @@ func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) 
 			if err != nil {
 				return nil, err
 			}
+			// Get the existing entries if already have it
+			// (e.g. github.com/tyru/CaW.vim -> github.com/tyru/caw.vim)
+			if r := lockJSON.Repos.FindByPath(reposPath); r != nil {
+				reposPath = r.Path
+			}
 			reposPathList = append(reposPathList, reposPath)
 		}
 	}
@@ -213,10 +218,7 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 	getCount := 0
 	// Invoke installing / upgrading tasks
 	for _, reposPath := range reposPathList {
-		repos, err := lockJSON.Repos.FindByPath(reposPath)
-		if err != nil {
-			repos = nil
-		}
+		repos := lockJSON.Repos.FindByPath(reposPath)
 		if repos == nil || repos.Type == lockjson.ReposGitType {
 			go cmd.getParallel(reposPath, repos, cfg, done)
 			getCount++
@@ -333,8 +335,8 @@ func (cmd *getCmd) getParallel(reposPath pathutil.ReposPath, repos *lockjson.Rep
 func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.Repos, cfg *config.Config, done chan<- getParallelResult) {
 	// true:upgrade, false:install
 	fullReposPath := reposPath.FullPath()
-	doUpgrade := cmd.upgrade && pathutil.Exists(fullReposPath)
 	doInstall := !pathutil.Exists(fullReposPath)
+	doUpgrade := cmd.upgrade && !doInstall
 
 	var fromHash string
 	var err error
@@ -566,10 +568,7 @@ func (cmd *getCmd) downloadPlugconf(reposPath pathutil.ReposPath) error {
 // * Add repos to 'repos' if not found
 // * Add repos to 'profiles[]/repos_path' if not found
 func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath pathutil.ReposPath, reposType lockjson.ReposType, version string, profile *lockjson.Profile) bool {
-	repos, err := lockJSON.Repos.FindByPath(reposPath)
-	if err != nil {
-		repos = nil
-	}
+	repos := lockJSON.Repos.FindByPath(reposPath)
 
 	added := false
 

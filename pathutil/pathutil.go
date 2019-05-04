@@ -40,6 +40,7 @@ func NormalizeRepos(rawReposPath string) (ReposPath, error) {
 	if disallowSlash && m[5] == "/" {
 		return "", errors.New("invalid format of repository: " + rawReposPath)
 	}
+	m[2] = strings.ToLower(m[2]) // ignore hostname's case
 	hostUserName := m[2:5]
 	return ReposPath(strings.Join(hostUserName, "/")), nil
 }
@@ -47,56 +48,25 @@ func NormalizeRepos(rawReposPath string) (ReposPath, error) {
 // ReposPath is string of "{site}/{user}/{repos}"
 type ReposPath string
 
-// ReposPathList is []ReposPath
-type ReposPathList []ReposPath
-
-func (path *ReposPath) String() string {
-	return string(*path)
+func (path ReposPath) String() string {
+	return string(path)
 }
 
-// Strings returns []string values.
-func (list ReposPathList) Strings() []string {
-	result := make([]string, 0, len(list))
-	for i := range list {
-		result = append(result, string(list[i]))
+// Equals returns true if path and p2 are the same.
+func (path ReposPath) Equals(p2 ReposPath) bool {
+	s1 := string(path)
+	s2 := string(p2)
+	if path.ignoreCase() {
+		s1 = strings.ToLower(s1)
+		s2 = strings.ToLower(s2)
 	}
-	return result
+	return s1 == s2
 }
 
-// NormalizeLocalRepos normalizes name into ReposPath.
-// If name does not contain "/", it is ReposPath("localhost/local/" + name).
-// Otherwise same as NormalizeRepos(name).
-func NormalizeLocalRepos(name string) (ReposPath, error) {
-	if !strings.Contains(name, "/") {
-		return ReposPath("localhost/local/" + name), nil
-	}
-	return NormalizeRepos(name)
-}
-
-// HomeDir detects HOME path.
-// If HOME environment variable is not set,
-// use USERPROFILE environment variable instead.
-func HomeDir() string {
-	home := os.Getenv("HOME")
-	if home != "" {
-		return home
-	}
-
-	home = os.Getenv("USERPROFILE") // windows
-	if home != "" {
-		return home
-	}
-
-	panic("Couldn't look up HOME")
-}
-
-// VoltPath returns fullpath of "$HOME/volt".
-func VoltPath() string {
-	path := os.Getenv("VOLTPATH")
-	if path != "" {
-		return path
-	}
-	return filepath.Join(HomeDir(), "volt")
+// ignoreCase returns true if this site ignores case of repository URL.
+// Most sites ignore cases of URLs. Add exceptions here if found.
+func (path ReposPath) ignoreCase() bool {
+	return true
 }
 
 // FullPath returns fullpath of ReposPath.
@@ -122,6 +92,34 @@ func (path ReposPath) Plugconf() string {
 	paths = append(paths, "plugconf")
 	paths = append(paths, filenameList...)
 	return filepath.Join(paths...)
+}
+
+// ReposPathList is []ReposPath
+type ReposPathList []ReposPath
+
+// Strings returns []string values.
+func (list ReposPathList) Strings() []string {
+	result := make([]string, 0, len(list))
+	for i := range list {
+		result = append(result, string(list[i]))
+	}
+	return result
+}
+
+// Contains returns true if list contains reposPath.
+func (list ReposPathList) Contains(reposPath ReposPath) bool {
+	return list.Find(reposPath).String() != ""
+}
+
+// Find returns an non-empty element (path.String() != "")
+// if list contains reposPath.
+func (list ReposPathList) Find(reposPath ReposPath) ReposPath {
+	for i := range list {
+		if list[i].Equals(reposPath) {
+			return list[i]
+		}
+	}
+	return ReposPath("")
 }
 
 // ProfileVimrc is the basename of profile vimrc.
@@ -157,6 +155,32 @@ func (path ReposPath) EncodeToPlugDirName() string {
 func DecodeReposPath(name string) ReposPath {
 	name = filepath.Base(name)
 	return ReposPath(unpacker2.Replace(unpacker1.Replace(name)))
+}
+
+// HomeDir detects HOME path.
+// If HOME environment variable is not set,
+// use USERPROFILE environment variable instead.
+func HomeDir() string {
+	home := os.Getenv("HOME")
+	if home != "" {
+		return home
+	}
+
+	home = os.Getenv("USERPROFILE") // windows
+	if home != "" {
+		return home
+	}
+
+	panic("Couldn't look up HOME")
+}
+
+// VoltPath returns fullpath of "$HOME/volt".
+func VoltPath() string {
+	path := os.Getenv("VOLTPATH")
+	if path != "" {
+		return path
+	}
+	return filepath.Join(HomeDir(), "volt")
 }
 
 // LockJSON returns fullpath of "$HOME/volt/lock.json".

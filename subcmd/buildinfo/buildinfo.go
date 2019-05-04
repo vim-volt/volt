@@ -87,7 +87,7 @@ func (buildInfo *BuildInfo) validate() error {
 func (reposList *ReposList) FindByReposPath(reposPath pathutil.ReposPath) *Repos {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
-		if repos.Path == reposPath {
+		if repos.Path.Equals(reposPath) {
 			return repos
 		}
 	}
@@ -97,7 +97,7 @@ func (reposList *ReposList) FindByReposPath(reposPath pathutil.ReposPath) *Repos
 func (reposList *ReposList) RemoveByReposPath(reposPath pathutil.ReposPath) {
 	for i := range *reposList {
 		repos := &(*reposList)[i]
-		if repos.Path == reposPath {
+		if repos.Path.Equals(reposPath) {
 			*reposList = append((*reposList)[:i], (*reposList)[i+1:]...)
 			break
 		}
