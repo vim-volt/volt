@@ -40,6 +40,7 @@ func NormalizeRepos(rawReposPath string) (ReposPath, error) {
 	if disallowSlash && m[5] == "/" {
 		return "", errors.New("invalid format of repository: " + rawReposPath)
 	}
+	m[2] = strings.ToLower(m[2]) // ignore hostname's case
 	hostUserName := m[2:5]
 	return ReposPath(strings.Join(hostUserName, "/")), nil
 }
