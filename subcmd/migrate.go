@@ -80,6 +80,7 @@ func (cmd *migrateCmd) parseArgs(args []string) (migrate.Migrater, error) {
 	}
 	args = fs.Args()
 	if len(args) == 0 {
+		fs.Usage()
 		return nil, errors.New("please specify migration operation")
 	}
 	return migrate.GetMigrater(args[0])
