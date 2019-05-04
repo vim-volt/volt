@@ -123,6 +123,17 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 	}
 	defer transaction.Remove()
 
+	// Get the existing entries if already have it
+	// (e.g. github.com/tyru/CaW.vim -> github.com/tyru/caw.vim)
+	for i := range reposPathList {
+		if r := lockJSON.Repos.FindByPath(reposPathList[i]); r != nil {
+			reposPathList[i] = r.Path
+		}
+		fmt.Printf("%+v\n", reposPathList[i])
+		fmt.Printf("  fullpath:%+v\n", reposPathList[i].FullPath())
+		fmt.Printf("  plugconf:%+v\n", reposPathList[i].Plugconf())
+	}
+
 	// Check if specified plugins are depended by some plugins
 	for _, reposPath := range reposPathList {
 		rdeps, err := plugconf.RdepsOf(reposPath, lockJSON.Repos)

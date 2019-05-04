@@ -480,6 +480,46 @@ func TestErrVoltRmNotFound(t *testing.T) {
 	testutil.FailExit(t, out, err)
 }
 
+// [error] Specify plugin which does exists but
+// specified name is different case (A, B)
+func TestErrVoltRmCaseInsensitive(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("get", "tyru/caw.vim")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+
+	out, err = testutil.RunVolt("rm", "-r", "-p", "tyru/CaW.vim")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+	reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+
+	// (C)
+	reposDir := reposPath.FullPath()
+	if pathutil.Exists(reposDir) {
+		t.Error("repos was not removed: " + reposDir)
+	}
+
+	// (D)
+	plugconf := reposPath.Plugconf()
+	if pathutil.Exists(plugconf) {
+		t.Error("plugconf was not removed: " + plugconf)
+	}
+
+	// (E)
+	vimReposDir := reposPath.EncodeToPlugDirName()
+	if pathutil.Exists(vimReposDir) {
+		t.Error("vim repos was not removed: " + vimReposDir)
+	}
+
+	// (F)
+	testReposPathWereRemoved(t, reposPath)
+}
+
 func testReposPathWereRemoved(t *testing.T, reposPath pathutil.ReposPath) {
 	t.Helper()
 	lockJSON, err := lockjson.Read()
