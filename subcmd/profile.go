@@ -538,9 +538,8 @@ func (cmd *profileCmd) parseAddArgs(lockJSON *lockjson.LockJSON, subCmd string, 
 
 	// Validate if all repositories exist in repos[]
 	for i := range reposPathList {
-		_, err := lockJSON.Repos.FindByPath(reposPathList[i])
-		if err != nil {
-			return "", nil, err
+		if !lockJSON.Repos.Contains(reposPathList[i]) {
+			return "", nil, errors.New("repos '" + reposPathList[i].String() + "' does not exist")
 		}
 	}
 

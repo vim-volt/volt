@@ -495,6 +495,32 @@ func TestErrVoltGetNotFound(t *testing.T) {
 	}
 }
 
+// [error] Specify plugin which already has (A, B, K)
+func TestErrVoltGetDupRepos(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("get", "github.com/tyru/caw.vim")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+	reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+
+	for _, path := range []string{"github.com/tyru/caw.vim", "github.com/tyru/CaW.vim"} {
+		out, err = testutil.RunVolt("get", path)
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (K)
+		msg := fmt.Sprintf(fmtAlreadyExists, reposPath)
+		if !bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output does not contain %q\n%s", msg, string(out))
+		}
+	}
+}
+
 func testReposPathWereAdded(t *testing.T, reposPath pathutil.ReposPath) {
 	t.Helper()
 	lockJSON, err := lockjson.Read()
@@ -593,9 +619,8 @@ func gitCommitOne(reposPath pathutil.ReposPath) (prev plumbing.Hash, current plu
 	head, err := r.Head()
 	if err != nil {
 		return
-	} else {
-		prev = head.Hash()
 	}
+	prev = head.Hash()
 	w, err := r.Worktree()
 	if err != nil {
 		return
@@ -620,15 +645,13 @@ func gitResetHard(reposPath pathutil.ReposPath, ref string) (current plumbing.Ha
 	head, err := r.Head()
 	if err != nil {
 		return
-	} else {
-		next = head.Hash()
 	}
+	next = head.Hash()
 	rev, err := r.ResolveRevision(plumbing.Revision(ref))
 	if err != nil {
 		return
-	} else {
-		current = *rev
 	}
+	current = *rev
 	err = w.Reset(&git.ResetOptions{
 		Commit: current,
 		Mode:   git.HardReset,

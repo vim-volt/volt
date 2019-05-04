@@ -342,7 +342,7 @@ func (plist ProfileList) RemoveAllReposPath(reposPath pathutil.ReposPath) error 
 	removed := false
 	for i := range plist {
 		for j := 0; j < len(plist[i].ReposPath); {
-			if plist[i].ReposPath[j] == reposPath {
+			if plist[i].ReposPath[j].Equals(reposPath) {
 				plist[i].ReposPath = append(
 					plist[i].ReposPath[:j],
 					plist[i].ReposPath[j+1:]...,
@@ -361,26 +361,25 @@ func (plist ProfileList) RemoveAllReposPath(reposPath pathutil.ReposPath) error 
 
 // Contains returns true if reposList contains reposPath.
 func (reposList ReposList) Contains(reposPath pathutil.ReposPath) bool {
-	_, err := reposList.FindByPath(reposPath)
-	return err == nil
+	return reposList.FindByPath(reposPath) != nil
 }
 
 // FindByPath finds reposPath from reposList.
 // Non-nil pointer is returned if found.
 // nil pointer is returned if not found.
-func (reposList ReposList) FindByPath(reposPath pathutil.ReposPath) (*Repos, error) {
+func (reposList ReposList) FindByPath(reposPath pathutil.ReposPath) *Repos {
 	for i := range reposList {
-		if reposList[i].Path == reposPath {
-			return &reposList[i], nil
+		if reposList[i].Path.Equals(reposPath) {
+			return &reposList[i]
 		}
 	}
-	return nil, errors.New("repos '" + reposPath.String() + "' does not exist")
+	return nil
 }
 
 // RemoveAllReposPath removes all reposPath from all repos path list.
 func (reposList *ReposList) RemoveAllReposPath(reposPath pathutil.ReposPath) error {
 	for i := range *reposList {
-		if (*reposList)[i].Path == reposPath {
+		if (*reposList)[i].Path.Equals(reposPath) {
 			*reposList = append((*reposList)[:i], (*reposList)[i+1:]...)
 			return nil
 		}
@@ -398,7 +397,7 @@ func (reposPathList profReposPath) Contains(reposPath pathutil.ReposPath) bool {
 // idx == -1 is returned if not found.
 func (reposPathList profReposPath) IndexOf(reposPath pathutil.ReposPath) int {
 	for i := range reposPathList {
-		if reposPathList[i] == reposPath {
+		if reposPathList[i].Equals(reposPath) {
 			return i
 		}
 	}
@@ -409,9 +408,9 @@ func (reposPathList profReposPath) IndexOf(reposPath pathutil.ReposPath) int {
 func (lockJSON *LockJSON) GetReposListByProfile(profile *Profile) (ReposList, error) {
 	reposList := make(ReposList, 0, len(profile.ReposPath))
 	for _, reposPath := range profile.ReposPath {
-		repos, err := lockJSON.Repos.FindByPath(reposPath)
-		if err != nil {
-			return nil, err
+		repos := lockJSON.Repos.FindByPath(reposPath)
+		if repos == nil {
+			return nil, errors.New("repos '" + reposPath.String() + "' does not exist")
 		}
 		reposList = append(reposList, *repos)
 	}
