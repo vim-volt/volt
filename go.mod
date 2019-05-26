@@ -22,3 +22,5 @@ require (
 	gopkg.in/src-d/go-git.v4 v4.0.0-rc15
 	gopkg.in/warnings.v0 v0.1.2
 )
+
+go 1.12.5
