@@ -69,6 +69,7 @@ func TestVoltBuildT1ProfileVimrcGvimrcExists(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
 	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
@@ -93,6 +94,7 @@ func TestVoltBuildT1ProfileVimrcExists(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
 
@@ -116,6 +118,7 @@ func TestVoltBuildT1ProfileGvimrcExists(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
 
@@ -139,6 +142,7 @@ func TestVoltBuildT2UserVimrcGvimrcExists(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installVimRC(t, "vimrc-nomagic.vim", pathutil.Vimrc)
 	installVimRC(t, "gvimrc-nomagic.vim", pathutil.Gvimrc)
@@ -163,6 +167,7 @@ func TestVoltBuildT2UserVimrcExists(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installVimRC(t, "vimrc-nomagic.vim", pathutil.Vimrc)
 
@@ -187,6 +192,7 @@ func TestErrVoltBuildT2CannotOverwriteUserVimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
 	installVimRC(t, "vimrc-nomagic.vim", pathutil.Vimrc)
@@ -212,6 +218,7 @@ func TestErrVoltBuildT2CannotOverwriteUserGvimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
 	installVimRC(t, "gvimrc-nomagic.vim", pathutil.Gvimrc)
@@ -237,6 +244,7 @@ func TestErrVoltBuildT2DontInstallVimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
 	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
@@ -263,6 +271,7 @@ func TestErrVoltBuildT2DontInstallGvimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
 	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
@@ -289,6 +298,7 @@ func TestVoltBuildT2CanInstallUserVimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
 	installVimRC(t, "gvimrc-nomagic.vim", pathutil.Gvimrc)
@@ -314,6 +324,7 @@ func TestVoltBuildT3OverwriteUserVimrcGvimrcByProfileVimrcGvimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
 	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
@@ -341,6 +352,7 @@ func TestVoltBuildT3OverwriteUserGvimrcByProfileGvimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
 	installVimRC(t, "gvimrc-magic.vim", pathutil.Gvimrc)
@@ -366,6 +378,7 @@ func TestVoltBuildT3OverwriteUserVimrcByProfileVimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
 	installVimRC(t, "vimrc-magic.vim", pathutil.Vimrc)
@@ -391,6 +404,7 @@ func TestVoltBuildT3RemoveUserVimrcGvimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installVimRC(t, "vimrc-magic.vim", pathutil.Vimrc)
 	installVimRC(t, "gvimrc-magic.vim", pathutil.Gvimrc)
@@ -416,6 +430,7 @@ func TestVoltBuildT3InstallGvimrcAndRemoveUserVimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "gvimrc-nomagic.vim", pathutil.ProfileGvimrc)
 	installVimRC(t, "vimrc-magic.vim", pathutil.Vimrc)
@@ -441,6 +456,7 @@ func TestVoltBuildT3InstallVimrcAndRemoveUserGvimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	installProfileRC(t, "default", "vimrc-nomagic.vim", pathutil.ProfileVimrc)
 	installVimRC(t, "gvimrc-magic.vim", pathutil.Gvimrc)
@@ -466,6 +482,7 @@ func TestVoltBuildT4NoVimrcGvimrc(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
@@ -490,6 +507,7 @@ func voltBuildGitNoVimRepos(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 	reposPathList := []pathutil.ReposPath{"github.com/tyru/caw.vim"}
 	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
 	defer teardown()
@@ -536,6 +554,7 @@ func voltBuildGitVimDirOlder(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 	reposPathList := []pathutil.ReposPath{"github.com/tyru/caw.vim"}
 	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
 	defer teardown()
@@ -587,6 +606,7 @@ func voltBuildGitVimDirNewer(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 	reposPathList := []pathutil.ReposPath{"github.com/tyru/caw.vim"}
 	teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
 	defer teardown()
@@ -639,6 +659,7 @@ func voltBuildStaticNoVimRepos(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 	reposPathList := []pathutil.ReposPath{"localhost/local/hello"}
 	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
 	defer teardown()
@@ -685,6 +706,7 @@ func voltBuildStaticVimDirOlder(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 	reposPathList := []pathutil.ReposPath{"localhost/local/hello"}
 	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
 	defer teardown()
@@ -736,6 +758,7 @@ func voltBuildStaticVimDirNewer(t *testing.T, full bool, strategy string) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 	reposPathList := []pathutil.ReposPath{"localhost/local/hello"}
 	teardown := testutil.SetUpRepos(t, "hello", lockjson.ReposStaticType, reposPathList, strategy)
 	defer teardown()

@@ -3,12 +3,13 @@ package subcmd
 import (
 	"bytes"
 	"fmt"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
@@ -54,6 +55,7 @@ func TestVoltGetOnePlugin(t *testing.T) {
 				// =============== setup =============== //
 
 				testutil.SetUpEnv(t)
+				defer testutil.CleanUpEnv(t)
 				testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 				// =============== run =============== //
@@ -111,6 +113,7 @@ func TestVoltGetMsg(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 		reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
 
@@ -314,6 +317,7 @@ func TestVoltGetTwoOrMorePlugin(t *testing.T) {
 				// =============== setup =============== //
 
 				testutil.SetUpEnv(t)
+				defer testutil.CleanUpEnv(t)
 				testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 				// =============== run =============== //
@@ -378,6 +382,7 @@ func TestVoltGetLoptMustNotAddDisabledPlugins(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
@@ -408,6 +413,7 @@ func TestErrVoltGetInvalidArgs(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
@@ -453,6 +459,7 @@ func TestErrVoltGetNotFound(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
@@ -492,6 +499,32 @@ func TestErrVoltGetNotFound(t *testing.T) {
 	msg := fmt.Sprintf(fmtInstallFailed, reposPath)
 	if !bytes.Contains(out, []byte(msg)) {
 		t.Errorf("Output does not contain %q\n%s", msg, string(out))
+	}
+}
+
+// [error] Specify plugin which already has (A, B, K)
+func TestErrVoltGetDupRepos(t *testing.T) {
+	// =============== setup =============== //
+
+	testutil.SetUpEnv(t)
+
+	// =============== run =============== //
+
+	out, err := testutil.RunVolt("get", "github.com/tyru/caw.vim")
+	// (A, B)
+	testutil.SuccessExit(t, out, err)
+	reposPath := pathutil.ReposPath("github.com/tyru/caw.vim")
+
+	for _, path := range []string{"github.com/tyru/caw.vim", "github.com/tyru/CaW.vim"} {
+		out, err = testutil.RunVolt("get", path)
+		// (A, B)
+		testutil.SuccessExit(t, out, err)
+
+		// (K)
+		msg := fmt.Sprintf(fmtAlreadyExists, reposPath)
+		if !bytes.Contains(out, []byte(msg)) {
+			t.Errorf("Output does not contain %q\n%s", msg, string(out))
+		}
 	}
 }
 
@@ -593,9 +626,8 @@ func gitCommitOne(reposPath pathutil.ReposPath) (prev plumbing.Hash, current plu
 	head, err := r.Head()
 	if err != nil {
 		return
-	} else {
-		prev = head.Hash()
 	}
+	prev = head.Hash()
 	w, err := r.Worktree()
 	if err != nil {
 		return
@@ -620,15 +652,13 @@ func gitResetHard(reposPath pathutil.ReposPath, ref string) (current plumbing.Ha
 	head, err := r.Head()
 	if err != nil {
 		return
-	} else {
-		next = head.Hash()
 	}
+	next = head.Hash()
 	rev, err := r.ResolveRevision(plumbing.Revision(ref))
 	if err != nil {
 		return
-	} else {
-		current = *rev
 	}
+	current = *rev
 	err = w.Reset(&git.ResetOptions{
 		Commit: current,
 		Mode:   git.HardReset,

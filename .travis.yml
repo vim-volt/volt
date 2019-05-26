@@ -3,9 +3,11 @@ language: go
 matrix:
   include:
     - os: linux
-      go: 1.9
+      go: 1.11.10
+      env: GO111MODULE="on"
     - os: linux
-      go: tip
+      go: 1.12.5
+      env: GO111MODULE="on"
     # macOS build *extraordinary* slow, disable them
     # - os: osx
     #   osx_image: xcode8.3
@@ -13,6 +15,7 @@ matrix:
     # - os: osx
     #   osx_image: xcode8.3
     #   go: tip
+
 
 script:
   - go vet -v ./...

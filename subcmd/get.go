@@ -181,42 +181,49 @@ func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) 
 			if err != nil {
 				return nil, err
 			}
+			// Get the existing entries if already have it
+			// (e.g. github.com/tyru/CaW.vim -> github.com/tyru/caw.vim)
+			if r := lockJSON.Repos.FindByPath(reposPath); r != nil {
+				reposPath = r.Path
+			}
 			reposPathList = append(reposPathList, reposPath)
 		}
 	}
 	return reposPathList, nil
 }
 
-func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) error {
+func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) (err error) {
 	// Find matching profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates if the matching profile exists
-		return err
+		return
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
-		return err
+		return
 	}
-	defer transaction.Remove()
+	defer func() {
+		if e := trx.Done(); e != nil {
+			err = e
+		}
+	}()
 
 	// Read config.toml
 	cfg, err := config.Read()
 	if err != nil {
-		return errors.Wrap(err, "could not read config.toml")
+		err = errors.Wrap(err, "could not read config.toml")
+		return
 	}
 
 	done := make(chan getParallelResult, len(reposPathList))
 	getCount := 0
 	// Invoke installing / upgrading tasks
 	for _, reposPath := range reposPathList {
-		repos, err := lockJSON.Repos.FindByPath(reposPath)
-		if err != nil {
-			repos = nil
-		}
+		repos := lockJSON.Repos.FindByPath(reposPath)
 		if repos == nil || repos.Type == lockjson.ReposGitType {
 			go cmd.getParallel(reposPath, repos, cfg, done)
 			getCount++
@@ -250,14 +257,16 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 		// Write to lock.json
 		err = lockJSON.Write()
 		if err != nil {
-			return errors.Wrap(err, "could not write to lock.json")
+			err = errors.Wrap(err, "could not write to lock.json")
+			return
 		}
 	}
 
 	// Build ~/.vim/pack/volt dir
 	err = builder.Build(false)
 	if err != nil {
-		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
+		err = errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
+		return
 	}
 
 	// Show results
@@ -265,9 +274,10 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 		fmt.Println(statusList[i])
 	}
 	if failed {
-		return errors.New("failed to install some plugins")
+		err = errors.New("failed to install some plugins")
+		return
 	}
-	return nil
+	return
 }
 
 func (*getCmd) formatStatus(r *getParallelResult) string {
@@ -333,8 +343,8 @@ func (cmd *getCmd) getParallel(reposPath pathutil.ReposPath, repos *lockjson.Rep
 func (cmd *getCmd) installPlugin(reposPath pathutil.ReposPath, repos *lockjson.Repos, cfg *config.Config, done chan<- getParallelResult) {
 	// true:upgrade, false:install
 	fullReposPath := reposPath.FullPath()
-	doUpgrade := cmd.upgrade && pathutil.Exists(fullReposPath)
 	doInstall := !pathutil.Exists(fullReposPath)
+	doUpgrade := cmd.upgrade && !doInstall
 
 	var fromHash string
 	var err error
@@ -566,10 +576,7 @@ func (cmd *getCmd) downloadPlugconf(reposPath pathutil.ReposPath) error {
 // * Add repos to 'repos' if not found
 // * Add repos to 'profiles[]/repos_path' if not found
 func (*getCmd) updateReposVersion(lockJSON *lockjson.LockJSON, reposPath pathutil.ReposPath, reposType lockjson.ReposType, version string, profile *lockjson.Profile) bool {
-	repos, err := lockJSON.Repos.FindByPath(reposPath)
-	if err != nil {
-		repos = nil
-	}
+	repos := lockJSON.Repos.FindByPath(reposPath)
 
 	added := false
 
