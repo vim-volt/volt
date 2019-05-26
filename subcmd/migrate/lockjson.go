@@ -31,7 +31,7 @@ Description
   To suppress this, running this command simply reads and writes migrated structure to lock.json.`
 }
 
-func (*lockjsonMigrater) Migrate() error {
+func (*lockjsonMigrater) Migrate() (err error) {
 	// Read lock.json
 	lockJSON, err := lockjson.ReadNoMigrationMsg()
 	if err != nil {
@@ -39,16 +39,20 @@ func (*lockjsonMigrater) Migrate() error {
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
-		return err
+		return
 	}
-	defer transaction.Remove()
+	defer func() {
+		if e := trx.Done(); e != nil {
+			err = e
+		}
+	}()
 
 	// Write to lock.json
 	err = lockJSON.Write()
 	if err != nil {
 		return errors.Wrap(err, "could not write to lock.json")
 	}
-	return nil
+	return
 }

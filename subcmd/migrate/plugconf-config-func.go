@@ -39,22 +39,24 @@ Description
   All plugconf files are replaced with new contents.`
 }
 
-func (*plugconfConfigMigrater) Migrate() error {
+func (*plugconfConfigMigrater) Migrate() (err error) {
 	// Read lock.json
 	lockJSON, err := lockjson.ReadNoMigrationMsg()
 	if err != nil {
-		return errors.Wrap(err, "could not read lock.json")
+		err = errors.Wrap(err, "could not read lock.json")
+		return
 	}
 
 	results, parseErr := plugconf.ParseMultiPlugconf(lockJSON.Repos)
 	if parseErr.HasErrs() {
 		logger.Error("Please fix the following errors before migration:")
-		for _, err := range parseErr.Errors().Errors {
-			for _, line := range strings.Split(err.Error(), "\n") {
+		for _, e := range parseErr.Errors().Errors {
+			for _, line := range strings.Split(e.Error(), "\n") {
 				logger.Errorf("  %s", line)
 			}
 		}
-		return nil
+		err = nil
+		return
 	}
 
 	type plugInfo struct {
@@ -84,22 +86,27 @@ func (*plugconfConfigMigrater) Migrate() error {
 		os.MkdirAll(filepath.Dir(info.path), 0755)
 		err = ioutil.WriteFile(info.path, info.content, 0644)
 		if err != nil {
-			return err
+			return
 		}
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
-		return err
+		return
 	}
-	defer transaction.Remove()
+	defer func() {
+		if e := trx.Done(); e != nil {
+			err = e
+		}
+	}()
 
 	// Build ~/.vim/pack/volt dir
 	err = builder.Build(false)
 	if err != nil {
-		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
+		err = errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
+		return
 	}
 
-	return nil
+	return
 }

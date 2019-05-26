@@ -109,19 +109,23 @@ func (cmd *rmCmd) parseArgs(args []string) ([]pathutil.ReposPath, error) {
 	return reposPathList, nil
 }
 
-func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
+func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) (err error) {
 	// Read lock.json
 	lockJSON, err := lockjson.Read()
 	if err != nil {
-		return err
+		return
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
-		return err
+		return
 	}
-	defer transaction.Remove()
+	defer func() {
+		if e := trx.Done(); e != nil {
+			err = e
+		}
+	}()
 
 	// Get the existing entries if already have it
 	// (e.g. github.com/tyru/CaW.vim -> github.com/tyru/caw.vim)
@@ -136,13 +140,15 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 
 	// Check if specified plugins are depended by some plugins
 	for _, reposPath := range reposPathList {
-		rdeps, err := plugconf.RdepsOf(reposPath, lockJSON.Repos)
+		var rdeps pathutil.ReposPathList
+		rdeps, err = plugconf.RdepsOf(reposPath, lockJSON.Repos)
 		if err != nil {
-			return err
+			return
 		}
 		if len(rdeps) > 0 {
-			return errors.Errorf("cannot remove '%s' because it's depended by '%s'",
+			err = errors.Errorf("cannot remove '%s' because it's depended by '%s'",
 				reposPath, strings.Join(rdeps.Strings(), "', '"))
+			return
 		}
 	}
 
@@ -153,7 +159,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 			fullReposPath := reposPath.FullPath()
 			if pathutil.Exists(fullReposPath) {
 				if err = cmd.removeRepos(fullReposPath); err != nil {
-					return err
+					return
 				}
 				removeCount++
 			} else {
@@ -166,7 +172,7 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 			plugconfPath := reposPath.Plugconf()
 			if pathutil.Exists(plugconfPath) {
 				if err = cmd.removePlugconf(plugconfPath); err != nil {
-					return err
+					return
 				}
 				removeCount++
 			} else {
@@ -182,14 +188,13 @@ func (cmd *rmCmd) doRemove(reposPathList []pathutil.ReposPath) error {
 		}
 	}
 	if removeCount == 0 {
-		return errors.New("no plugins are removed")
+		err = errors.New("no plugins are removed")
+		return
 	}
 
 	// Write to lock.json
-	if err = lockJSON.Write(); err != nil {
-		return err
-	}
-	return nil
+	err = lockJSON.Write()
+	return
 }
 
 // Remove repository directory

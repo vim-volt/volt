@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/vim-volt/volt/logger"
 	"github.com/vim-volt/volt/subcmd/builder"
 	"github.com/vim-volt/volt/transaction"
 )
@@ -53,7 +52,7 @@ Description
 	return fs
 }
 
-func (cmd *buildCmd) Run(args []string) *Error {
+func (cmd *buildCmd) Run(args []string) (result *Error) {
 	// Parse args
 	fs := cmd.FlagSet()
 	fs.Parse(args)
@@ -62,18 +61,22 @@ func (cmd *buildCmd) Run(args []string) *Error {
 	}
 
 	// Begin transaction
-	err := transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
-		logger.Error()
-		return &Error{Code: 11, Msg: "Failed to begin transaction: " + err.Error()}
+		result = &Error{Code: 11, Msg: "Failed to begin transaction: " + err.Error()}
+		return
 	}
-	defer transaction.Remove()
+	defer func() {
+		if err := trx.Done(); err != nil {
+			result = &Error{Code: 13, Msg: "Failed to end transaction: " + err.Error()}
+		}
+	}()
 
 	err = builder.Build(cmd.full)
 	if err != nil {
-		logger.Error()
-		return &Error{Code: 12, Msg: "Failed to build: " + err.Error()}
+		result = &Error{Code: 12, Msg: "Failed to build: " + err.Error()}
+		return
 	}
 
-	return nil
+	return
 }
