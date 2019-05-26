@@ -192,26 +192,31 @@ func (cmd *getCmd) getReposPathList(args []string, lockJSON *lockjson.LockJSON) 
 	return reposPathList, nil
 }
 
-func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) error {
+func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.LockJSON) (err error) {
 	// Find matching profile
 	profile, err := lockJSON.Profiles.FindByName(lockJSON.CurrentProfileName)
 	if err != nil {
 		// this must not be occurred because lockjson.Read()
 		// validates if the matching profile exists
-		return err
+		return
 	}
 
 	// Begin transaction
-	err = transaction.Create()
+	trx, err := transaction.Start()
 	if err != nil {
-		return err
+		return
 	}
-	defer transaction.Remove()
+	defer func() {
+		if e := trx.Done(); e != nil {
+			err = e
+		}
+	}()
 
 	// Read config.toml
 	cfg, err := config.Read()
 	if err != nil {
-		return errors.Wrap(err, "could not read config.toml")
+		err = errors.Wrap(err, "could not read config.toml")
+		return
 	}
 
 	done := make(chan getParallelResult, len(reposPathList))
@@ -252,14 +257,16 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 		// Write to lock.json
 		err = lockJSON.Write()
 		if err != nil {
-			return errors.Wrap(err, "could not write to lock.json")
+			err = errors.Wrap(err, "could not write to lock.json")
+			return
 		}
 	}
 
 	// Build ~/.vim/pack/volt dir
 	err = builder.Build(false)
 	if err != nil {
-		return errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
+		err = errors.Wrap(err, "could not build "+pathutil.VimVoltDir())
+		return
 	}
 
 	// Show results
@@ -267,9 +274,10 @@ func (cmd *getCmd) doGet(reposPathList []pathutil.ReposPath, lockJSON *lockjson.
 		fmt.Println(statusList[i])
 	}
 	if failed {
-		return errors.New("failed to install some plugins")
+		err = errors.New("failed to install some plugins")
+		return
 	}
-	return nil
+	return
 }
 
 func (*getCmd) formatStatus(r *getParallelResult) string {
