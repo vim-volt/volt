@@ -56,17 +56,16 @@ See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.
     * You can switch those combinations with one command
     * For example, you can switch various Vim such as Web development mode, Essential plugins + vimrc only, or Vanilla Vim.
 
-## Install
+## Quickstart
 
-* **RECOMMENDED**: Download binaries from [GitHub releases](https://github.com/vim-volt/volt/releases)
+### Install
+
+* [Download](https://github.com/vim-volt/volt/releases)
 * Or `go get github.com/vim-volt/volt`
-  * You need Go 1.9 or higher
-  * And if you are using Windows Subsystem Linux, you need to apply **[the patch for os.RemoveAll()](https://go-review.googlesource.com/c/go/+/62970) ! ([#1](https://github.com/vim-volt/go-volt/issues/1))**
-  * But it's a hassle, you can just download linux-386/amd64 binaries from [GitHub releases](https://github.com/vim-volt/volt/releases) :)
 
-And there are bash/zsh completion scripts in [\_contrib](https://github.com/vim-volt/volt/blob/master/_contrib/completion) directory (by @AvianY, @mrymtsk).
+Optional: Bash/Zsh completion scripts in [\_contrib/completion/](https://github.com/vim-volt/volt/blob/master/_contrib/completion) directory (by @AvianY, @mrymtsk).
 
-## Self upgrade
+### Self upgrade
 
 If you already have older version's `volt` command, you can use `volt self-upgrade` command.
 
@@ -78,7 +77,17 @@ will upgrade current running volt binary to the latest version if the [newer rel
 
 Or also you can just checks if the newer releases published by running `volt self-upgrade -check`.
 
-## Introduction
+### vimrc / gvimrc
+
+If you put your vimrc / gvimrc to:
+
+* `$HOME/volt/rc/<profile>/vimrc.vim` (installed to: `$HOME/.vim/vimrc`)
+* `$HOME/volt/rc/<profile>/gvimrc.vim` (installed to: `$HOME/.vim/gvimrc`)
+
+The default profile is `default`.
+
+Why volt manages vimrc / gvimrc is to allow easily switching vimrc / gvimrc.
+See [the profile feature](https://github.com/vim-volt/volt#switch-set-of-plugins-profile-feature) for details.
 
 ### VOLTPATH
 
@@ -144,7 +153,7 @@ $ volt rm tyru/caw.vim   # (sob)
 
 ![volt build](https://raw.githubusercontent.com/vim-volt/volt/master/img/volt-build.png)
 
-`volt build` synchronizes `~/.vim/pack/volt/...` with `$VOLTPATH/rc` (vimrc/gvimrc), `$VOLTPATH/repos` (repositories), `$VOLTPATH/plugconf` (plugconf):
+`volt build` synchronizes `~/.vim/pack/volt/...` with `$VOLTPATH/rc/<profile>/vimrc.vim` and `$VOLTPATH/rc/<profile>/gvimrc.vim` (if exists), `$VOLTPATH/repos` (repositories), `$VOLTPATH/plugconf` (plugconf):
 
 1. Install `$VOLTPATH/rc/<profile>/{vimrc.vim,gvimrc.vim}` to `~/.vim/vimrc` and `~/.vim/gvimrc`
 1. Copy `$VOLTPATH/repos/<repos>` to `~/.vim/pack/volt/opt/<repos>`
