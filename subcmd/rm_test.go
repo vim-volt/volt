@@ -27,6 +27,7 @@ func TestVoltRmOnePlugin(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
@@ -68,6 +69,7 @@ func TestVoltRmRoptOnePlugin(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
@@ -109,6 +111,7 @@ func TestVoltRmOnePluginNoPlugconf(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
@@ -147,6 +150,7 @@ func TestVoltRmTwoOrMorePluginNoPlugconf(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim", "tyru/capture.vim")
@@ -191,6 +195,7 @@ func TestVoltRmOnePluginNoRepos(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
@@ -229,6 +234,7 @@ func TestVoltRmOnePluginNoReposNoPlugconf(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
@@ -264,6 +270,7 @@ func TestVoltRmPoptOnePlugin(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
@@ -305,6 +312,7 @@ func TestVoltRmPoptOnePluginNoPlugconf(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
@@ -343,6 +351,7 @@ func TestVoltRmPoptOnePluginNoRepos(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
@@ -381,6 +390,7 @@ func TestVoltRmPoptTwoOrMorePluginNoPlugconf(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim", "tyru/capture.vim")
@@ -425,6 +435,7 @@ func TestVoltRmPoptOnePluginNoReposNoPlugconf(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 		out, err := testutil.RunVolt("get", "tyru/caw.vim")
@@ -459,6 +470,7 @@ func TestErrVoltRmInvalidArgs(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
@@ -472,6 +484,7 @@ func TestErrVoltRmNotFound(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 

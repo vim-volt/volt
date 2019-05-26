@@ -18,6 +18,7 @@ func TestVoltListAndVoltProfileAreSame(t *testing.T) {
 	// =============== setup =============== //
 
 	testutil.SetUpEnv(t)
+	defer testutil.CleanUpEnv(t)
 
 	// =============== run =============== //
 
@@ -43,6 +44,7 @@ func TestVoltListFunctions(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -60,6 +62,7 @@ func TestVoltListFunctions(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -81,6 +84,7 @@ func TestVoltListFunctions(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -98,6 +102,7 @@ func TestVoltListFunctions(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -115,6 +120,7 @@ func TestVoltListFunctions(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -133,6 +139,7 @@ func TestVoltListFunctions(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -151,6 +158,7 @@ func TestVoltListFunctions(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 

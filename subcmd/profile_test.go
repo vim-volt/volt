@@ -29,6 +29,7 @@ func TestVoltProfileSet(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 
 			reposPathList := []pathutil.ReposPath{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, strategy)
@@ -73,6 +74,7 @@ func TestVoltProfileSet(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 			// =============== run =============== //
@@ -98,6 +100,7 @@ func TestVoltProfileSet(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 			// =============== run =============== //
@@ -131,6 +134,7 @@ func TestVoltProfileShow(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -153,6 +157,7 @@ func TestVoltProfileShow(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -173,6 +178,7 @@ func TestVoltProfileShow(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -200,6 +206,7 @@ func TestVoltProfileList(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -218,6 +225,7 @@ func TestVoltProfileList(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		out, err := testutil.RunVolt("profile", "new", "foo")
 		testutil.SuccessExit(t, out, err)
 
@@ -247,6 +255,7 @@ func TestVoltProfileNew(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -272,6 +281,7 @@ func TestVoltProfileNew(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -297,6 +307,7 @@ func TestVoltProfileNew(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		out, err := testutil.RunVolt("profile", "new", "bar")
 		testutil.SuccessExit(t, out, err)
 
@@ -332,6 +343,7 @@ func TestVoltProfileDestroy(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		out, err := testutil.RunVolt("profile", "new", "foo")
 		// (A, B)
 		testutil.SuccessExit(t, out, err)
@@ -356,6 +368,7 @@ func TestVoltProfileDestroy(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -377,6 +390,7 @@ func TestVoltProfileDestroy(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		// =============== run =============== //
 
@@ -403,6 +417,7 @@ func TestVoltProfileRename(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		out, err := testutil.RunVolt("profile", "set", "-n", "foo")
 		testutil.SuccessExit(t, out, err)
 
@@ -441,6 +456,7 @@ func TestVoltProfileRename(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
 			t.Error("lockjson.Read() returned non-nil error: " + err.Error())
@@ -480,6 +496,7 @@ func TestVoltProfileRename(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		out, err := testutil.RunVolt("profile", "new", "foo")
 		testutil.SuccessExit(t, out, err)
 		out, err = testutil.RunVolt("profile", "new", "bar")
@@ -520,6 +537,7 @@ func TestVoltProfileRename(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		out, err := testutil.RunVolt("profile", "new", "foo")
 		testutil.SuccessExit(t, out, err)
 
@@ -558,6 +576,7 @@ func TestVoltProfileRename(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 		out, err := testutil.RunVolt("profile", "new", "foo")
 		testutil.SuccessExit(t, out, err)
 
@@ -596,6 +615,7 @@ func TestVoltProfileRename(t *testing.T) {
 		// =============== setup =============== //
 
 		testutil.SetUpEnv(t)
+		defer testutil.CleanUpEnv(t)
 
 		oldLockJSON, err := lockjson.Read()
 		if err != nil {
@@ -646,6 +666,7 @@ func TestVoltProfileAdd(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 
 			reposPathList := []pathutil.ReposPath{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
@@ -691,6 +712,7 @@ func TestVoltProfileAdd(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 
 			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim"), pathutil.ReposPath("github.com/tyru/capture.vim")}
 			teardown := testutil.SetUpRepos(t, "caw-and-capture", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
@@ -738,6 +760,7 @@ func TestVoltProfileAdd(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 
 			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
@@ -783,6 +806,7 @@ func TestVoltProfileAdd(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 
 			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
@@ -820,6 +844,7 @@ func TestVoltProfileAdd(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 			out, err := testutil.RunVolt("profile", "new", "empty")
@@ -861,6 +886,7 @@ func TestVoltProfileAdd(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 			oldLockJSON, err := lockjson.Read()
@@ -907,6 +933,7 @@ func TestVoltProfileRm(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 
 			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
@@ -949,6 +976,7 @@ func TestVoltProfileRm(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 
 			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim"), pathutil.ReposPath("github.com/tyru/capture.vim")}
 			teardown := testutil.SetUpRepos(t, "caw-and-capture", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
@@ -993,6 +1021,7 @@ func TestVoltProfileRm(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 
 			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
@@ -1035,6 +1064,7 @@ func TestVoltProfileRm(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 
 			reposPathList := pathutil.ReposPathList{pathutil.ReposPath("github.com/tyru/caw.vim")}
 			teardown := testutil.SetUpRepos(t, "caw.vim", lockjson.ReposGitType, reposPathList, config.SymlinkBuilder)
@@ -1072,6 +1102,7 @@ func TestVoltProfileRm(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 			oldLockJSON, err := lockjson.Read()
@@ -1110,6 +1141,7 @@ func TestVoltProfileRm(t *testing.T) {
 			// =============== setup =============== //
 
 			testutil.SetUpEnv(t)
+			defer testutil.CleanUpEnv(t)
 			testutil.InstallConfig(t, "strategy-"+strategy+".toml")
 
 			oldLockJSON, err := lockjson.Read()
