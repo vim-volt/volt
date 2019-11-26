@@ -554,8 +554,8 @@ func shouldLoadUnconditionally(fn *ast.Function) bool {
 		case *ast.Return:
 			returnExpr := stmt.(*ast.Return).Result
 			val, ok := returnExpr.(*ast.BasicLit)
-			if ok && val.Value == "1" {
-				// "return 1" is the default and means unconditional execution
+			if ok && (val.Value == "1" || val.Value == "v:true") {
+				// "return 1" or "return v:true" is the default and means unconditional execution
 				return true
 			} else {
 				// any other return value is considered a condition
