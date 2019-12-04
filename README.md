@@ -248,6 +248,10 @@ Some special functions can be defined in plugconf file:
     * Plugin configuration to be executed before a plugin is loaded
 * `s:on_load_post()`
     * Plugin configuration to be executed after a plugin is loaded
+* `s:should_load()`
+    * Apply conditional loading of a plugin
+    * Return value: '0' for inhibiting loading, all other numbers for
+      loading the plugin
 * `s:loaded_on()` (optional)
     * Return value: String (when to load a plugin by `:packadd`)
     * This function specifies when to load a plugin by `:packadd`

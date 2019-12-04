@@ -46,16 +46,18 @@ func isProhibitedFuncName(name string) bool {
 
 // ParsedInfo represents parsed info of plugconf.
 type ParsedInfo struct {
-	reposID        int
-	reposPath      pathutil.ReposPath
-	functions      []string
-	onLoadPreFunc  string
-	onLoadPostFunc string
-	loadOnFunc     string
-	loadOn         loadOnType
-	loadOnArg      string
-	dependsFunc    string
-	depends        pathutil.ReposPathList
+	reposID             int
+	reposPath           pathutil.ReposPath
+	functions           []string
+	onLoadPreFunc       string
+	onLoadPostFunc      string
+	loadConditionFunc   string
+	loadUnconditionally bool
+	loadOnFunc          string
+	loadOn              loadOnType
+	loadOnArg           string
+	dependsFunc         string
+	depends             pathutil.ReposPathList
 }
 
 // ConvertConfigToOnLoadPreFunc converts s:config() function name to
@@ -93,6 +95,14 @@ func (pi *ParsedInfo) GeneratePlugconf() ([]byte, error) {
 		buf.WriteString(pi.onLoadPostFunc)
 	} else {
 		buf.WriteString(skeletonPlugconfOnLoadPost)
+	}
+	buf.WriteString("\n\n")
+
+	// s:should_load()
+	if pi.loadConditionFunc != "" {
+		buf.WriteString(pi.loadConditionFunc)
+	} else {
+		buf.WriteString(skeletonPlugconfShouldLoad)
 	}
 	buf.WriteString("\n\n")
 
@@ -310,6 +320,8 @@ func ParsePlugconf(file *ast.File, src []byte, path string) (*ParsedInfo, *Parse
 	var loadOnFunc string
 	var onLoadPreFunc string
 	var onLoadPostFunc string
+	var loadConditionFunc string
+	var loadUnconditionally bool
 	var functions []string
 	var dependsFunc string
 	var depends pathutil.ReposPathList
@@ -379,6 +391,16 @@ func ParsePlugconf(file *ast.File, src []byte, path string) (*ParsedInfo, *Parse
 			if !isEmptyFunc(fn) {
 				onLoadPostFunc = string(extractBody(fn, src))
 			}
+		case ident.Name == "s:should_load":
+			if loadConditionFunc != "" {
+				parseErr.merr = multierror.Append(parseErr.merr,
+					errors.New("duplicate s:should_load()"))
+				return true
+			}
+			if !isEmptyFunc(fn) {
+				loadConditionFunc = string(extractBody(fn, src))
+				loadUnconditionally = shouldLoadUnconditionally(fn)
+			}
 		case ident.Name == "s:depends":
 			if dependsFunc != "" {
 				parseErr.merr = multierror.Append(parseErr.merr,
@@ -409,14 +431,16 @@ func ParsePlugconf(file *ast.File, src []byte, path string) (*ParsedInfo, *Parse
 	}
 
 	return &ParsedInfo{
-		functions:      functions,
-		onLoadPreFunc:  onLoadPreFunc,
-		onLoadPostFunc: onLoadPostFunc,
-		loadOnFunc:     loadOnFunc,
-		loadOn:         loadOn,
-		loadOnArg:      loadOnArg,
-		dependsFunc:    dependsFunc,
-		depends:        depends,
+		functions:           functions,
+		onLoadPreFunc:       onLoadPreFunc,
+		onLoadPostFunc:      onLoadPostFunc,
+		loadConditionFunc:   loadConditionFunc,
+		loadUnconditionally: loadUnconditionally,
+		loadOnFunc:          loadOnFunc,
+		loadOn:              loadOn,
+		loadOnArg:           loadOnArg,
+		dependsFunc:         dependsFunc,
+		depends:             depends,
 	}, parseErr
 }
 
@@ -519,6 +543,34 @@ func getDependencies(fn *ast.Function) (pathutil.ReposPathList, error) {
 	return deps, parseErr
 }
 
+// shouldLoadUnconditionally checks if the given function only contains the
+// single default 'return 1' statement which means loading unconditionally.
+// If any other statement is found it is considered a condition.
+func shouldLoadUnconditionally(fn *ast.Function) bool {
+	for _, stmt := range fn.Body {
+		switch stmt.(type) {
+		case *ast.Comment:
+			// comment nodes are ignored
+		case *ast.Return:
+			returnExpr := stmt.(*ast.Return).Result
+			val, ok := returnExpr.(*ast.BasicLit)
+			if ok && (val.Value == "1" || val.Value == "v:true") {
+				// "return 1" or "return v:true" is the default and means unconditional execution
+				return true
+			} else {
+				// any other return value is considered a condition
+				return false
+			}
+		default:
+			// any other statement is considered a condition
+			return false
+		}
+	}
+
+	// no statement is considered unconditional execution
+	return true
+}
+
 // rxFuncName is a pattern which matches to function name.
 // Note that $2 is a function name.
 // $1 is a string before a function name.
@@ -580,10 +632,10 @@ func (mp *MultiParsedInfo) GenerateBundlePlugconf(vimrcPath, gvimrcPath string) 
 		optName := filepath.Base(repos.Path.EncodeToPlugDirName())
 		packadd := fmt.Sprintf("packadd %s", optName)
 
-		// s:on_load_pre(), invoked command, s:on_load_post()
+		// s:should_load(), s:on_load_pre(), invoked command, s:on_load_post()
 		var invokedCmd string
 		if hasPlugconf {
-			cmds := make([]string, 0, 3)
+			cmds := make([]string, 0, 5)
 			if p.onLoadPreFunc != "" {
 				functions = append(functions, convertToDecodableFunc(p.onLoadPreFunc, p.reposPath, p.reposID))
 				cmds = append(cmds, fmt.Sprintf("call s:on_load_pre_%d()", p.reposID))
@@ -592,6 +644,11 @@ func (mp *MultiParsedInfo) GenerateBundlePlugconf(vimrcPath, gvimrcPath string) 
 			if p.onLoadPostFunc != "" {
 				functions = append(functions, convertToDecodableFunc(p.onLoadPostFunc, p.reposPath, p.reposID))
 				cmds = append(cmds, fmt.Sprintf("call s:on_load_post_%d()", p.reposID))
+			}
+			if p.loadConditionFunc != "" && !p.loadUnconditionally {
+				functions = append(functions, convertToDecodableFunc(p.loadConditionFunc, p.reposPath, p.reposID))
+				cmds = append([]string{fmt.Sprintf("if s:should_load_%d()", p.reposID)}, cmds...)
+				cmds = append(cmds, "endif")
 			}
 			invokedCmd = strings.Join(cmds, " | ")
 		} else {
@@ -860,6 +917,13 @@ endfunction`
 const skeletonPlugconfOnLoadPost = `" Plugin configuration like the code written in vimrc.
 " This configuration is executed *after* a plugin is loaded.
 function! s:on_load_post()
+endfunction`
+
+const skeletonPlugconfShouldLoad = `" Whether to actually load this plugin.
+" Return a 0 value to prohibit loading the plugin. All other numbers mean
+" this plugin will be loaded.
+function! s:should_load()
+  return 1
 endfunction`
 
 const skeletonPlugconfLoadOn = `" This function determines when a plugin is loaded.
