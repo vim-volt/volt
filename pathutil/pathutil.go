@@ -1,13 +1,14 @@
 package pathutil
 
 import (
-	"github.com/pkg/errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 var rxReposPath = regexp.MustCompile(
@@ -73,8 +74,7 @@ func (path ReposPath) ignoreCase() bool {
 func (path ReposPath) FullPath() string {
 	reposList := strings.Split(filepath.ToSlash(path.String()), "/")
 	paths := make([]string, 0, len(reposList)+2)
-	paths = append(paths, VoltPath())
-	paths = append(paths, "repos")
+	paths = append(paths, VoltRepoPath())
 	paths = append(paths, reposList...)
 	return filepath.Join(paths...)
 }
@@ -181,6 +181,17 @@ func VoltPath() string {
 		return path
 	}
 	return filepath.Join(HomeDir(), "volt")
+}
+
+// VoltRepoPath returns fullpath of repos path.
+// If VOLTREPOPATH environment variable is not set,
+// use "$HOME/volt/repos" instead.
+func VoltRepoPath() string {
+	path := os.Getenv("VOLTREPOPATH")
+	if path != "" {
+		return path
+	}
+	return filepath.Join(VoltPath(), "repos")
 }
 
 // LockJSON returns fullpath of "$HOME/volt/lock.json".
