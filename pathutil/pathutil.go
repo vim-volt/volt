@@ -73,8 +73,7 @@ func (path ReposPath) ignoreCase() bool {
 func (path ReposPath) FullPath() string {
 	reposList := strings.Split(filepath.ToSlash(path.String()), "/")
 	paths := make([]string, 0, len(reposList)+2)
-	paths = append(paths, VoltPath())
-	paths = append(paths, "repos")
+	paths = append(paths, VoltReposPath())
 	paths = append(paths, reposList...)
 	return filepath.Join(paths...)
 }
@@ -181,6 +180,17 @@ func VoltPath() string {
 		return path
 	}
 	return filepath.Join(HomeDir(), "volt")
+}
+
+// VoltReposPath returns fullpath of repos path.
+// If VOLTREPOSPATH environment variable is not set,
+// use "$HOME/volt/repos" instead.
+func VoltReposPath() string {
+	path := os.Getenv("VOLTREPOSPATH")
+	if path != "" {
+		return path
+	}
+	return filepath.Join(VoltPath(), "repos")
 }
 
 // LockJSON returns fullpath of "$HOME/volt/lock.json".

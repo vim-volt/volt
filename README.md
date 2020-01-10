@@ -25,6 +25,7 @@ See [the command reference](https://github.com/vim-volt/volt/blob/master/CMDREF.
 * [Self upgrade](#self-upgrade)
 * [Introduction](#introduction)
   * [VOLTPATH](#voltpath)
+  * [VOLTREPOSPATH](#voltrepospath)
   * [Install plugin(s)](#install-plugins)
   * [Update plugins](#update-plugins)
   * [Uninstall plugins](#uninstall-plugins)
@@ -94,6 +95,11 @@ See [the profile feature](https://github.com/vim-volt/volt#switch-set-of-plugins
 You can change base directory of volt by `VOLTPATH` environment variable.
 This is `$HOME/volt` by default.
 
+### VOLTREPOSPATH
+
+You can change base directory of Vim plugins by `VOLTREPOSPATH` environment variable.
+This is `$HOME/volt/repos` by default.
+
 ### Install plugin(s)
 
 For example, installing [tyru/caw.vim](https://github.com/tyru/caw.vim) plugin:
@@ -112,7 +118,7 @@ $ volt get tyru/open-browser.vim tyru/open-browser-github.vim
 
 For example, what `volt get tyru/caw.vim` command does internally is:
 
-* Clone and install the repository to `$VOLTPATH/repos/github.com/tyru/caw.vim`
+* Clone and install the repository to `$VOLTREPOSPATH/github.com/tyru/caw.vim`
     * Volt does not require `git` command because it's powered by [go-git](https://github.com/src-d/go-git)
 * Update `$VOLTPATH/lock.json`
 * Run `volt build`
@@ -153,12 +159,12 @@ $ volt rm tyru/caw.vim   # (sob)
 
 ![volt build](https://raw.githubusercontent.com/vim-volt/volt/master/img/volt-build.png)
 
-`volt build` synchronizes `~/.vim/pack/volt/...` with `$VOLTPATH/rc/<profile>/vimrc.vim` and `$VOLTPATH/rc/<profile>/gvimrc.vim` (if exists), `$VOLTPATH/repos` (repositories), `$VOLTPATH/plugconf` (plugconf):
+`volt build` synchronizes `~/.vim/pack/volt/...` with `$VOLTPATH/rc/<profile>/vimrc.vim` and `$VOLTPATH/rc/<profile>/gvimrc.vim` (if exists), `$VOLTREPOSPATH` (repositories), `$VOLTPATH/plugconf` (plugconf):
 
 1. Install `$VOLTPATH/rc/<profile>/{vimrc.vim,gvimrc.vim}` to `~/.vim/vimrc` and `~/.vim/gvimrc`
-1. Copy `$VOLTPATH/repos/<repos>` to `~/.vim/pack/volt/opt/<repos>`
-  * if `$VOLTPATH/repos/<repos>` has modified/new file(s), copy them to `~/.vim/pack/volt/opt/<repos>`
-  * if `$VOLTPATH/repos/<repos>` does not exist, remove `~/.vim/pack/volt/opt/<repos>`
+1. Copy `$VOLTREPOSPATH/<repos>` to `~/.vim/pack/volt/opt/<repos>`
+  * if `$VOLTREPOSPATH/<repos>` has modified/new file(s), copy them to `~/.vim/pack/volt/opt/<repos>`
+  * if `$VOLTREPOSPATH/<repos>` does not exist, remove `~/.vim/pack/volt/opt/<repos>`
 1. Install bootstrap script to `~/.vim/pack/volt/start/system/plugin/bundled_plugconf.vim` (load plugins & plugconfs)
 
 Users don't have to run `volt build` when running `volt get`, `volt rm`, `volt add`, `volt profile`, ... commands, because those commands invoke `volt build` command internally if the commands modify repositories, plugconf, lock.json.
@@ -177,8 +183,8 @@ Config file: `$VOLTPATH/config.toml`
 update = ["get", "-u"]
 
 [build]
-# * "symlink" (default): "volt build" creates symlinks "~/.vim/pack/volt/opt/<repos>" referring to "$VOLTPATH/repos/<repos>"
-# * "copy": "volt build" copies "$VOLTPATH/repos/<repos>" files to "~/.vim/pack/volt/opt/<repos>"
+# * "symlink" (default): "volt build" creates symlinks "~/.vim/pack/volt/opt/<repos>" referring to "$VOLTREPOSPATH/<repos>"
+# * "copy": "volt build" copies "$VOLTREPOSPATH/<repos>" files to "~/.vim/pack/volt/opt/<repos>"
 strategy = "symlink"
 
 [get]

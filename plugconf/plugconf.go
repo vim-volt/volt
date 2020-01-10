@@ -126,8 +126,6 @@ func (pi *ParsedInfo) GeneratePlugconf() ([]byte, error) {
 		buf.WriteString(f)
 	}
 
-	buf.WriteString("\n")
-
 	return buf.Bytes(), nil
 }
 
@@ -756,8 +754,6 @@ endfunction
 			buf.WriteString("let $MYGVIMRC = '" + gvimrcPath + "'")
 		}
 	}
-
-	buf.WriteString("\n")
 
 	return buf.Bytes(), nil
 }
