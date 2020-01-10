@@ -1,14 +1,13 @@
 package pathutil
 
 import (
+	"github.com/pkg/errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 var rxReposPath = regexp.MustCompile(
