@@ -78,7 +78,7 @@ func (builder *symlinkBuilder) Build(buildInfo *buildinfo.BuildInfo, buildReposM
 	for i := 0; i < len(reposList); i++ {
 		result := <-done
 		if result.err != nil {
-			return err
+			return result.err
 		}
 		if result.repos != nil {
 			logger.Debug("Installing " + string(result.repos.Type) + " repository " + result.repos.Path.String() + " ... Done.")
