@@ -23,4 +23,4 @@ require (
 	gopkg.in/warnings.v0 v0.1.2
 )
 
-go 1.12.5
+go 1.12
