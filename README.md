@@ -270,6 +270,12 @@ function! s:on_load_pre()
   let g:openbrowser_github_always_use_commit_hash = 1
 endfunction
 
+" Plugin configuration like the code written in vimrc.
+" This configuration is executed *after* a plugin is loaded.
+function! s:on_load_post()
+  call openbrowser#open('https://example.net/my-start-page.html')
+endfunction
+
 " This function determines when a plugin is loaded.
 "
 " Possible values are:
