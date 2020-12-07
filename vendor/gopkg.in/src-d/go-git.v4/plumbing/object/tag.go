@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	stdioutil "io/ioutil"
+	"strings"
+
+	"golang.org/x/crypto/openpgp"
 
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/storer"
@@ -30,6 +33,8 @@ type Tag struct {
 	Tagger Signature
 	// Message is an arbitrary text message.
 	Message string
+	// PGPSignature is the PGP signature of the tag.
+	PGPSignature string
 	// TargetType is the object type of the target.
 	TargetType plumbing.ObjectType
 	// Target is the hash of the target object.
@@ -88,9 +93,12 @@ func (t *Tag) Decode(o plumbing.EncodedObject) (err error) {
 	}
 	defer ioutil.CheckClose(reader, &err)
 
-	r := bufio.NewReader(reader)
+	r := bufPool.Get().(*bufio.Reader)
+	defer bufPool.Put(r)
+	r.Reset(reader)
 	for {
-		line, err := r.ReadBytes('\n')
+		var line []byte
+		line, err = r.ReadBytes('\n')
 		if err != nil && err != io.EOF {
 			return err
 		}
@@ -124,13 +132,51 @@ func (t *Tag) Decode(o plumbing.EncodedObject) (err error) {
 	if err != nil {
 		return err
 	}
-	t.Message = string(data)
+
+	var pgpsig bool
+	// Check if data contains PGP signature.
+	if bytes.Contains(data, []byte(beginpgp)) {
+		// Split the lines at newline.
+		messageAndSig := bytes.Split(data, []byte("\n"))
+
+		for _, l := range messageAndSig {
+			if pgpsig {
+				if bytes.Contains(l, []byte(endpgp)) {
+					t.PGPSignature += endpgp + "\n"
+					break
+				} else {
+					t.PGPSignature += string(l) + "\n"
+				}
+				continue
+			}
+
+			// Check if it's the beginning of a PGP signature.
+			if bytes.Contains(l, []byte(beginpgp)) {
+				t.PGPSignature += beginpgp + "\n"
+				pgpsig = true
+				continue
+			}
+
+			t.Message += string(l) + "\n"
+		}
+	} else {
+		t.Message = string(data)
+	}
 
 	return nil
 }
 
 // Encode transforms a Tag into a plumbing.EncodedObject.
 func (t *Tag) Encode(o plumbing.EncodedObject) error {
+	return t.encode(o, true)
+}
+
+// EncodeWithoutSignature export a Tag into a plumbing.EncodedObject without the signature (correspond to the payload of the PGP signature).
+func (t *Tag) EncodeWithoutSignature(o plumbing.EncodedObject) error {
+	return t.encode(o, false)
+}
+
+func (t *Tag) encode(o plumbing.EncodedObject, includeSig bool) (err error) {
 	o.SetType(plumbing.TagObject)
 	w, err := o.Writer()
 	if err != nil {
@@ -154,6 +200,17 @@ func (t *Tag) Encode(o plumbing.EncodedObject) error {
 
 	if _, err = fmt.Fprint(w, t.Message); err != nil {
 		return err
+	}
+
+	// Note that this is highly sensitive to what it sent along in the message.
+	// Message *always* needs to end with a newline, or else the message and the
+	// signature will be concatenated into a corrupt object. Since this is a
+	// lower-level method, we assume you know what you are doing and have already
+	// done the needful on the message in the caller.
+	if includeSig {
+		if _, err = fmt.Fprint(w, t.PGPSignature); err != nil {
+			return err
+		}
 	}
 
 	return err
@@ -225,6 +282,31 @@ func (t *Tag) String() string {
 	)
 }
 
+// Verify performs PGP verification of the tag with a provided armored
+// keyring and returns openpgp.Entity associated with verifying key on success.
+func (t *Tag) Verify(armoredKeyRing string) (*openpgp.Entity, error) {
+	keyRingReader := strings.NewReader(armoredKeyRing)
+	keyring, err := openpgp.ReadArmoredKeyRing(keyRingReader)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract signature.
+	signature := strings.NewReader(t.PGPSignature)
+
+	encoded := &plumbing.MemoryObject{}
+	// Encode tag components, excluding signature and get a reader object.
+	if err := t.EncodeWithoutSignature(encoded); err != nil {
+		return nil, err
+	}
+	er, err := encoded.Reader()
+	if err != nil {
+		return nil, err
+	}
+
+	return openpgp.CheckArmoredDetachedSignature(keyring, er, signature)
+}
+
 // TagIter provides an iterator for a set of tags.
 type TagIter struct {
 	storer.EncodedObjectIter
@@ -252,7 +334,7 @@ func (iter *TagIter) Next() (*Tag, error) {
 }
 
 // ForEach call the cb function for each tag contained on this iter until
-// an error happends or the end of the iter is reached. If ErrStop is sent
+// an error happens or the end of the iter is reached. If ErrStop is sent
 // the iteration is stop but no error is returned. The iterator is closed.
 func (iter *TagIter) ForEach(cb func(*Tag) error) error {
 	return iter.EncodedObjectIter.ForEach(func(obj plumbing.EncodedObject) error {

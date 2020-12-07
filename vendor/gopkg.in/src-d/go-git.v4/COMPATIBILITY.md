@@ -45,7 +45,7 @@ is supported by go-git.
 | **debugging** |
 | bisect                                | ✖ |
 | blame                                 | ✔ |
-| grep                                  | ✖ |
+| grep                                  | ✔ |
 | **email** ||
 | am                                    | ✖ |
 | apply                                 | ✖ |
@@ -56,7 +56,7 @@ is supported by go-git.
 | svn                                   | ✖ |
 | fast-import                           | ✖ |
 | **administration** |
-| clean                                 | ✖ |
+| clean                                 | ✔ |
 | gc                                    | ✖ |
 | fsck                                  | ✖ |
 | reflog                                | ✖ |
@@ -75,8 +75,8 @@ is supported by go-git.
 | worktree                              | ✖ |
 | annotate                              | (see blame) |
 | **gpg** |
-| git-verify-commit                     | ✖ |
-| git-verify-tag                        | ✖ |
+| git-verify-commit                     | ✔ |
+| git-verify-tag                        | ✔ |
 | **plumbing commands** |
 | cat-file                              | ✔ |
 | check-ignore                          | |
@@ -86,7 +86,7 @@ is supported by go-git.
 | for-each-ref                          | ✔ |
 | hash-object                           | ✔ |
 | ls-files                              | ✔ |
-| merge-base                            | |
+| merge-base                            | ✔ | Calculates the merge-base only between two commits, and supports `--independent` and `--is-ancestor` modifiers; Does not support `--fork-point` nor `--octopus` modifiers. |
 | read-tree                             | |
 | rev-list                              | ✔ |
 | rev-parse                             | |

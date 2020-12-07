@@ -24,6 +24,11 @@ func NewObjectLRU(maxSize FileSize) *ObjectLRU {
 	return &ObjectLRU{MaxSize: maxSize}
 }
 
+// NewObjectLRUDefault creates a new ObjectLRU with the default cache size.
+func NewObjectLRUDefault() *ObjectLRU {
+	return &ObjectLRU{MaxSize: DefaultMaxSize}
+}
+
 // Put puts an object into the cache. If the object is already in the cache, it
 // will be marked as used. Otherwise, it will be inserted. A single object might
 // be evicted to make room for the new object.
@@ -37,36 +42,37 @@ func (c *ObjectLRU) Put(obj plumbing.EncodedObject) {
 		c.ll = list.New()
 	}
 
+	objSize := FileSize(obj.Size())
 	key := obj.Hash()
 	if ee, ok := c.cache[key]; ok {
+		oldObj := ee.Value.(plumbing.EncodedObject)
+		// in this case objSize is a delta: new size - old size
+		objSize -= FileSize(oldObj.Size())
 		c.ll.MoveToFront(ee)
 		ee.Value = obj
-		return
+	} else {
+		if objSize > c.MaxSize {
+			return
+		}
+		ee := c.ll.PushFront(obj)
+		c.cache[key] = ee
 	}
 
-	objSize := FileSize(obj.Size())
-
-	if objSize >= c.MaxSize {
-		return
-	}
-
-	if c.actualSize+objSize > c.MaxSize {
+	c.actualSize += objSize
+	for c.actualSize > c.MaxSize {
 		last := c.ll.Back()
+		if last == nil {
+			c.actualSize = 0
+			break
+		}
+
 		lastObj := last.Value.(plumbing.EncodedObject)
 		lastSize := FileSize(lastObj.Size())
 
 		c.ll.Remove(last)
 		delete(c.cache, lastObj.Hash())
 		c.actualSize -= lastSize
-
-		if c.actualSize+objSize > c.MaxSize {
-			return
-		}
 	}
-
-	ee := c.ll.PushFront(obj)
-	c.cache[key] = ee
-	c.actualSize += objSize
 }
 
 // Get returns an object by its hash. It marks the object as used. If the object

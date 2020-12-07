@@ -26,7 +26,7 @@ import (
 // to fix this).
 func references(c *object.Commit, path string) ([]*object.Commit, error) {
 	var result []*object.Commit
-	seen := make(map[plumbing.Hash]struct{}, 0)
+	seen := make(map[plumbing.Hash]struct{})
 	if err := walkGraph(&result, &seen, c, path); err != nil {
 		return nil, err
 	}
@@ -47,7 +47,9 @@ func (s commitSorterer) Len() int {
 }
 
 func (s commitSorterer) Less(i, j int) bool {
-	return s.l[i].Committer.When.Before(s.l[j].Committer.When)
+	return s.l[i].Committer.When.Before(s.l[j].Committer.When) ||
+		s.l[i].Committer.When.Equal(s.l[j].Committer.When) &&
+			s.l[i].Author.When.Before(s.l[j].Author.When)
 }
 
 func (s commitSorterer) Swap(i, j int) {

@@ -15,10 +15,10 @@ const (
 	symrefPrefix    = "ref: "
 )
 
-// refRevParseRules are a set of rules to parse references into short names.
+// RefRevParseRules are a set of rules to parse references into short names.
 // These are the same rules as used by git in shorten_unambiguous_ref.
 // See: https://github.com/git/git/blob/e0aaa1b6532cfce93d87af9bc813fb2e7a7ce9d7/refs.c#L417
-var refRevParseRules = []string{
+var RefRevParseRules = []string{
 	"refs/%s",
 	"refs/tags/%s",
 	"refs/heads/%s",
@@ -55,6 +55,36 @@ func (r ReferenceType) String() string {
 // ReferenceName reference name's
 type ReferenceName string
 
+// NewBranchReferenceName returns a reference name describing a branch based on
+// his short name.
+func NewBranchReferenceName(name string) ReferenceName {
+	return ReferenceName(refHeadPrefix + name)
+}
+
+// NewNoteReferenceName returns a reference name describing a note based on his
+// short name.
+func NewNoteReferenceName(name string) ReferenceName {
+	return ReferenceName(refNotePrefix + name)
+}
+
+// NewRemoteReferenceName returns a reference name describing a remote branch
+// based on his short name and the remote name.
+func NewRemoteReferenceName(remote, name string) ReferenceName {
+	return ReferenceName(refRemotePrefix + fmt.Sprintf("%s/%s", remote, name))
+}
+
+// NewRemoteHEADReferenceName returns a reference name describing a the HEAD
+// branch of a remote.
+func NewRemoteHEADReferenceName(remote string) ReferenceName {
+	return ReferenceName(refRemotePrefix + fmt.Sprintf("%s/%s", remote, HEAD))
+}
+
+// NewTagReferenceName returns a reference name describing a tag based on short
+// his name.
+func NewTagReferenceName(name string) ReferenceName {
+	return ReferenceName(refTagPrefix + name)
+}
+
 // IsBranch check if a reference is a branch
 func (r ReferenceName) IsBranch() bool {
 	return strings.HasPrefix(string(r), refHeadPrefix)
@@ -83,7 +113,7 @@ func (r ReferenceName) String() string {
 func (r ReferenceName) Short() string {
 	s := string(r)
 	res := s
-	for _, format := range refRevParseRules {
+	for _, format := range RefRevParseRules {
 		_, err := fmt.Sscanf(s, format, &res)
 		if err == nil {
 			continue

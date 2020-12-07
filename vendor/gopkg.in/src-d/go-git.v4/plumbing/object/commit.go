@@ -3,13 +3,23 @@ package object
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
+	"golang.org/x/crypto/openpgp"
+
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/storer"
 	"gopkg.in/src-d/go-git.v4/utils/ioutil"
+)
+
+const (
+	beginpgp  string = "-----BEGIN PGP SIGNATURE-----"
+	endpgp    string = "-----END PGP SIGNATURE-----"
+	headerpgp string = "gpgsig"
 )
 
 // Hash represents the hash of an object
@@ -19,7 +29,7 @@ type Hash plumbing.Hash
 // at a certain point in time. It contains meta-information about that point
 // in time, such as a timestamp, the author of the changes since the last
 // commit, a pointer to the previous commit(s), etc.
-// http://schacon.github.io/gitbook/1_the_git_object_model.html
+// http://shafiulazam.com/gitbook/1_the_git_object_model.html
 type Commit struct {
 	// Hash of the commit object.
 	Hash plumbing.Hash
@@ -28,6 +38,8 @@ type Commit struct {
 	// Committer is the one performing the commit, might be different from
 	// Author.
 	Committer Signature
+	// PGPSignature is the PGP signature of the commit.
+	PGPSignature string
 	// Message is the commit message, contains arbitrary text.
 	Message string
 	// TreeHash is the hash of the root tree of the commit.
@@ -64,8 +76,9 @@ func (c *Commit) Tree() (*Tree, error) {
 	return GetTree(c.s, c.TreeHash)
 }
 
-// Patch returns the Patch between the actual commit and the provided one.
-func (c *Commit) Patch(to *Commit) (*Patch, error) {
+// PatchContext returns the Patch between the actual commit and the provided one.
+// Error will be return if context expires. Provided context must be non-nil.
+func (c *Commit) PatchContext(ctx context.Context, to *Commit) (*Patch, error) {
 	fromTree, err := c.Tree()
 	if err != nil {
 		return nil, err
@@ -76,7 +89,12 @@ func (c *Commit) Patch(to *Commit) (*Patch, error) {
 		return nil, err
 	}
 
-	return fromTree.Patch(toTree)
+	return fromTree.PatchContext(ctx, toTree)
+}
+
+// Patch returns the Patch between the actual commit and the provided one.
+func (c *Commit) Patch(to *Commit) (*Patch, error) {
+	return c.PatchContext(context.Background(), to)
 }
 
 // Parents return a CommitIter to the parent Commits.
@@ -89,6 +107,17 @@ func (c *Commit) Parents() CommitIter {
 // NumParents returns the number of parents in a commit.
 func (c *Commit) NumParents() int {
 	return len(c.ParentHashes)
+}
+
+var ErrParentNotFound = errors.New("commit parent not found")
+
+// Parent returns the ith parent of a commit.
+func (c *Commit) Parent(i int) (*Commit, error) {
+	if len(c.ParentHashes) == 0 || i > len(c.ParentHashes)-1 {
+		return nil, ErrParentNotFound
+	}
+
+	return GetCommit(c.s, c.ParentHashes[i])
 }
 
 // File returns the file with the specified "path" in the commit and a
@@ -142,13 +171,26 @@ func (c *Commit) Decode(o plumbing.EncodedObject) (err error) {
 	}
 	defer ioutil.CheckClose(reader, &err)
 
-	r := bufio.NewReader(reader)
+	r := bufPool.Get().(*bufio.Reader)
+	defer bufPool.Put(r)
+	r.Reset(reader)
 
 	var message bool
+	var pgpsig bool
 	for {
 		line, err := r.ReadBytes('\n')
 		if err != nil && err != io.EOF {
 			return err
+		}
+
+		if pgpsig {
+			if len(line) > 0 && line[0] == ' ' {
+				line = bytes.TrimLeft(line, " ")
+				c.PGPSignature += string(line)
+				continue
+			} else {
+				pgpsig = false
+			}
 		}
 
 		if !message {
@@ -159,15 +201,24 @@ func (c *Commit) Decode(o plumbing.EncodedObject) (err error) {
 			}
 
 			split := bytes.SplitN(line, []byte{' '}, 2)
+
+			var data []byte
+			if len(split) == 2 {
+				data = split[1]
+			}
+
 			switch string(split[0]) {
 			case "tree":
-				c.TreeHash = plumbing.NewHash(string(split[1]))
+				c.TreeHash = plumbing.NewHash(string(data))
 			case "parent":
-				c.ParentHashes = append(c.ParentHashes, plumbing.NewHash(string(split[1])))
+				c.ParentHashes = append(c.ParentHashes, plumbing.NewHash(string(data)))
 			case "author":
-				c.Author.Decode(split[1])
+				c.Author.Decode(data)
 			case "committer":
-				c.Committer.Decode(split[1])
+				c.Committer.Decode(data)
+			case headerpgp:
+				c.PGPSignature += string(data) + "\n"
+				pgpsig = true
 			}
 		} else {
 			c.Message += string(line)
@@ -181,6 +232,15 @@ func (c *Commit) Decode(o plumbing.EncodedObject) (err error) {
 
 // Encode transforms a Commit into a plumbing.EncodedObject.
 func (b *Commit) Encode(o plumbing.EncodedObject) error {
+	return b.encode(o, true)
+}
+
+// EncodeWithoutSignature export a Commit into a plumbing.EncodedObject without the signature (correspond to the payload of the PGP signature).
+func (b *Commit) EncodeWithoutSignature(o plumbing.EncodedObject) error {
+	return b.encode(o, false)
+}
+
+func (b *Commit) encode(o plumbing.EncodedObject, includeSig bool) (err error) {
 	o.SetType(plumbing.CommitObject)
 	w, err := o.Writer()
 	if err != nil {
@@ -215,11 +275,61 @@ func (b *Commit) Encode(o plumbing.EncodedObject) error {
 		return err
 	}
 
+	if b.PGPSignature != "" && includeSig {
+		if _, err = fmt.Fprint(w, "\n"+headerpgp+" "); err != nil {
+			return err
+		}
+
+		// Split all the signature lines and re-write with a left padding and
+		// newline. Use join for this so it's clear that a newline should not be
+		// added after this section, as it will be added when the message is
+		// printed.
+		signature := strings.TrimSuffix(b.PGPSignature, "\n")
+		lines := strings.Split(signature, "\n")
+		if _, err = fmt.Fprint(w, strings.Join(lines, "\n ")); err != nil {
+			return err
+		}
+	}
+
 	if _, err = fmt.Fprintf(w, "\n\n%s", b.Message); err != nil {
 		return err
 	}
 
 	return err
+}
+
+// Stats returns the stats of a commit.
+func (c *Commit) Stats() (FileStats, error) {
+	return c.StatsContext(context.Background())
+}
+
+// StatsContext returns the stats of a commit. Error will be return if context
+// expires. Provided context must be non-nil.
+func (c *Commit) StatsContext(ctx context.Context) (FileStats, error) {
+	fromTree, err := c.Tree()
+	if err != nil {
+		return nil, err
+	}
+
+	toTree := &Tree{}
+	if c.NumParents() != 0 {
+		firstParent, err := c.Parents().Next()
+		if err != nil {
+			return nil, err
+		}
+
+		toTree, err = firstParent.Tree()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	patch, err := toTree.PatchContext(ctx, fromTree)
+	if err != nil {
+		return nil, err
+	}
+
+	return getFileStatsFromFilePatches(patch.FilePatches()), nil
 }
 
 func (c *Commit) String() string {
@@ -228,6 +338,31 @@ func (c *Commit) String() string {
 		plumbing.CommitObject, c.Hash, c.Author.String(),
 		c.Author.When.Format(DateFormat), indent(c.Message),
 	)
+}
+
+// Verify performs PGP verification of the commit with a provided armored
+// keyring and returns openpgp.Entity associated with verifying key on success.
+func (c *Commit) Verify(armoredKeyRing string) (*openpgp.Entity, error) {
+	keyRingReader := strings.NewReader(armoredKeyRing)
+	keyring, err := openpgp.ReadArmoredKeyRing(keyRingReader)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract signature.
+	signature := strings.NewReader(c.PGPSignature)
+
+	encoded := &plumbing.MemoryObject{}
+	// Encode commit components, excluding signature and get a reader object.
+	if err := c.EncodeWithoutSignature(encoded); err != nil {
+		return nil, err
+	}
+	er, err := encoded.Reader()
+	if err != nil {
+		return nil, err
+	}
+
+	return openpgp.CheckArmoredDetachedSignature(keyring, er, signature)
 }
 
 func indent(t string) string {

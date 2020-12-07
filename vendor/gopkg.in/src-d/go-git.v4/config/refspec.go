@@ -15,10 +15,10 @@ const (
 
 var (
 	ErrRefSpecMalformedSeparator = errors.New("malformed refspec, separators are wrong")
-	ErrRefSpecMalformedWildcard  = errors.New("malformed refspec, missmatched number of wildcards")
+	ErrRefSpecMalformedWildcard  = errors.New("malformed refspec, mismatched number of wildcards")
 )
 
-// RefSpec is a mapping from local branches to remote references
+// RefSpec is a mapping from local branches to remote references.
 // The format of the refspec is an optional +, followed by <src>:<dst>, where
 // <src> is the pattern for references on the remote side and <dst> is where
 // those references will be written locally. The + tells Git to update the
@@ -51,26 +51,24 @@ func (s RefSpec) Validate() error {
 
 // IsForceUpdate returns if update is allowed in non fast-forward merges.
 func (s RefSpec) IsForceUpdate() bool {
-	if s[0] == refSpecForce[0] {
-		return true
-	}
-
-	return false
+	return s[0] == refSpecForce[0]
 }
 
 // IsDelete returns true if the refspec indicates a delete (empty src).
 func (s RefSpec) IsDelete() bool {
-	if s[0] == refSpecSeparator[0] {
-		return true
-	}
-
-	return false
+	return s[0] == refSpecSeparator[0]
 }
 
 // Src return the src side.
 func (s RefSpec) Src() string {
 	spec := string(s)
-	start := strings.Index(spec, refSpecForce) + 1
+
+	var start int
+	if s.IsForceUpdate() {
+		start = 1
+	} else {
+		start = 0
+	}
 	end := strings.Index(spec, refSpecSeparator)
 
 	return spec[start:end]
@@ -87,7 +85,7 @@ func (s RefSpec) Match(n plumbing.ReferenceName) bool {
 
 // IsWildcard returns true if the RefSpec contains a wildcard.
 func (s RefSpec) IsWildcard() bool {
-	return strings.Index(string(s), refSpecWildcard) != -1
+	return strings.Contains(string(s), refSpecWildcard)
 }
 
 func (s RefSpec) matchExact(n plumbing.ReferenceName) bool {
@@ -101,11 +99,11 @@ func (s RefSpec) matchGlob(n plumbing.ReferenceName) bool {
 
 	var prefix, suffix string
 	prefix = src[0:wildcard]
-	if len(src) < wildcard {
-		suffix = src[wildcard+1 : len(suffix)]
+	if len(src) > wildcard+1 {
+		suffix = src[wildcard+1:]
 	}
 
-	return len(name) > len(prefix)+len(suffix) &&
+	return len(name) >= len(prefix)+len(suffix) &&
 		strings.HasPrefix(name, prefix) &&
 		strings.HasSuffix(name, suffix)
 }
@@ -127,6 +125,13 @@ func (s RefSpec) Dst(n plumbing.ReferenceName) plumbing.ReferenceName {
 	match := name[ws : len(name)-(len(src)-(ws+1))]
 
 	return plumbing.ReferenceName(dst[0:wd] + match + dst[wd+1:])
+}
+
+func (s RefSpec) Reverse() RefSpec {
+	spec := string(s)
+	separator := strings.Index(spec, refSpecSeparator)
+
+	return RefSpec(spec[separator+1:] + refSpecSeparator + spec[:separator])
 }
 
 func (s RefSpec) String() string {

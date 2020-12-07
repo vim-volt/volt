@@ -21,7 +21,20 @@ func Objects(
 	objs,
 	ignore []plumbing.Hash,
 ) ([]plumbing.Hash, error) {
-	ignore, err := objects(s, ignore, nil, true)
+	return ObjectsWithStorageForIgnores(s, s, objs, ignore)
+}
+
+// ObjectsWithStorageForIgnores is the same as Objects, but a
+// secondary storage layer can be provided, to be used to finding the
+// full set of objects to be ignored while finding the reachable
+// objects.  This is useful when the main `s` storage layer is slow
+// and/or remote, while the ignore list is available somewhere local.
+func ObjectsWithStorageForIgnores(
+	s, ignoreStore storer.EncodedObjectStorer,
+	objs,
+	ignore []plumbing.Hash,
+) ([]plumbing.Hash, error) {
+	ignore, err := objects(ignoreStore, ignore, nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -35,9 +48,9 @@ func objects(
 	ignore []plumbing.Hash,
 	allowMissingObjects bool,
 ) ([]plumbing.Hash, error) {
-
 	seen := hashListToSet(ignore)
 	result := make(map[plumbing.Hash]bool)
+	visited := make(map[plumbing.Hash]bool)
 
 	walkerFunc := func(h plumbing.Hash) {
 		if !seen[h] {
@@ -47,7 +60,7 @@ func objects(
 	}
 
 	for _, h := range objects {
-		if err := processObject(s, h, seen, ignore, walkerFunc); err != nil {
+		if err := processObject(s, h, seen, visited, ignore, walkerFunc); err != nil {
 			if allowMissingObjects && err == plumbing.ErrObjectNotFound {
 				continue
 			}
@@ -64,6 +77,7 @@ func processObject(
 	s storer.EncodedObjectStorer,
 	h plumbing.Hash,
 	seen map[plumbing.Hash]bool,
+	visited map[plumbing.Hash]bool,
 	ignore []plumbing.Hash,
 	walkerFunc func(h plumbing.Hash),
 ) error {
@@ -83,12 +97,12 @@ func processObject(
 
 	switch do := do.(type) {
 	case *object.Commit:
-		return reachableObjects(do, seen, ignore, walkerFunc)
+		return reachableObjects(do, seen, visited, ignore, walkerFunc)
 	case *object.Tree:
 		return iterateCommitTrees(seen, do, walkerFunc)
 	case *object.Tag:
 		walkerFunc(do.Hash)
-		return processObject(s, do.Target, seen, ignore, walkerFunc)
+		return processObject(s, do.Target, seen, visited, ignore, walkerFunc)
 	case *object.Blob:
 		walkerFunc(do.Hash)
 	default:
@@ -106,13 +120,35 @@ func processObject(
 func reachableObjects(
 	commit *object.Commit,
 	seen map[plumbing.Hash]bool,
+	visited map[plumbing.Hash]bool,
 	ignore []plumbing.Hash,
-	cb func(h plumbing.Hash)) error {
+	cb func(h plumbing.Hash),
+) error {
+	i := object.NewCommitPreorderIter(commit, seen, ignore)
+	pending := make(map[plumbing.Hash]bool)
+	addPendingParents(pending, visited, commit)
+	for {
+		commit, err := i.Next()
+		if err == io.EOF {
+			break
+		}
 
-	i := object.NewCommitPreorderIter(commit, ignore)
-	return i.ForEach(func(commit *object.Commit) error {
+		if err != nil {
+			return err
+		}
+
+		if pending[commit.Hash] {
+			delete(pending, commit.Hash)
+		}
+
+		addPendingParents(pending, visited, commit)
+
+		if visited[commit.Hash] && len(pending) == 0 {
+			break
+		}
+
 		if seen[commit.Hash] {
-			return nil
+			continue
 		}
 
 		cb(commit.Hash)
@@ -122,15 +158,28 @@ func reachableObjects(
 			return err
 		}
 
-		return iterateCommitTrees(seen, tree, cb)
-	})
+		if err := iterateCommitTrees(seen, tree, cb); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func addPendingParents(pending, visited map[plumbing.Hash]bool, commit *object.Commit) {
+	for _, p := range commit.ParentHashes {
+		if !visited[p] {
+			pending[p] = true
+		}
+	}
 }
 
 // iterateCommitTrees iterate all reachable trees from the given commit
 func iterateCommitTrees(
 	seen map[plumbing.Hash]bool,
 	tree *object.Tree,
-	cb func(h plumbing.Hash)) error {
+	cb func(h plumbing.Hash),
+) error {
 	if seen[tree.Hash] {
 		return nil
 	}
