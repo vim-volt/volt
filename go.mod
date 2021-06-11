@@ -1,4 +1,4 @@
-module github.com/vim-volt/volt
+module github.com/rjkat/volt
 
 require (
 	github.com/BurntSushi/toml v0.3.0
