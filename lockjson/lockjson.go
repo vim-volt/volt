@@ -10,8 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/pathutil"
+	"github.com/rjkat/volt/logger"
+	"github.com/rjkat/volt/pathutil"
 )
 
 // ReposList = []Repos

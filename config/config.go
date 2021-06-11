@@ -4,7 +4,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/vim-volt/volt/pathutil"
+	"github.com/rjkat/volt/pathutil"
 )
 
 // Config is marshallable content of config.toml

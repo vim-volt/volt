@@ -145,7 +145,7 @@ func Debug(msgs ...interface{}) {
 }
 
 func getDebugPrefix() string {
-	const voltDirName = "github.com/vim-volt/volt/"
+	const voltDirName = "github.com/rjkat/volt/"
 	if logLevel < DebugLevel {
 		return ""
 	}

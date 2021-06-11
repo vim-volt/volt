@@ -14,9 +14,9 @@ import (
 	"github.com/pkg/errors"
 
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/vim-volt/volt/httputil"
-	"github.com/vim-volt/volt/lockjson"
-	"github.com/vim-volt/volt/pathutil"
+	"github.com/rjkat/volt/httputil"
+	"github.com/rjkat/volt/lockjson"
+	"github.com/rjkat/volt/pathutil"
 
 	"github.com/haya14busa/go-vimlparser"
 	"github.com/haya14busa/go-vimlparser/ast"

@@ -14,10 +14,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/vim-volt/volt/config"
-	"github.com/vim-volt/volt/fileutil"
-	"github.com/vim-volt/volt/lockjson"
-	"github.com/vim-volt/volt/pathutil"
+	"github.com/rjkat/volt/config"
+	"github.com/rjkat/volt/fileutil"
+	"github.com/rjkat/volt/lockjson"
+	"github.com/rjkat/volt/pathutil"
 )
 
 var voltCommand string

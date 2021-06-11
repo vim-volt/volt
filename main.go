@@ -5,8 +5,8 @@ package main
 import (
 	"os"
 
-	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/subcmd"
+	"github.com/rjkat/volt/logger"
+	"github.com/rjkat/volt/subcmd"
 )
 
 func main() {

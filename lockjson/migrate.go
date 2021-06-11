@@ -3,7 +3,7 @@ package lockjson
 import (
 	"encoding/json"
 
-	"github.com/vim-volt/volt/logger"
+	"github.com/rjkat/volt/logger"
 )
 
 func migrate(rawJSON []byte, lockJSON *LockJSON) error {

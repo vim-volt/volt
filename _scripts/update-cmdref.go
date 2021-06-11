@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/vim-volt/volt/internal/testutil"
+	"github.com/rjkat/volt/internal/testutil"
 )
 
 func main() {
