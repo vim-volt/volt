@@ -64,7 +64,7 @@ func (cmd *selfUpgradeCmd) Run(args []string) *Error {
 			return &Error{Code: 11, Msg: "Failed to clean up old binary: " + err.Error()}
 		}
 	} else {
-		latestURL := "https://api.github.com/repos/vim-volt/volt/releases/latest"
+		latestURL := "https://api.github.com/repos/rjkat/volt/releases/latest"
 		if err = cmd.doSelfUpgrade(latestURL); err != nil {
 			return &Error{Code: 12, Msg: "Failed to self-upgrade: " + err.Error()}
 		}
