@@ -3,8 +3,8 @@ package migrate
 import (
 	"github.com/pkg/errors"
 
-	"github.com/vim-volt/volt/lockjson"
-	"github.com/vim-volt/volt/transaction"
+	"github.com/rjkat/volt/lockjson"
+	"github.com/rjkat/volt/transaction"
 )
 
 func init() {

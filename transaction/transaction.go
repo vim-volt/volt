@@ -8,7 +8,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
-	"github.com/vim-volt/volt/pathutil"
+	"github.com/rjkat/volt/pathutil"
 )
 
 // Start creates $VOLTPATH/trx/lock directory.

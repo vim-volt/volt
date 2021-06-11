@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/vim-volt/volt/lockjson"
-	"github.com/vim-volt/volt/logger"
-	"github.com/vim-volt/volt/pathutil"
-	"github.com/vim-volt/volt/plugconf"
-	"github.com/vim-volt/volt/subcmd/builder"
-	"github.com/vim-volt/volt/transaction"
+	"github.com/rjkat/volt/lockjson"
+	"github.com/rjkat/volt/logger"
+	"github.com/rjkat/volt/pathutil"
+	"github.com/rjkat/volt/plugconf"
+	"github.com/rjkat/volt/subcmd/builder"
+	"github.com/rjkat/volt/transaction"
 )
 
 func init() {
@@ -35,7 +35,7 @@ func (m *plugconfConfigMigrater) Description(brief bool) string {
 
 Description
   Perform migration of the function name of s:config() functions in plugconf files of all plugins. All s:config() functions are renamed to s:on_load_pre().
-  "s:config()" is a old function name (see https://github.com/vim-volt/volt/issues/196).
+  "s:config()" is a old function name (see https://github.com/rjkat/volt/issues/196).
   All plugconf files are replaced with new contents.`
 }
 

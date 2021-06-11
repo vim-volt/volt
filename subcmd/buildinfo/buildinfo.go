@@ -5,8 +5,8 @@ import (
 	"github.com/pkg/errors"
 	"io/ioutil"
 
-	"github.com/vim-volt/volt/lockjson"
-	"github.com/vim-volt/volt/pathutil"
+	"github.com/rjkat/volt/lockjson"
+	"github.com/rjkat/volt/pathutil"
 )
 
 type BuildInfo struct {

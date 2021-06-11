@@ -16,8 +16,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/vim-volt/volt/httputil"
-	"github.com/vim-volt/volt/logger"
+	"github.com/rjkat/volt/httputil"
+	"github.com/rjkat/volt/logger"
 )
 
 func init() {
