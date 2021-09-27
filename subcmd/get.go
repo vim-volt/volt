@@ -13,8 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"gopkg.in/src-d/go-git.v4"
-
+	"github.com/go-git/go-git/v5"
 	"github.com/vim-volt/volt/config"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/gitutil"

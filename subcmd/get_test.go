@@ -11,12 +11,12 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/vim-volt/volt/internal/testutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/pathutil"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 // Checks:

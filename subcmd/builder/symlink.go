@@ -9,8 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"gopkg.in/src-d/go-git.v4"
-
+	"github.com/go-git/go-git/v5"
 	"github.com/vim-volt/volt/gitutil"
 	"github.com/vim-volt/volt/lockjson"
 	"github.com/vim-volt/volt/logger"
