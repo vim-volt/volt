@@ -1,5 +1,0 @@
-; test_command
-(excmd "normal! gg")
-(excmd "normal gg")
-(excmd "Usercmd x, y z 123")
-(excmd "Usercmd! with bang")

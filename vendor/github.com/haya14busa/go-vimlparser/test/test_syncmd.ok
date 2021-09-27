@@ -1,8 +1,0 @@
-(if 1
-  (excmd "syntax on "))
-(excmd "syntax")
-(excmd "syntax enable")
-(excmd "syntax list GroupName")
-(excmd "syn match pythonError \"[&|]\\{2,}\" display")
-(excmd "syntax match qfFileName /^\\zs\\S[^|]\\+\\/\\ze[^|\\/]\\+\\/[^|\\/]\\+|/ conceal cchar=+")
-(excmd "syntax region jsString start=+\"+ skip=+\\\\\\(\"\\|$\\)+ end=+\"\\|$+ contains=jsSpecial,@Spell extend")
