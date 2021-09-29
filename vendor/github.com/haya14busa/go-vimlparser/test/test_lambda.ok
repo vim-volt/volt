@@ -1,5 +1,0 @@
-; test_lambda
-(echo (lambda () (+ 1 1)))
-(echo (lambda (i v) (>= v s:x)))
-(echo (lambda (...) a:000))
-(echo ((lambda (x) (* x 2)) 14))

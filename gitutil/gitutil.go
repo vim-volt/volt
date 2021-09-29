@@ -5,9 +5,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/vim-volt/volt/pathutil"
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 var refHeadsRx = regexp.MustCompile(`^refs/heads/(.+)$`)

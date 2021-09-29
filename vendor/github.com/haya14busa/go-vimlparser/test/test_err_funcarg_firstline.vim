@@ -1,2 +1,0 @@
-function Foo(firstline)
-endfunction

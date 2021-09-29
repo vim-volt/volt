@@ -8,6 +8,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/hashicorp/go-multierror"
 	"github.com/vim-volt/volt/fileutil"
 	"github.com/vim-volt/volt/gitutil"
@@ -16,9 +19,6 @@ import (
 	"github.com/vim-volt/volt/pathutil"
 	"github.com/vim-volt/volt/plugconf"
 	"github.com/vim-volt/volt/subcmd/buildinfo"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 type copyBuilder struct {
