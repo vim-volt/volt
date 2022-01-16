@@ -882,7 +882,9 @@ func visitNode(node *reposDepNode, callback func(*reposDepNode), visited map[pat
 }
 
 func makeRank(rank map[pathutil.ReposPath]int, node *reposDepNode, value int) {
-	rank[node.repos.Path] = value
+	if r, ok := rank[node.repos.Path]; !ok || r < value {
+		rank[node.repos.Path] = value
+	}
 	for i := range node.dependedBy {
 		makeRank(rank, node.dependedBy[i], value+1)
 	}

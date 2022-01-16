@@ -45,6 +45,43 @@ func TestSortByDepends(t *testing.T) {
 				{Path: pathutil.DecodeReposPath("test/test-1")},
 			},
 		},
+		{
+			input: input{
+				reposList: []lockjson.Repos{
+					{Path: pathutil.DecodeReposPath("Shougo/ddc-matcher_head")},
+					{Path: pathutil.DecodeReposPath("Shougo/ddc.vim")},
+					{Path: pathutil.DecodeReposPath("shun/ddc-vim-lsp")},
+					{Path: pathutil.DecodeReposPath("vim-denops/denops.vim")},
+				},
+				plugconfMap: map[pathutil.ReposPath]*ParsedInfo{
+					pathutil.DecodeReposPath("vim-denops/denops.vim"): {},
+					pathutil.DecodeReposPath("Shougo/ddc.vim"): {
+						depends: []pathutil.ReposPath{
+							pathutil.DecodeReposPath("vim-denops/denops.vim"),
+						},
+					},
+					pathutil.DecodeReposPath("Shougo/ddc-matcher_head"): {
+						depends: []pathutil.ReposPath{
+							pathutil.DecodeReposPath("vim-denops/denops.vim"),
+							pathutil.DecodeReposPath("Shougo/ddc.vim"),
+						},
+					},
+					pathutil.DecodeReposPath("shun/ddc-vim-lsp"): {
+						depends: []pathutil.ReposPath{
+							pathutil.DecodeReposPath("vim-denops/denops.vim"),
+							pathutil.DecodeReposPath("Shougo/ddc.vim"),
+							pathutil.DecodeReposPath("Shougo/ddc-matcher_head"),
+						},
+					},
+				},
+			},
+			want: []lockjson.Repos{
+				{Path: pathutil.DecodeReposPath("vim-denops/denops.vim")},
+				{Path: pathutil.DecodeReposPath("Shougo/ddc.vim")},
+				{Path: pathutil.DecodeReposPath("Shougo/ddc-matcher_head")},
+				{Path: pathutil.DecodeReposPath("shun/ddc-vim-lsp")},
+			},
+		},
 	}
 
 	for _, tt := range cases {
