@@ -589,8 +589,8 @@ type reposDepTree struct {
 
 type reposDepNode struct {
 	repos      *lockjson.Repos
-	dependTo   []reposDepNode
-	dependedBy []reposDepNode
+	dependTo   []*reposDepNode
+	dependedBy []*reposDepNode
 }
 
 // ParseMultiPlugconf parses plugconfs of given reposList.
@@ -858,11 +858,11 @@ func makeNodes(reposPath pathutil.ReposPath, reposMap map[pathutil.ReposPath]*lo
 	visited[reposPath] = node
 	for i := range depsMap[reposPath] {
 		dep := makeNodes(depsMap[reposPath][i], reposMap, depsMap, rdepsMap, visited)
-		node.dependTo = append(node.dependTo, *dep)
+		node.dependTo = append(node.dependTo, dep)
 	}
 	for i := range rdepsMap[reposPath] {
 		rdep := makeNodes(rdepsMap[reposPath][i], reposMap, depsMap, rdepsMap, visited)
-		node.dependedBy = append(node.dependedBy, *rdep)
+		node.dependedBy = append(node.dependedBy, rdep)
 	}
 	return node
 }
@@ -874,17 +874,19 @@ func visitNode(node *reposDepNode, callback func(*reposDepNode), visited map[pat
 	visited[node.repos.Path] = true
 	callback(node)
 	for i := range node.dependTo {
-		visitNode(&node.dependTo[i], callback, visited)
+		visitNode(node.dependTo[i], callback, visited)
 	}
 	for i := range node.dependedBy {
-		visitNode(&node.dependedBy[i], callback, visited)
+		visitNode(node.dependedBy[i], callback, visited)
 	}
 }
 
 func makeRank(rank map[pathutil.ReposPath]int, node *reposDepNode, value int) {
-	rank[node.repos.Path] = value
+	if r, ok := rank[node.repos.Path]; !ok || r < value {
+		rank[node.repos.Path] = value
+	}
 	for i := range node.dependedBy {
-		makeRank(rank, &node.dependedBy[i], value+1)
+		makeRank(rank, node.dependedBy[i], value+1)
 	}
 }
 
